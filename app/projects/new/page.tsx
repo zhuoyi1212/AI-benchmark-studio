@@ -9,14 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { mockNewProjectDraft } from "@/lib/mock/project.mock";
 
 type DraftProduct = { name: string; website: string };
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [name, setName] = useState("AI PPT 产品横向测评");
-  const [intent, setIntent] = useState("我想知道哪款 AI PPT 最适合没有设计经验的产品经理快速制作商业汇报。");
-  const [items, setItems] = useState<DraftProduct[]>([{ name: "Gamma", website: "https://gamma.app" }, { name: "Canva", website: "https://canva.com" }, { name: "Beautiful.ai", website: "https://beautiful.ai" }]);
+  const [name, setName] = useState(mockNewProjectDraft.name);
+  const [intent, setIntent] = useState(mockNewProjectDraft.intent);
+  const [items, setItems] = useState<DraftProduct[]>(mockNewProjectDraft.products.map((item) => ({ name: item.name, website: item.officialUrl ?? "" })));
   const [loading, setLoading] = useState(false);
 
   const updateItem = (index: number, key: keyof DraftProduct, value: string) => setItems((current) => current.map((item, i) => i === index ? { ...item, [key]: value } : item));
@@ -32,7 +33,7 @@ export default function NewProjectPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <Card className="p-6 shadow-none">
           <div className="space-y-7">
-            <label className="block"><span className="mb-2 block text-sm font-medium">测评名称</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：AI PPT 产品横向测评" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-medium">测评名称</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：AI 产品横向测评" /></label>
             <div>
               <div className="mb-2 flex items-end justify-between"><div><span className="block text-sm font-medium">测评产品</span><span className="mt-1 block text-xs text-muted-foreground">添加 1–3 个产品</span></div><span className="text-xs tabular-nums text-muted-foreground">{items.length} / 3</span></div>
               <div className="space-y-2.5">
@@ -55,4 +56,3 @@ export default function NewProjectPage() {
     </div>
   );
 }
-
