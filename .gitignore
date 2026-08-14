@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+.DS_Store
+*.log
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.npmrc
+
+# Build, test, and editor artifacts
+*.tsbuildinfo
+coverage
+.vercel
+.idea
+.vscode

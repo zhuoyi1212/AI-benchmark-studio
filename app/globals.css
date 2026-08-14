@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 98%;
+    --foreground: 222 24% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 24% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 24% 11%;
+    --border: 220 13% 90%;
+    --input: 220 13% 88%;
+    --ring: 221 83% 53%;
+  }
+
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+  ::selection { @apply bg-blue-100 text-blue-950; }
+}
+
+@layer components {
+  .page-shell { @apply mx-auto w-full max-w-[1180px] px-6 pb-16 pt-8 lg:px-10 lg:pt-10; }
+  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground; }
+  .section-title { @apply text-[17px] font-semibold tracking-[-0.015em]; }
+  .subtle-grid { background-image: radial-gradient(hsl(var(--border)) 0.7px, transparent 0.7px); background-size: 16px 16px; }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
