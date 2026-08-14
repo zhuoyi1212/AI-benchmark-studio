@@ -168,5 +168,5 @@ export const workflow = [
   { label: "盲评", href: "/projects/demo/review" },
   { label: "结果", href: "/projects/demo/results" },
   { label: "报告", href: "/projects/demo/report" },
+  { label: "发布包", href: "/projects/demo/publish" },
 ];
-
