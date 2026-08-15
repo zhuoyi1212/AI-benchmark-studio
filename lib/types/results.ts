@@ -13,6 +13,11 @@ export type ProductResultSummary = {
 
 export type FinalResultAnalysis = {
   projectId: string;
+  generatedFrom: {
+    reviewStatus: "revealed";
+    reviewUpdatedAt: string;
+    finalScoreSignature: string;
+  };
   winner?: { productId: string; reason: string };
   products: ProductResultSummary[];
   crossProductInsights: string[];

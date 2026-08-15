@@ -7,7 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { mockProject } from "@/lib/mock/project.mock";
+import { getProject } from "@/lib/mock/services";
 
 const nav = [
   { label: "我的测评", href: "/projects", icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const nav = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const project = getProject("demo");
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -43,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="mt-7 px-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">最近项目</div>
       <Link href="/projects/demo/test" onClick={() => setMobileOpen(false)} className="group mt-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-950">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /><span className="truncate">{mockProject.name}</span><span className="ml-auto text-[10px] text-muted-foreground group-hover:text-slate-600">{mockProject.progress.percent}%</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /><span className="truncate">{project.name}</span><span className="ml-auto text-[10px] text-muted-foreground group-hover:text-slate-600">{project.progress.percent}%</span>
       </Link>
 
       <div className="mt-auto border-t pt-3">

@@ -1,34 +1,44 @@
-import { mockProject } from "@/lib/mock/project.mock";
-import { mockProtocol } from "@/lib/mock/protocol.mock";
-import { mockBlindMappings, mockBlindSamples, mockJudgeResults, mockStoredReview } from "@/lib/mock/review.mock";
-import type { FinalProductScore, ReviewScore, ReviewStatus, StoredReview } from "@/lib/types/review";
+import type { BenchmarkProduct } from "@/lib/types/project";
+import type { TestProtocol } from "@/lib/types/protocol";
+import type { AIJudgeScore, BlindMapping, BlindSample, FinalProductScore, ReviewScore, ReviewStatus, StoredReview } from "@/lib/types/review";
 
-export function getJudgeScore(reviewScore: ReviewScore) {
-  return mockJudgeResults.find((item) => item.id === reviewScore.judgeScoreId);
+export type ReviewCalculationContext = {
+  protocol: TestProtocol;
+  judgeResults: AIJudgeScore[];
+};
+
+export type RevealedReviewContext = ReviewCalculationContext & {
+  mappings: BlindMapping[];
+  samples: BlindSample[];
+  products: BenchmarkProduct[];
+};
+
+export function getJudgeScore(reviewScore: ReviewScore, judgeResults: AIJudgeScore[]) {
+  return judgeResults.find((item) => item.id === reviewScore.judgeScoreId);
 }
 
-export function calculateCaseScore(scores: ReviewScore[], sampleId: string, testCaseId: string) {
-  const items = scores.map((reviewScore) => ({ reviewScore, judgeScore: getJudgeScore(reviewScore) }))
+export function calculateCaseScore(scores: ReviewScore[], sampleId: string, testCaseId: string, context: ReviewCalculationContext) {
+  const items = scores.map((reviewScore) => ({ reviewScore, judgeScore: getJudgeScore(reviewScore, context.judgeResults) }))
     .filter(({ judgeScore }) => judgeScore?.sampleId === sampleId && judgeScore.testCaseId === testCaseId);
   return roundOne(items.reduce((total, { reviewScore, judgeScore }) => {
-    const weight = mockProtocol.rubric.find((dimension) => dimension.id === judgeScore?.rubricDimensionId)?.weight ?? 0;
+    const weight = context.protocol.rubric.find((dimension) => dimension.id === judgeScore?.rubricDimensionId)?.weight ?? 0;
     return total + reviewScore.finalScore * weight / 100;
   }, 0));
 }
 
-export function calculateSampleScore(scores: ReviewScore[], sampleId: string) {
-  const caseScores = mockProtocol.testCases.map((testCase) => calculateCaseScore(scores, sampleId, testCase.id));
+export function calculateSampleScore(scores: ReviewScore[], sampleId: string, context: ReviewCalculationContext) {
+  const caseScores = context.protocol.testCases.map((testCase) => calculateCaseScore(scores, sampleId, testCase.id, context));
   return roundOne(caseScores.reduce((total, score) => total + score, 0) / Math.max(caseScores.length, 1));
 }
 
-export function calculateFinalProductScores(scores: ReviewScore[], status: ReviewStatus): FinalProductScore[] {
-  if (status === "reviewing") return [];
-  return mockBlindMappings.map((mapping) => {
-    const sample = mockBlindSamples.find((item) => item.sampleId === mapping.sampleId);
-    const product = mockProject.products.find((item) => item.id === mapping.productId);
-    const dimensionScores = mockProtocol.rubric.map((dimension) => {
+export function calculateFinalProductScores(scores: ReviewScore[], status: ReviewStatus, context: RevealedReviewContext): FinalProductScore[] {
+  if (status !== "revealed") return [];
+  return context.mappings.map((mapping) => {
+    const sample = context.samples.find((item) => item.sampleId === mapping.sampleId);
+    const product = context.products.find((item) => item.id === mapping.productId);
+    const dimensionScores = context.protocol.rubric.map((dimension) => {
       const items = scores.filter((reviewScore) => {
-        const judgeScore = getJudgeScore(reviewScore);
+        const judgeScore = getJudgeScore(reviewScore, context.judgeResults);
         return judgeScore?.sampleId === mapping.sampleId && judgeScore.rubricDimensionId === dimension.id;
       });
       return { dimensionId: dimension.id, name: dimension.name, score: roundOne(items.reduce((total, item) => total + item.finalScore, 0) / Math.max(items.length, 1)) };
@@ -40,9 +50,9 @@ export function calculateFinalProductScores(scores: ReviewScore[], status: Revie
       sampleLabel: sample?.label ?? mapping.sampleId,
       initials: product?.initials ?? "?",
       color: product?.color ?? "bg-slate-400",
-      finalScore: roundOne(dimensionScores.reduce((total, item, index) => total + item.score * mockProtocol.rubric[index].weight / 100, 0)),
+      finalScore: roundOne(dimensionScores.reduce((total, item, index) => total + item.score * context.protocol.rubric[index].weight / 100, 0)),
       dimensionScores,
-      adjustedCount: scores.filter((reviewScore) => getJudgeScore(reviewScore)?.sampleId === mapping.sampleId && reviewScore.humanOverride).length,
+      adjustedCount: scores.filter((reviewScore) => getJudgeScore(reviewScore, context.judgeResults)?.sampleId === mapping.sampleId && reviewScore.humanOverride).length,
     };
   }).sort((a, b) => b.finalScore - a.finalScore);
 }
@@ -52,20 +62,20 @@ export function getReviewSummary(scores: ReviewScore[]) {
   return { total: scores.length, adjusted, accepted: scores.length - adjusted };
 }
 
-export function getRevealedProduct(sampleId: string, status: ReviewStatus) {
+export function getRevealedProduct(sampleId: string, status: ReviewStatus, context: RevealedReviewContext) {
   if (status !== "revealed") return undefined;
-  const productId = mockBlindMappings.find((item) => item.sampleId === sampleId)?.productId;
-  return mockProject.products.find((item) => item.id === productId);
+  const productId = context.mappings.find((item) => item.sampleId === sampleId)?.productId;
+  return context.products.find((item) => item.id === productId);
 }
 
-export function parseStoredReview(value: string | null): StoredReview | null {
+export function parseStoredReview(value: string | null, projectId: string, initialScores: ReviewScore[]): StoredReview | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value) as StoredReview;
     const validStatus = ["reviewing", "locked", "revealed"].includes(parsed.status);
-    const expectedIds = new Set(mockStoredReview.scores.map((score) => score.judgeScoreId));
+    const expectedIds = new Set(initialScores.map((score) => score.judgeScoreId));
     const validScores = Array.isArray(parsed.scores) && parsed.scores.length === expectedIds.size && parsed.scores.every((score) => expectedIds.has(score.judgeScoreId));
-    return validStatus && validScores ? parsed : null;
+    return parsed.projectId === projectId && validStatus && validScores ? parsed : null;
   } catch {
     return null;
   }

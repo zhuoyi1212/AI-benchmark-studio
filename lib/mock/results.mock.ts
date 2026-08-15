@@ -1,57 +1,59 @@
-import { mockProject } from "@/lib/mock/project.mock";
-import { mockRevealedReview } from "@/lib/mock/review.mock";
-import { calculateFinalProductScores } from "@/lib/review-state";
-import type { FinalResultAnalysis } from "@/lib/types/results";
+import type { FinalProductScore, StoredReview } from "@/lib/types/review";
+import type { FinalResultAnalysis, ProductResultSummary } from "@/lib/types/results";
 
-const initialScores = calculateFinalProductScores(mockRevealedReview.scores, mockRevealedReview.status);
+export function createMockFinalResultAnalysis(projectId: string, review: StoredReview, finalScores: FinalProductScore[]): FinalResultAnalysis {
+  if (review.status !== "revealed") throw new Error("Final result analysis requires a revealed review.");
+  const rankedScores = [...finalScores].sort((a, b) => b.finalScore - a.finalScore);
+  const products = rankedScores.map((score, index) => createProductSummary(score, index));
+  const winner = rankedScores[0];
+  const runnerUp = rankedScores[1];
+  const leadingDimensions = winner ? [...winner.dimensionScores].sort((a, b) => b.score - a.score).slice(0, 2) : [];
+  const scoreGap = winner && runnerUp ? Math.round((winner.finalScore - runnerUp.finalScore) * 10) / 10 : 0;
 
-const productAnalysis = {
-  gamma: {
-    headline: "生成速度与叙事结构最均衡",
-    strengths: ["内容结构完整", "首次生成质量高"],
-    weaknesses: ["精细排版自由度一般"],
-    bestFor: ["追求快速交付的产品、咨询与创业团队"],
-    notIdealFor: ["需要像素级品牌控制的设计团队"],
-    keyFindings: ["复杂信息结构更稳定", "商业汇报首次成稿率最高"],
-  },
-  canva: {
-    headline: "视觉与编辑能力最突出",
-    strengths: ["模板与素材丰富", "后期编辑灵活"],
-    weaknesses: ["复杂数据洞察偏弱"],
-    bestFor: ["重视视觉表现与持续编辑的市场团队"],
-    notIdealFor: ["希望一次生成直接完成复杂分析的用户"],
-    keyFindings: ["视觉质量领先", "更适合持续修改的长期工作流"],
-  },
-  beautiful: {
-    headline: "版式稳定，品牌一致性可靠",
-    strengths: ["智能布局稳定", "企业风格统一"],
-    weaknesses: ["内容生成较保守", "编辑限制较多"],
-    bestFor: ["强调规范与一致性的销售和企业团队"],
-    notIdealFor: ["需要自由创作和复杂定制的用户"],
-    keyFindings: ["版式规范稳定", "数据洞察深度相对有限"],
-  },
-};
+  return {
+    projectId,
+    generatedFrom: {
+      reviewStatus: "revealed",
+      reviewUpdatedAt: review.updatedAt,
+      finalScoreSignature: rankedScores.map((item) => `${item.productId}:${item.finalScore}:${item.dimensionScores.map((dimension) => `${dimension.dimensionId}=${dimension.score}`).join(",")}`).join("|"),
+    },
+    winner: winner ? {
+      productId: winner.productId,
+      reason: `${winner.productName} 以 ${winner.finalScore.toFixed(1)} 分位列第一${runnerUp ? `，领先第二名 ${scoreGap.toFixed(1)} 分` : ""}；优势主要来自${leadingDimensions.map((item) => item.name).join("与")}。`,
+    } : undefined,
+    products,
+    crossProductInsights: createCrossProductInsights(rankedScores),
+    recommendationSummary: rankedScores.map((item, index) => {
+      const topDimension = [...item.dimensionScores].sort((a, b) => b.score - a.score)[0];
+      return `${index + 1}. ${item.productName}：适合优先关注${topDimension?.name ?? "综合表现"}的用户`;
+    }).join("；"),
+    limitations: ["结论来自当前锁定的 Final Score；人工调整评分后需要重新生成分析。", "Mock 分析仅用于验证数据链路，不代表真实产品能力。"],
+  };
+}
 
-export const mockFinalResultAnalysis: FinalResultAnalysis = {
-  projectId: mockProject.id,
-  winner: { productId: initialScores[0].productId, reason: "内容组织、生成速度与首次成稿质量形成了最均衡的综合表现。" },
-  products: initialScores.map((score, index) => ({
+function createProductSummary(score: FinalProductScore, index: number): ProductResultSummary {
+  const sortedDimensions = [...score.dimensionScores].sort((a, b) => b.score - a.score);
+  const strongest = sortedDimensions.slice(0, 2);
+  const weakest = sortedDimensions.slice(-1);
+  return {
     productId: score.productId,
     productName: score.productName,
     finalScore: score.finalScore,
     rank: index + 1,
-    ...productAnalysis[score.productId as keyof typeof productAnalysis],
-  })),
-  crossProductInsights: ["首次生成质量与长期工作流效率不是同一概念。", "复杂信息组织带来的差距比单纯视觉表现更明显。"],
-  recommendationSummary: "大多数普通职场用户可优先选择 Gamma；重视后续视觉编辑时选择 Canva；重视版式规范和品牌一致性时考虑 Beautiful.ai。",
-  limitations: ["仅覆盖中文商业汇报场景。", "产品功能、模型与订阅方案会持续变化。"],
-};
+    headline: `${strongest.map((item) => item.name).join("与")}是当前评分中的主要优势`,
+    strengths: strongest.map((item) => `${item.name} ${item.score.toFixed(1)} 分`),
+    weaknesses: weakest.map((item) => `${item.name} ${item.score.toFixed(1)} 分，仍有提升空间`),
+    bestFor: strongest.map((item) => `重视${item.name}的用户`),
+    notIdealFor: weakest.map((item) => `将${item.name}作为首要需求的用户`),
+    keyFindings: [`综合排名第 ${index + 1}`, `最终得分 ${score.finalScore.toFixed(1)}`, `${score.adjustedCount} 项评分经过人工调整`],
+  };
+}
 
-export function mergeFinalScores(analysis: FinalResultAnalysis, scores = initialScores): FinalResultAnalysis {
-  const scoreByProduct = new Map(scores.map((score) => [score.productId, score]));
-  const products = analysis.products.map((product) => {
-    const score = scoreByProduct.get(product.productId);
-    return { ...product, finalScore: score?.finalScore ?? product.finalScore };
-  }).sort((a, b) => b.finalScore - a.finalScore).map((product, index) => ({ ...product, rank: index + 1 }));
-  return { ...analysis, winner: products[0] ? { productId: products[0].productId, reason: analysis.winner?.reason ?? products[0].headline } : undefined, products };
+function createCrossProductInsights(scores: FinalProductScore[]) {
+  const dimensionNames = scores[0]?.dimensionScores.map((item) => item.name) ?? [];
+  return dimensionNames.map((name) => {
+    const values = scores.map((score) => score.dimensionScores.find((item) => item.name === name)?.score ?? 0);
+    const gap = Math.max(...values) - Math.min(...values);
+    return { name, gap };
+  }).sort((a, b) => b.gap - a.gap).slice(0, 2).map((item) => `${item.name}是当前产品间差异较明显的维度，最高与最低相差 ${item.gap.toFixed(1)} 分。`);
 }

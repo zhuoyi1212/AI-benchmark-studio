@@ -35,6 +35,8 @@ export type BenchmarkProject = {
   };
 };
 
+export type BenchmarkProjectRecord = Omit<BenchmarkProject, "progress">;
+
 export type ProjectDraft = Pick<BenchmarkProject, "name" | "intent"> & {
   products: Array<Pick<BenchmarkProduct, "name"> & { officialUrl?: string }>;
 };

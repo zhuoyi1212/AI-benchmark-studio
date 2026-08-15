@@ -1,5 +1,5 @@
 import type { AIJudgeScore, BlindMapping, BlindSample, ReviewScore, StoredReview } from "@/lib/types/review";
-import { mockProject } from "@/lib/mock/project.mock";
+import { mockProjectRecord } from "@/lib/mock/project.mock";
 import { mockProtocol } from "@/lib/mock/protocol.mock";
 
 export const REVIEW_STORAGE_KEY = "ai-benchmark-review-v3";
@@ -61,13 +61,11 @@ export const mockInitialReviewScores: ReviewScore[] = mockJudgeResults.map((judg
 }));
 
 export const mockStoredReview: StoredReview = {
-  projectId: mockProject.id,
+  projectId: mockProjectRecord.id,
   status: "reviewing",
   scores: mockInitialReviewScores,
   updatedAt: "2026-08-14T09:31:00.000Z",
 };
-
-export const mockRevealedReview: StoredReview = { ...mockStoredReview, status: "revealed" };
 
 function clamp(value: number) { return Math.min(10, Math.max(0, value)); }
 function roundOne(value: number) { return Math.round(value * 10) / 10; }

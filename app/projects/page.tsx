@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProductLogo } from "@/components/product-logo";
-import { mockProjects } from "@/lib/mock/project.mock";
+import { getProjects } from "@/lib/mock/services";
 import type { ProjectStatus } from "@/lib/types/project";
 
 const statusLabels: Record<ProjectStatus, string> = {
@@ -14,9 +14,10 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 export default function ProjectsPage() {
-  const activeCount = mockProjects.filter((project) => !["completed", "reported", "published"].includes(project.status)).length;
-  const completedCount = mockProjects.length - activeCount;
-  const productCount = new Set(mockProjects.flatMap((project) => project.products.map((product) => product.id))).size;
+  const projects = getProjects("demo");
+  const activeCount = projects.filter((project) => !["completed", "reported", "published"].includes(project.status)).length;
+  const completedCount = projects.length - activeCount;
+  const productCount = new Set(projects.flatMap((project) => project.products.map((product) => product.id))).size;
   return (
     <div className="page-shell">
       <PageHeader title="AI 产品测评" description="设计可复现的测试方案，公平比较 AI 产品，并沉淀完整测评证据。" action={<Button asChild><Link href="/projects/new"><Plus className="h-4 w-4" />新建测评</Link></Button>} />
@@ -26,8 +27,8 @@ export default function ProjectsPage() {
         <MetricCard icon={Users} label="已测产品" value={productCount} />
       </section>
       <section className="mt-9">
-        <div className="mb-4 flex items-center justify-between"><h2 className="section-title">最近测评项目</h2><span className="text-xs text-muted-foreground">共 {mockProjects.length} 个项目</span></div>
-        {mockProjects.map((project) => (
+        <div className="mb-4 flex items-center justify-between"><h2 className="section-title">最近测评项目</h2><span className="text-xs text-muted-foreground">共 {projects.length} 个项目</span></div>
+        {projects.map((project) => (
           <Card key={project.id} className="group overflow-hidden shadow-none transition-colors hover:border-slate-300">
             <Link href={`/projects/${project.id}/test`} className="block p-5 sm:p-6">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center">

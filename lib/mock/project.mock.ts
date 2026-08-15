@@ -1,6 +1,8 @@
-import type { BenchmarkProject, ProjectDraft } from "@/lib/types/project";
+import type { BenchmarkProjectRecord, ProjectDraft } from "@/lib/types/project";
 
-export const mockProject: BenchmarkProject = {
+export const MOCK_PROJECT_ID = "demo";
+
+export const mockProjectRecord: BenchmarkProjectRecord = {
   id: "demo",
   name: "AI PPT 产品横向测评",
   status: "testing",
@@ -12,15 +14,12 @@ export const mockProject: BenchmarkProject = {
     { id: "canva", name: "Canva", officialUrl: "https://canva.com", initials: "C", color: "bg-slate-700" },
     { id: "beautiful", name: "Beautiful.ai", officialUrl: "https://beautiful.ai", initials: "B", color: "bg-slate-400" },
   ],
-  progress: { completed: 8, total: 12, percent: 67 },
 };
 
-export const mockProjects: BenchmarkProject[] = [mockProject];
-
 export const mockNewProjectDraft: ProjectDraft = {
-  name: mockProject.name,
-  intent: mockProject.intent,
-  products: mockProject.products.map(({ name, officialUrl }) => ({ name, officialUrl })),
+  name: mockProjectRecord.name,
+  intent: mockProjectRecord.intent,
+  products: mockProjectRecord.products.map(({ name, officialUrl }) => ({ name, officialUrl })),
 };
 
 export const mockWorkflow = [

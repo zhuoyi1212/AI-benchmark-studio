@@ -1,63 +1,67 @@
-import { mockProject } from "@/lib/mock/project.mock";
-import { mockProtocol } from "@/lib/mock/protocol.mock";
-import { mockFinalResultAnalysis, mergeFinalScores } from "@/lib/mock/results.mock";
-import { mockStoredReview } from "@/lib/mock/review.mock";
-import { calculateCaseScore, calculateFinalProductScores } from "@/lib/review-state";
+import { calculateCaseScore } from "@/lib/review-state";
+import type { BenchmarkProject } from "@/lib/types/project";
+import type { TestProtocol } from "@/lib/types/protocol";
 import type { BenchmarkReport } from "@/lib/types/report";
-import type { ReviewScore } from "@/lib/types/review";
+import type { AIJudgeScore, FinalProductScore, StoredReview } from "@/lib/types/review";
+import type { FinalResultAnalysis } from "@/lib/types/results";
+import type { ResearchResponse } from "@/lib/types/research";
+import type { TestRun } from "@/lib/types/test-run";
 
-const caseFindings: Record<string, string> = {
-  "01": "内容组织与商业叙事最能拉开差距，视觉表现并不是唯一决定因素。",
-  "02": "关键信息保留普遍优于风险提示，长文压缩仍需要人工核对。",
-  "03": "三款产品都能生成图表，但异常解释与数据标注质量差异明显。",
-  "04": "严格约束下，指令遵循与版式稳定性之间存在取舍。",
+type ReportInput = {
+  project: BenchmarkProject;
+  research: ResearchResponse;
+  protocol: TestProtocol;
+  testRuns: TestRun[];
+  judgeResults: AIJudgeScore[];
+  review: StoredReview;
+  finalScores: FinalProductScore[];
+  analysis: FinalResultAnalysis;
 };
 
-const caseAnalysis: Record<string, Record<string, string>> = {
-  "01": { gamma: "输出结构完整，管理层叙事最清晰。", canva: "视觉表现成熟，部分商业逻辑需要继续整理。", beautiful: "版式稳定，内容展开相对保守。" },
-  "02": { gamma: "摘要与章节结构完整。", canva: "视觉层级清楚，信息压缩较激进。", beautiful: "长文转换稳定，但限制条件呈现较弱。" },
-  "03": { gamma: "增长驱动解释最完整。", canva: "图表样式与编辑空间更好。", beautiful: "图表布局稳定，异常原因挖掘不足。" },
-  "04": { gamma: "主要约束遵循良好。", canva: "视觉自由度与严格约束之间有取舍。", beautiful: "版式规范稳定，内容弹性较低。" },
-};
-
-export function createMockBenchmarkReport(scores: ReviewScore[]): BenchmarkReport {
-  const finalScores = calculateFinalProductScores(scores, "revealed");
-  const analysis = mergeFinalScores(mockFinalResultAnalysis, finalScores);
-  const ranking = finalScores.map((score, index) => ({ productId: score.productId, productName: score.productName, score: score.finalScore, rank: index + 1 }));
+export function createMockBenchmarkReport(input: ReportInput): BenchmarkReport {
+  if (input.review.status !== "revealed") throw new Error("Report requires a revealed review.");
+  const winner = input.finalScores[0];
+  const runnerUp = input.finalScores[1];
+  const ranking = input.finalScores.map((score, index) => ({ productId: score.productId, productName: score.productName, score: score.finalScore, rank: index + 1 }));
+  const reviewContext = { protocol: input.protocol, judgeResults: input.judgeResults };
   return {
-    id: "report-demo-v1",
-    projectId: mockProject.id,
-    eyebrow: "AI 产品深度测评 · 2026",
-    title: "Gamma、Canva、Beautiful.ai：谁才是最好用的 AI PPT？",
-    subtitle: `我们用 ${mockProtocol.testCases.length} 类真实工作任务、${mockProtocol.testCases.length * mockProject.products.length} 次独立生成和统一评分框架，测试三款主流 AI 演示工具。结果比“谁更好看”复杂得多。`,
-    readingTime: "18 分钟阅读",
-    tldr: "如果你只想最快做出一份结构靠谱的商业汇报，选 Gamma。",
-    tldrDetail: "Canva 在视觉和编辑上更强，Beautiful.ai 的企业版式最稳。没有绝对赢家，但 Gamma 在这套面向普通职场用户的综合测试中最均衡。",
+    id: `report-${input.project.id}-${input.analysis.generatedFrom.finalScoreSignature}`,
+    projectId: input.project.id,
+    eyebrow: `AI 产品深度测评 · ${new Date(input.review.updatedAt).getFullYear()}`,
+    title: `${input.project.products.map((product) => product.name).join("、")}：本轮标准化测评结果`,
+    subtitle: `本报告基于 ${input.protocol.testCases.length} 类任务、${input.testRuns.length} 项测试和 ${input.protocol.rubric.length} 个评分维度生成，全部结论使用锁定并揭晓后的 Final Score。`,
+    readingTime: `${Math.max(5, input.protocol.testCases.length * 4)} 分钟阅读`,
+    tldr: winner ? `${winner.productName} 以 ${winner.finalScore.toFixed(1)} 分位列本轮综合第一。` : "本轮暂无可用排名。",
+    tldrDetail: input.analysis.recommendationSummary,
     methodology: {
-      summary: "AI Judge 在隐藏产品身份的情况下完成初始评分。随后由人工在同样保持 Blind 的状态下复核评分证据，仅对明显不合理的项目进行调整。",
-      rules: mockProtocol.rules.slice(0, 4).map((rule) => rule.text),
+      summary: "AI Judge 在隐藏产品身份的情况下完成初始评分。随后由人工在同样保持 Blind 的状态下复核证据，锁定 Final Score 后才揭晓身份并生成本报告。",
+      rules: input.protocol.rules.map((rule) => rule.text),
     },
     ranking,
-    whyTheseProducts: "三款产品都承诺让非设计专业用户快速制作演示文稿，但路径明显不同：Gamma 从内容生成出发，Canva 依托完整设计生态，Beautiful.ai 则强调智能布局规则。它们拥有足够一致的核心任务，也有值得比较的产品差异。",
-    caseReviews: mockProtocol.testCases.map((testCase) => ({
-      testCaseId: testCase.id,
-      title: testCase.title,
-      objective: testCase.objective,
-      prompt: testCase.prompt,
-      findings: caseFindings[testCase.id],
-      productResults: finalScores.map((product) => ({
+    whyTheseProducts: input.research.products.map((product) => `${product.name}：${product.positioning}`).join("；"),
+    caseReviews: input.protocol.testCases.map((testCase) => {
+      const productResults = input.finalScores.map((product) => ({
         productId: product.productId,
         productName: product.productName,
-        score: calculateCaseScore(scores, product.sampleId, testCase.id),
-        analysis: caseAnalysis[testCase.id]?.[product.productId] ?? "该产品完成了本轮标准化测试。",
-        artifactIds: [`artifact-${testCase.id}-${product.productId}`],
-      })),
-    })),
-    productSummaries: analysis.products,
-    finalRecommendation: analysis.recommendationSummary,
-    limitations: analysis.limitations ?? [],
-    generatedAt: "2026-08-14T11:00:00.000Z",
+        score: calculateCaseScore(input.review.scores, product.sampleId, testCase.id, reviewContext),
+        analysis: "",
+        artifactIds: input.testRuns.find((run) => run.productId === product.productId && run.testCaseId === testCase.id)?.artifacts.map((artifact) => artifact.id) ?? [],
+      })).sort((a, b) => b.score - a.score).map((product, index, items) => ({
+        ...product,
+        analysis: `${product.score.toFixed(1)} 分，本 Case 排名第 ${index + 1}${items[0] ? `，与本 Case 最高分相差 ${(items[0].score - product.score).toFixed(1)} 分` : ""}。`,
+      }));
+      return {
+        testCaseId: testCase.id,
+        title: testCase.title,
+        objective: testCase.objective,
+        prompt: testCase.prompt,
+        findings: productResults[0] && productResults[1] ? `${productResults[0].productName} 在本 Case 领先 ${productResults[1].productName} ${(productResults[0].score - productResults[1].score).toFixed(1)} 分。` : "本 Case 已完成评分。",
+        productResults,
+      };
+    }),
+    productSummaries: input.analysis.products,
+    finalRecommendation: input.analysis.recommendationSummary,
+    limitations: input.analysis.limitations ?? [],
+    generatedAt: input.review.updatedAt,
   };
 }
-
-export const mockBenchmarkReport = createMockBenchmarkReport(mockStoredReview.scores);

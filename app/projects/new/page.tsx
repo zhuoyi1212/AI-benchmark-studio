@@ -9,15 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { mockNewProjectDraft } from "@/lib/mock/project.mock";
+import { getNewProjectDraft } from "@/lib/mock/services";
 
 type DraftProduct = { name: string; website: string };
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [name, setName] = useState(mockNewProjectDraft.name);
-  const [intent, setIntent] = useState(mockNewProjectDraft.intent);
-  const [items, setItems] = useState<DraftProduct[]>(mockNewProjectDraft.products.map((item) => ({ name: item.name, website: item.officialUrl ?? "" })));
+  const initialDraft = getNewProjectDraft("demo");
+  const [name, setName] = useState(initialDraft.name);
+  const [intent, setIntent] = useState(initialDraft.intent);
+  const [items, setItems] = useState<DraftProduct[]>(initialDraft.products.map((item) => ({ name: item.name, website: item.officialUrl ?? "" })));
   const [loading, setLoading] = useState(false);
 
   const updateItem = (index: number, key: keyof DraftProduct, value: string) => setItems((current) => current.map((item, i) => i === index ? { ...item, [key]: value } : item));
