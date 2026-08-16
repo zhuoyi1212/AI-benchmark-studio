@@ -19,9 +19,12 @@ Page → Service → Repository → typed Supabase server client
 复制 `.env.example` 为 `.env.local`，填写：
 
 ```text
-SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 SUPABASE_SECRET_KEY
 ```
+
+服务端优先读取可选的 `SUPABASE_URL`，未设置时复用 `NEXT_PUBLIC_SUPABASE_URL`；URL 不是 Secret，不需要维护两份。Publishable key 只能用于受 RLS 约束的普通客户端。
 
 `SUPABASE_SECRET_KEY` 支持 Supabase 推荐的新 `sb_secret_...` key，也兼容本地 CLI/旧项目的 service-role JWT。它拥有 elevated 权限并绕过 RLS，只能由 server-only client 使用：
 

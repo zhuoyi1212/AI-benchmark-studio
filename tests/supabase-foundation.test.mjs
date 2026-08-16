@@ -18,10 +18,12 @@ const [envExample, gitignore, serverEnv, serverClient, repository, projectServic
 ]);
 
 test("keeps elevated Supabase credentials server-only", () => {
-  assert.match(envExample, /^SUPABASE_URL=/m);
+  assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_URL=/m);
+  assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=replace-with-/m);
   assert.match(envExample, /^SUPABASE_SECRET_KEY=replace-with-/m);
   assert.doesNotMatch(envExample, /NEXT_PUBLIC_.*(?:SECRET|SERVICE_ROLE)/);
   assert.match(serverEnv, /^import "server-only";/);
+  assert.match(serverEnv, /process\.env\.SUPABASE_URL \?\? process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(serverEnv, /payload\.role === "service_role"/);
   assert.match(serverClient, /^import "server-only";/);
   assert.match(repository, /^import "server-only";/);

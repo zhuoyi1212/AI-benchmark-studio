@@ -10,10 +10,12 @@ let cachedEnvironment: ServerEnvironment | undefined;
 export function getServerEnvironment(): ServerEnvironment {
   if (cachedEnvironment) return cachedEnvironment;
 
-  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const supabaseUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
-  if (!supabaseUrl) throw new Error("Missing required server environment variable: SUPABASE_URL");
+  if (!supabaseUrl) {
+    throw new Error("Missing required server environment variable: SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
+  }
   if (!supabaseSecretKey) throw new Error("Missing required server environment variable: SUPABASE_SECRET_KEY");
 
   let parsedUrl: URL;
