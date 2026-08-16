@@ -11,6 +11,7 @@ export const mockTestRuns: TestRun[] = mockProtocol.testCases.flatMap((testCase)
     return {
       id,
       projectId: mockProjectRecord.id,
+      protocolId: mockProtocol.id,
       testCaseId: testCase.id,
       productId: product.id,
       status: uploaded ? "uploaded" : "pending",

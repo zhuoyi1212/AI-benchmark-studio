@@ -39,6 +39,12 @@ export type ReviewWorkspace = {
   review: StoredReview;
 };
 
+export type TestExecutionWorkspace = {
+  project: BenchmarkProject;
+  protocol: TestProtocol;
+  testRuns: TestRun[];
+};
+
 export type ResultsWorkspace = {
   project: BenchmarkProject;
   protocol: TestProtocol;
@@ -93,13 +99,22 @@ export function getProtocol(projectId: string, storedValue?: string | null): Tes
   return mockProtocol;
 }
 
-export function getTestRuns(projectId: string) {
+export function getTestRuns(projectId: string, protocolId = mockProtocol.id) {
   getProtocol(projectId);
-  return mockTestRuns.filter((run) => run.projectId === projectId);
+  return mockTestRuns.filter((run) => run.projectId === projectId && run.protocolId === protocolId);
 }
 
-export function getTestExecutionWorkspace(projectId: string) {
-  return { project: getProject(projectId), protocol: getProtocol(projectId), testRuns: getTestRuns(projectId) };
+export function getTestExecutionWorkspace(projectId: string, storedProtocol?: string | null): StageAccess<TestExecutionWorkspace> {
+  const project = getProject(projectId);
+  const protocol = getProtocol(projectId, storedProtocol);
+  if (protocol.status !== "locked") return protocolDenied(projectId);
+  const testRuns = getTestRuns(projectId, protocol.id);
+  const expectedRunKeys = new Set(protocol.testCases.flatMap((testCase) => project.products.map((product) => `${testCase.id}:${product.id}`)));
+  const actualRunKeys = new Set(testRuns.map((run) => `${run.testCaseId}:${run.productId}`));
+  if (testRuns.length !== expectedRunKeys.size || actualRunKeys.size !== expectedRunKeys.size || testRuns.some((run) => run.protocolId !== protocol.id || !expectedRunKeys.has(`${run.testCaseId}:${run.productId}`))) {
+    throw new Error(`Mock TestRuns do not match locked protocol: ${protocol.id}`);
+  }
+  return granted({ project, protocol, testRuns });
 }
 
 export function getJudgeResults(projectId: string) {
@@ -162,5 +177,6 @@ export async function generateCommunityPost(projectId: string, review: StoredRev
 }
 
 function assertProjectId(projectId: string) { if (projectId !== mockProjectRecord.id) throw new Error(`Unknown Mock project: ${projectId}`); }
+function protocolDenied(projectId: string): StageAccess<never> { return { ok: false, requiredStage: "protocol", redirectTo: `/projects/${projectId}/protocol`, reason: "protocol_not_locked" }; }
 function denied(projectId: string): StageAccess<never> { return { ok: false, requiredStage: "human_review", redirectTo: `/projects/${projectId}/review`, reason: "review_not_revealed" }; }
 function granted<T>(data: T): StageAccess<T> { return { ok: true, data }; }

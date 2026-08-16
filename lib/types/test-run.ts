@@ -12,6 +12,7 @@ export type TestArtifact = {
 export type TestRun = {
   id: string;
   projectId: string;
+  protocolId: string;
   testCaseId: string;
   productId: string;
   status: TestRunStatus;
