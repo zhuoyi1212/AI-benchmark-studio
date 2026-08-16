@@ -167,6 +167,84 @@ export type Database = {
           },
         ]
       }
+      judge_case_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          estimated_cost: number | null
+          id: string
+          input_signature: string
+          input_tokens: number | null
+          judge_run_id: string
+          latency_ms: number | null
+          model: string
+          output_tokens: number | null
+          prompt_version: string
+          protocol_id: string
+          provider: string
+          started_at: string | null
+          status: string
+          test_case_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_signature: string
+          input_tokens?: number | null
+          judge_run_id: string
+          latency_ms?: number | null
+          model: string
+          output_tokens?: number | null
+          prompt_version: string
+          protocol_id: string
+          provider: string
+          started_at?: string | null
+          status?: string
+          test_case_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_signature?: string
+          input_tokens?: number | null
+          judge_run_id?: string
+          latency_ms?: number | null
+          model?: string
+          output_tokens?: number | null
+          prompt_version?: string
+          protocol_id?: string
+          provider?: string
+          started_at?: string | null
+          status?: string
+          test_case_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_case_runs_judge_run_id_protocol_id_fkey"
+            columns: ["judge_run_id", "protocol_id"]
+            isOneToOne: false
+            referencedRelation: "judge_runs"
+            referencedColumns: ["id", "protocol_id"]
+          },
+          {
+            foreignKeyName: "judge_case_runs_test_case_id_protocol_id_fkey"
+            columns: ["test_case_id", "protocol_id"]
+            isOneToOne: false
+            referencedRelation: "test_cases"
+            referencedColumns: ["id", "protocol_id"]
+          },
+        ]
+      }
       judge_run_artifacts: {
         Row: {
           artifact_id: string
@@ -267,6 +345,7 @@ export type Database = {
           created_at: string
           evidence: Json
           id: string
+          judge_case_run_id: string
           judge_run_id: string
           model: string
           prompt_version: string
@@ -282,6 +361,7 @@ export type Database = {
           created_at?: string
           evidence?: Json
           id?: string
+          judge_case_run_id: string
           judge_run_id: string
           model: string
           prompt_version: string
@@ -297,6 +377,7 @@ export type Database = {
           created_at?: string
           evidence?: Json
           id?: string
+          judge_case_run_id?: string
           judge_run_id?: string
           model?: string
           prompt_version?: string
@@ -312,6 +393,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "blind_samples"
             referencedColumns: ["id", "protocol_id"]
+          },
+          {
+            foreignKeyName: "judge_scores_judge_case_run_id_judge_run_id_test_case_id_fkey"
+            columns: ["judge_case_run_id", "judge_run_id", "test_case_id"]
+            isOneToOne: false
+            referencedRelation: "judge_case_runs"
+            referencedColumns: ["id", "judge_run_id", "test_case_id"]
           },
           {
             foreignKeyName: "judge_scores_judge_run_id_protocol_id_fkey"
@@ -513,7 +601,12 @@ export type Database = {
       protocols: {
         Row: {
           created_at: string
+          generation_estimated_cost: number | null
+          generation_input_tokens: number | null
+          generation_latency_ms: number | null
           generation_model: string | null
+          generation_output_tokens: number | null
+          generation_provider: string | null
           goal: string
           id: string
           input_signature: string | null
@@ -530,7 +623,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          generation_estimated_cost?: number | null
+          generation_input_tokens?: number | null
+          generation_latency_ms?: number | null
           generation_model?: string | null
+          generation_output_tokens?: number | null
+          generation_provider?: string | null
           goal: string
           id?: string
           input_signature?: string | null
@@ -547,7 +645,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          generation_estimated_cost?: number | null
+          generation_input_tokens?: number | null
+          generation_latency_ms?: number | null
           generation_model?: string | null
+          generation_output_tokens?: number | null
+          generation_provider?: string | null
           goal?: string
           id?: string
           input_signature?: string | null
@@ -632,11 +735,16 @@ export type Database = {
           content_ideas: Json
           created_at: string
           error_message: string | null
+          estimated_cost: number | null
           id: string
           input_signature: string | null
+          input_tokens: number | null
+          latency_ms: number | null
           model: string | null
+          output_tokens: number | null
           project_id: string
           prompt_version: string | null
+          provider: string | null
           report_id: string
           selected_idea: Json | null
           status: string
@@ -650,11 +758,16 @@ export type Database = {
           content_ideas?: Json
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
           input_signature?: string | null
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id: string
           prompt_version?: string | null
+          provider?: string | null
           report_id: string
           selected_idea?: Json | null
           status?: string
@@ -668,11 +781,16 @@ export type Database = {
           content_ideas?: Json
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
           input_signature?: string | null
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id?: string
           prompt_version?: string | null
+          provider?: string | null
           report_id?: string
           selected_idea?: Json | null
           status?: string
@@ -734,10 +852,15 @@ export type Database = {
           content: Json | null
           created_at: string
           error_message: string | null
+          estimated_cost: number | null
           id: string
+          input_tokens: number | null
+          latency_ms: number | null
           model: string | null
+          output_tokens: number | null
           project_id: string
           prompt_version: string | null
+          provider: string | null
           result_analysis_id: string
           status: string
           updated_at: string
@@ -748,10 +871,15 @@ export type Database = {
           content?: Json | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id: string
           prompt_version?: string | null
+          provider?: string | null
           result_analysis_id: string
           status?: string
           updated_at?: string
@@ -762,10 +890,15 @@ export type Database = {
           content?: Json | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id?: string
           prompt_version?: string | null
+          provider?: string | null
           result_analysis_id?: string
           status?: string
           updated_at?: string
@@ -787,12 +920,17 @@ export type Database = {
           completed_at: string | null
           created_at: string
           error_message: string | null
+          estimated_cost: number | null
           id: string
           input_signature: string | null
           input_snapshot: Json
+          input_tokens: number | null
+          latency_ms: number | null
           model: string | null
+          output_tokens: number | null
           project_id: string
           prompt_version: string | null
+          provider: string | null
           started_at: string | null
           status: string
           updated_at: string
@@ -803,12 +941,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
           input_signature?: string | null
           input_snapshot?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id: string
           prompt_version?: string | null
+          provider?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -819,12 +962,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           id?: string
           input_signature?: string | null
           input_snapshot?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
           model?: string | null
+          output_tokens?: number | null
           project_id?: string
           prompt_version?: string | null
+          provider?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -846,15 +994,20 @@ export type Database = {
           completed_at: string | null
           created_at: string
           error_message: string | null
+          estimated_cost: number | null
           final_score_signature: string
           id: string
           input_snapshot: Json
+          input_tokens: number | null
           judge_run_id: string
+          latency_ms: number | null
           model: string | null
           output: Json | null
+          output_tokens: number | null
           project_id: string
           prompt_version: string | null
           protocol_id: string
+          provider: string | null
           review_session_id: string
           started_at: string | null
           status: string
@@ -866,15 +1019,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           final_score_signature: string
           id?: string
           input_snapshot?: Json
+          input_tokens?: number | null
           judge_run_id: string
+          latency_ms?: number | null
           model?: string | null
           output?: Json | null
+          output_tokens?: number | null
           project_id: string
           prompt_version?: string | null
           protocol_id: string
+          provider?: string | null
           review_session_id: string
           started_at?: string | null
           status?: string
@@ -886,15 +1044,20 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
+          estimated_cost?: number | null
           final_score_signature?: string
           id?: string
           input_snapshot?: Json
+          input_tokens?: number | null
           judge_run_id?: string
+          latency_ms?: number | null
           model?: string | null
           output?: Json | null
+          output_tokens?: number | null
           project_id?: string
           prompt_version?: string | null
           protocol_id?: string
+          provider?: string | null
           review_session_id?: string
           started_at?: string | null
           status?: string

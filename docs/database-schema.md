@@ -15,7 +15,7 @@
 - Reveal 前后普通客户端均不能直接读取 `blind_mappings`。
 - Report 绑定有效 ResultAnalysis；PublishPack 绑定 Report；配图必须绑定真实图片 Artifact。
 
-迁移文件：`supabase/migrations/202608170001_initial_benchmark_schema.sql`
+迁移文件：`supabase/migrations/202608170001_initial_benchmark_schema.sql` 与后续按时间排序的增量 migrations。
 
 ## 表与职责
 
@@ -33,7 +33,8 @@
 | `test_artifacts` | 原始证据 metadata | Storage path 唯一；image/PDF/text；写入后不可变 |
 | `blind_samples` | 客户端可见的 Sample label | 每个 Protocol label 唯一 |
 | `blind_mappings` | Sample → Product 的真实映射 | server-only；每个 Protocol 的 Product 只映射一次 |
-| `judge_runs` | 一次 Blind Judge 运行 | 绑定 locked Protocol、模型、Prompt 版本、输入签名 |
+| `judge_runs` | 一次 Protocol 级 Blind Judge 批次 | 绑定 locked Protocol、完整 Artifact 集与批次输入签名 |
+| `judge_case_runs` | 批次内单个 TestCase 的 AI 路由 | 每个 Case 唯一；provider/model/prompt/input immutable；server-only |
 | `judge_run_artifacts` | JudgeRun 使用的证据集合 | Artifact 必须属于相同 Project/Protocol |
 | `judge_scores` | AI 原始逐项评分 | `Case × Sample × Rubric` 唯一；0–10；不可更新/删除 |
 | `review_sessions` | 人工复核状态 | 只允许 `reviewing → locked → revealed` |
@@ -67,9 +68,12 @@ erDiagram
   BLIND_SAMPLES ||--|| BLIND_MAPPINGS : resolves_server_side
   PRODUCTS ||--o{ BLIND_MAPPINGS : hidden_identity
   PROTOCOLS ||--o{ JUDGE_RUNS : judged_by
+  JUDGE_RUNS ||--|{ JUDGE_CASE_RUNS : routes_by_case
+  TEST_CASES ||--o{ JUDGE_CASE_RUNS : routed_once
   JUDGE_RUNS ||--|{ JUDGE_RUN_ARTIFACTS : consumes
   TEST_ARTIFACTS ||--o{ JUDGE_RUN_ARTIFACTS : evidence
   JUDGE_RUNS ||--|{ JUDGE_SCORES : produces
+  JUDGE_CASE_RUNS ||--|{ JUDGE_SCORES : produces_consistently
   TEST_CASES ||--o{ JUDGE_SCORES : case_score
   BLIND_SAMPLES ||--o{ JUDGE_SCORES : sample_score
   RUBRIC_DIMENSIONS ||--o{ JUDGE_SCORES : dimension_score
@@ -112,9 +116,12 @@ erDiagram
 ### Judge
 
 - JudgeRun 只能绑定 locked Protocol，且 BlindSample/Mapping 必须一一覆盖项目产品。
+- 每个 TestCase 必须创建唯一 JudgeCaseRun；同 Case 的全部 Blind Samples 共享其 provider/model/promptVersion/inputSignature。
+- 全部 Artifact 为 `text/plain` 才路由 text-only Judge；任一图片、PDF、视觉文件或混合类型会把该 Case 全部 Sample 路由到多模态 Judge。
 - 从 pending 进入 running 前，必须存在完整 `Product × TestCase` TestRun 矩阵；所有 TestRun 必须 ready，并为本 JudgeRun 绑定至少一个真实 Artifact。
-- completed 前必须存在完整 `Case × Sample × Rubric` JudgeScore 矩阵。
+- completed 前必须存在每个 TestCase 的 completed JudgeCaseRun，以及完整 `Case × Sample × Rubric` JudgeScore 矩阵。
 - JudgeScore 与 JudgeRun 使用的 Artifact 集均不可修改；重试创建新的 `attempt`。
+- AI Run 保存 provider/model/token/latency/cost；Provider 内部 reasoning/thinking 不入库。
 
 ## Final Score 与人工审计
 
@@ -153,7 +160,7 @@ Blind 分为两层数据：
 
 - 所有表启用 RLS。
 - `blind_mappings` 对 `anon` / `authenticated` 撤销全部权限，且不创建任何 RLS policy。
-- `test_artifacts`、`judge_runs`、`judge_run_artifacts`、`report_artifacts` 与 `publish_pack_artifacts` 同样不开放客户端直查，避免通过 Artifact 关联反推出 Sample 身份。
+- `test_artifacts`、`judge_runs`、`judge_case_runs`、`judge_run_artifacts`、`report_artifacts` 与 `publish_pack_artifacts` 同样不开放客户端直查，避免通过 Artifact 关联反推出 Sample 身份。
 - Review/Judge 的普通查询只返回 Sample ID/label，不能 join Mapping。
 - Reveal 必须走 server-only Service；服务端先验证 ReviewSession 为 `revealed`，再按需返回揭晓结果。
 - Service Role 只能存在于 server-only 模块，不进入浏览器 bundle。
@@ -206,13 +213,13 @@ Auth 在后续接入。`projects.owner_id` 可为空是为了允许第一阶段�
 `lib/types/database.ts` 提供：
 
 - `Json`
-- 所有 22 张表的 Row 类型
+- 所有 23 张表的 Row 类型
 - `DatabaseTableName` / `TableRow<T>`
 - 常用状态联合类型
 - `ReviewFinalScoreRow` 视图类型
 
-M2 接入 Supabase CLI 后，以 `supabase gen types --lang typescript` 生成的实际类型校验并替换手写结构；迁移是最终数据库权威来源。官方建议将 migrations 纳入版本控制，并从 Schema 生成 TypeScript 类型：[Local development with schema migrations](https://supabase.com/docs/guides/local-development/overview)。
+`lib/types/database.generated.ts` 由已应用 migrations 的远端 Catalog 生成，`lib/types/database.ts` 在其上叠加业务状态联合类型；迁移是最终数据库权威来源。官方建议将 migrations 纳入版本控制，并从 Schema 生成 TypeScript 类型：[Local development with schema migrations](https://supabase.com/docs/guides/local-development/overview)。
 
-## M1 验证边界
+## 验证边界
 
-当前仓库未安装 Supabase CLI/Postgres 本地运行时，因此 M1 只做静态 SQL、关系与安全审查，不连接远端、不执行 migration。M2 安装依赖并初始化本地 Supabase 后，必须运行全量 migration reset/test；任何真实远端 push 或破坏性 reset 仍需单独确认。
+M1 初始化 migration 已在空的远端项目执行并通过 Schema lint；每个增量 migration 必须先 dry-run，再应用、lint 并重新生成 TypeScript 类型。本机尚无容器运行时，因此本地全量 reset 仍待 Docker/Podman 可用后补跑；任何破坏性远端 reset 仍需单独确认。

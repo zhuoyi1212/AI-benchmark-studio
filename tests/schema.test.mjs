@@ -4,6 +4,10 @@ import test from "node:test";
 
 const migrationUrl = new URL("../supabase/migrations/202608170001_initial_benchmark_schema.sql", import.meta.url);
 const sql = await readFile(migrationUrl, "utf8");
+const providerMigrationUrl = new URL("../supabase/migrations/202608170002_ai_provider_metadata.sql", import.meta.url);
+const providerSql = await readFile(providerMigrationUrl, "utf8");
+const judgeHardeningUrl = new URL("../supabase/migrations/202608170003_harden_judge_case_runs.sql", import.meta.url);
+const judgeHardeningSql = await readFile(judgeHardeningUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -92,4 +96,24 @@ test("binds downstream output to Final Score and real artifacts", () => {
 test("creates a private artifact bucket without browser storage policies", () => {
   assert.match(sql, /'benchmark-artifacts'[\s\S]*false,[\s\S]*52428800/);
   assert.doesNotMatch(sql, /create policy[\s\S]{0,120}on storage\.objects/i);
+});
+
+test("records provider-neutral AI run metadata without storing reasoning traces", () => {
+  assert.match(providerSql, /provider text[\s\S]*provider in \('zhipu', 'deepseek'\)/);
+  assert.match(providerSql, /input_tokens bigint/);
+  assert.match(providerSql, /output_tokens bigint/);
+  assert.match(providerSql, /latency_ms integer/);
+  assert.match(providerSql, /estimated_cost numeric/);
+  assert.doesNotMatch(providerSql, /reasoning_content|chain_of_thought/i);
+});
+
+test("routes every Blind Sample in a TestCase through one immutable JudgeCaseRun", () => {
+  assert.match(providerSql, /create table public\.judge_case_runs/);
+  assert.match(providerSql, /unique \(judge_run_id, test_case_id\)/);
+  assert.match(providerSql, /add column judge_case_run_id uuid not null/);
+  assert.match(providerSql, /Every Blind Sample in a TestCase must use the JudgeCaseRun model and prompt version/);
+  assert.match(providerSql, /Completed JudgeRun requires one completed JudgeCaseRun per TestCase/);
+  assert.match(providerSql, /revoke all on table public\.judge_case_runs from public, anon, authenticated/);
+  assert.match(judgeHardeningSql, /JudgeCaseRun can only start inside a running JudgeRun/);
+  assert.match(judgeHardeningSql, /full Sample × Rubric score matrix for its TestCase/);
 });

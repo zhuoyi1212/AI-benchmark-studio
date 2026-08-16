@@ -11,7 +11,7 @@
 - Supabase Postgres
 - Supabase Storage
 - Supabase Auth（后续，不阻塞第一阶段）
-- OpenAI API
+- AI Provider Layer（第一版：智谱 AI / GLM + DeepSeek）
 - Vercel
 - GitHub
 
@@ -21,7 +21,7 @@
 
 目标：
 
-`Page/Component → Application Service → Repository/API Client → Supabase/OpenAI`
+`Page/Component → Application Service → AI Task Service / Repository → AI Router / Provider Adapter / Supabase`
 
 当前 Mock：
 
@@ -29,7 +29,7 @@
 
 迁移时优先替换 Service 数据来源，不重写页面。
 
-页面不得直接写 SQL、调用 OpenAI、使用 Service Role、读取 blind mapping 或依赖固定业务产品/Case/Rubric。
+页面不得直接写 SQL、调用任何 AI Provider、使用 Service Role、读取 blind mapping 或依赖固定业务产品/Case/Rubric。
 
 ## 3. 核心 Domain
 
@@ -44,6 +44,7 @@ Project
 │  └ Artifact
 ├ Blind Sample
 ├ Judge Run
+│  ├ Judge Case Run
 │  └ Judge Score
 ├ Review Session
 │  └ Human Review Event
@@ -68,6 +69,7 @@ test_artifacts
 blind_samples
 blind_mappings
 judge_runs
+judge_case_runs
 judge_scores
 review_sessions
 human_review_events
@@ -136,7 +138,36 @@ Reveal 前：
 
 ## 10. AI Architecture
 
-所有 OpenAI 调用 server-side。
+所有 AI Provider 调用 server-side。业务层只表达 `researchProducts`、`evaluateComparability`、`generateProtocol`、`judgeSamples`、`analyzeFinalResults`、`generateReport`、`discoverContentIdeas`、`generateCommunityPost`，不得调用供应商函数或写模型名。
+
+```text
+Page
+→ Application Service
+→ AI Task Service
+→ AI Router
+→ Provider Adapter
+   ├ ZhipuProvider
+   └ DeepSeekProvider
+```
+
+第一版集中路由：
+
+| Task | Provider / Model |
+| --- | --- |
+| Product Web Research | 智谱 Web Search |
+| Research Synthesis | 智谱 / `glm-5.2` |
+| Comparability | DeepSeek / `deepseek-v4-pro` |
+| Protocol / TestCase / Rubric | DeepSeek / `deepseek-v4-pro` |
+| Text-only Judge | DeepSeek / `deepseek-v4-pro` |
+| Multimodal / Mixed Judge | 智谱 / `glm-4.6v` |
+| Final Result Analysis | DeepSeek / `deepseek-v4-pro` |
+| Report | 智谱 / `glm-5.2` |
+| Content Discovery | DeepSeek / `deepseek-v4-pro` |
+| Community Post | 智谱 / `glm-5.2` |
+| Screenshot Understanding | 智谱 / `glm-4.6v` |
+| OCR preprocessing | 智谱 / `glm-ocr` |
+
+路由只在集中 Config 中维护；页面、Domain 与数据库业务逻辑不得硬编码映射。第一版不做无脑跨厂商 failover，切换 Provider 必须创建新的 AI Run。
 
 AI Pipeline：
 
@@ -144,13 +175,17 @@ AI Pipeline：
 
 每次运行记录：
 
+- provider
 - model
 - prompt_version
 - input snapshot/signature
 - status
 - timestamps
+- input/output tokens、latency、estimated cost（API 不提供时可为空）
 - output
 - failure reason（如适用）
+
+Provider 返回必须经过 Normalize → Runtime Validation → Domain Object。只保存业务需要的最终结构化结果，不保存或展示 provider-specific chain-of-thought。
 
 ## 11. Structured Output
 
@@ -166,7 +201,7 @@ AI 业务输出优先结构化 JSON，并有明确 TypeScript 类型与运行时
 - ContentIdea[]
 - CommunityPost
 
-如接真实 AI 时需要，可引入 Zod；不要仅为了 Mock 引入。
+使用 Zod 对两家 Provider 的 envelope 与 Domain 输出做运行时校验。验证失败进入 retry/failed，不允许 silent fallback 到 Mock。
 
 ## 12. Research Versioning
 
@@ -174,7 +209,9 @@ Research 支持多次运行并保留旧版本。Protocol 必须引用具体 rese
 
 ## 13. Judge
 
-JudgeRun 必须绑定 project、protocol、artifact set、model、prompt version。
+`judge_runs` 表示 Protocol 级评审批次；`judge_case_runs` 表示该批次内某个 TestCase 的唯一 AI 路由。JudgeCaseRun 必须绑定 judge run、protocol、test case、provider、model、prompt version 与 input signature。
+
+同一个 TestCase 的 Sample A/B/C 必须引用同一个 JudgeCaseRun。全部 Artifact 为纯文本才可选择 text-only route；任一 Sample 为图片/PDF/视觉文件或混合模态时，该 Case 全部 Sample 统一选择多模态 route。禁止按 Sample 路由。
 
 JudgeScore 粒度：
 
@@ -250,7 +287,8 @@ AI 调用失败不能破坏已有实验记录，也不能 silent fallback 到 Mo
 ## 21. 安全
 
 - Secret 不进前端
-- OpenAI server-side
+- 所有 AI Provider 调用与凭据 server-side
+- Client Bundle 不得包含 `ZHIPU_API_KEY` 或 `DEEPSEEK_API_KEY`
 - Service Role server-only
 - Blind Mapping reveal 前不可读
 - Storage 按项目控制

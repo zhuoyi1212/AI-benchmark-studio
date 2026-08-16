@@ -59,6 +59,9 @@
 - 真实使用 Locked Protocol + Rubric + TestCase + Raw Artifact + Blind Sample
 - 不使用固定 Mock Judge Result
 - 保存 aiScore/reason/evidence/confidence/model/promptVersion
+- 每个 TestCase 保存唯一 JudgeCaseRun 的 provider/model/promptVersion/inputSignature
+- 同一 TestCase 的全部 Blind Samples 不得使用不同 Provider、Model 或 Prompt Version
+- 纯文本 Case 路由 text-only Judge；图片/PDF/混合 Case 统一路由多模态 Judge
 - 0 <= score <= 10
 - 0 <= confidence <= 1
 - AI Score immutable
@@ -170,11 +173,24 @@ Reveal 只能发生在 locked 后，且不改变已锁定 Final Score。
 
 停止前确认：
 
-- OpenAI Key 不在前端
+- `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY` 不在前端或 Client Bundle
+- 页面和 Application Service 不依赖具体 Provider 或模型名
+- AI Provider 失败不跨厂商静默 fallback，也不回退 Mock
 - Service Role Key 不在前端
 - Secret 不进 Git
 - Blind Mapping reveal 前不可读
 - Storage Access 合理
+
+## AI Provider Routing
+
+- 存在集中 `AITaskType`、Router 与可覆盖的模型配置
+- 业务层只调用任务语义方法，不调用 GLM/DeepSeek-specific 方法
+- Research Sources 来自智谱 Web Search 并真实保存
+- Comparability 只基于已保存 Research Data 分析
+- Provider Response 经 Normalize、Zod Validation 后才能进入 Domain
+- 不保存或展示 Provider 内部完整 reasoning / thinking
+- 不使用 `deepseek-chat`、`deepseek-reasoner` 或 Kimi/OpenAI 依赖
+- AI Run 可记录 provider/model/tokens/latency/cost，暂不可得字段允许为空
 
 ## Engineering Checks
 

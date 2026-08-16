@@ -25,6 +25,10 @@ AI Benchmark Studio 是用于设计、执行、审查和沉淀 AI 产品横向�
 
 `Create Project → Product Research → Comparability Check → Generate Protocol → Review Protocol → Lock Protocol → Execute Tests → Upload Raw Artifacts → Create Blind Samples → AI Blind Judge → Human Review → Lock Final Scores → Reveal → Final Result Analysis → Deep Report → Content Discovery → Community Post`
 
+### AI Provider 原则
+
+业务工作流只依赖 AI Task Service，不依赖供应商或具体模型。第一版由集中 Router 在智谱与 DeepSeek 之间按任务分工：智谱负责 Web Search、Research Synthesis、多模态理解、Report 与 Community Post；DeepSeek 负责 Comparability、Protocol、纯文本 Judge、Final Result Analysis 与 Content Discovery。供应商失败不得静默跨厂商 fallback 或回退 Mock。
+
 ## 4. Create Project
 
 输入：
@@ -38,7 +42,7 @@ AI Benchmark Studio 是用于设计、执行、审查和沉淀 AI 产品横向�
 
 ## 5. Product Research
 
-AI 根据产品名、官网和测评意图优先研究官方来源：
+智谱 Web Search 根据产品名、官网和测评意图优先检索官方来源，再由 GLM 文本模型整理结构化 Research：
 
 - 官网
 - 官方文档
@@ -66,6 +70,8 @@ Comparability 输出：
 - warnings
 
 不可比时要明确告知，不强行比较。
+
+Comparability 只分析已经保存的 Structured Research Data，默认由 DeepSeek 完成，不重新凭模型知识生成官网事实。
 
 ## 6. Test Protocol
 
@@ -163,10 +169,11 @@ Reveal 前：
 - reason
 - evidence[]
 - confidence 0–1
-- model
-- promptVersion
+- JudgeCaseRun 的 provider / model / promptVersion
 
 AI Score 属于原始实验记录，不允许人工覆盖。
+
+同一个 Test Case 的全部 Blind Samples 必须引用同一个 JudgeCaseRun。全部 Artifact 为 `text/plain` 时默认路由 DeepSeek；包含 image、screenshot、PDF 或混合模态时统一路由 GLM 视觉模型，原始 Artifact 仍交给多模态 Judge，OCR 只能作为辅助预处理。
 
 ## 12. Human Review
 
@@ -211,6 +218,8 @@ Reveal 后，AI 基于 Final Scores、Rubric、Case、Judge Evidence、Human Rev
 
 Human Review 改变 Final Score 后旧结论不得继续使用。需要 final_score_signature 或等效机制绑定分析版本。
 
+该阶段默认由 DeepSeek 完成复杂分析；不得被 Report 表达层重新改变排名、Winner、Final Score 或 Judge Evidence。
+
 ## 15. Results
 
 展示：
@@ -247,6 +256,8 @@ Report 必须来自：
 
 关键 Case 必须可关联 Raw Artifact。
 
+Report Generation 默认由 GLM 文本模型负责组织已确定的分析与证据，只承担表达，不进行第二次判分。
+
 ## 17. Community Publish Pack
 
 不是 Report 缩写。
@@ -256,6 +267,8 @@ Report 必须来自：
 `完整实验数据 → AI 发现值得讨论的观点 → ContentIdeas[] → 用户选/自定义角度 → 配置 → AI Community Post → 关联真实截图证据`
 
 ContentIdea 的数量、title、type、angle 都必须动态。
+
+Content Discovery 默认由 DeepSeek 从完整实验数据发现观点；用户选定角度后，Community Post 默认由 GLM 文本模型负责中文表达。两者都只能使用已存在的实验事实与证据。
 
 ## 18. Screenshot
 

@@ -96,7 +96,9 @@ Codex 必须按 Milestone 顺序执行。每个 Milestone 完成后执行：
 
 要求：
 
-- OpenAI server-side
+- 智谱 Web Search 获取真实 Sources，`glm-5.2` 结构化整理 Research
+- `deepseek-v4-pro` 只基于已保存 Research 分析 Comparability
+- 调用统一经过 server-side AI Task Service / Router / Provider Adapter
 - 结构化输出
 - 可 retry
 - 保留旧 runs
@@ -114,6 +116,8 @@ Codex 必须按 Milestone 顺序执行。每个 Milestone 完成后执行：
 - lock
 
 locked 后不可原地改。Test 必须引用 locked protocol。
+
+Protocol / TestCase / Rubric 默认由 Router 选择 `deepseek-v4-pro`，页面与业务 Service 不写模型名。
 
 ## M6 — Real TestRuns + Storage
 
@@ -154,16 +158,15 @@ locked 后不可原地改。Test 必须引用 locked protocol。
 
 输出并保存：
 
-- JudgeRun
+- Protocol 级 JudgeRun
+- 每个 TestCase 唯一 JudgeCaseRun（provider/model/promptVersion/inputSignature）
 - JudgeScores
 - aiScore
 - reason
 - evidence
 - confidence
-- model
-- promptVersion
 
-Judge 不得获得真实 product identity。
+Judge 不得获得真实 product identity。同一 TestCase 的全部 Blind Samples 必须使用同一个 JudgeCaseRun；纯文本统一使用 DeepSeek，多模态或混合类型统一使用 GLM 视觉模型。
 
 ## M9 — Human Review Persistence
 
@@ -198,11 +201,15 @@ Final Score = latest active override ?? aiScore。
 
 旧分析和当前 Final Score 不匹配时必须识别为 stale。
 
+Final Result Analysis 默认由 Router 选择 `deepseek-v4-pro`。
+
 ## M11 — Real Report
 
 基于 Project/Research/Protocol/TestRuns/Artifacts/Judge/Human Review/Final Analysis 生成并保存 Report。
 
 Report 必须绑定 `result_analysis_id`。
+
+Report 默认由 Router 选择 `glm-5.2`，只组织已确定的 Final Analysis 与证据，不重新改变评分、排名或 Winner。
 
 ## M12 — Real Publish Pack
 
@@ -217,6 +224,8 @@ Report 必须绑定 `result_analysis_id`。
 - Screenshot Recommendations
 
 截图只能引用真实 TestArtifact。不生图，不自动发布。
+
+Content Discovery 默认使用 `deepseek-v4-pro`；Community Post 默认使用 `glm-5.2`。截图优先复用 ContentIdea、Artifact metadata 与 Judge evidence，仅确需理解画面时使用 `glm-4.6v`。
 
 ## M13 — Remove Main Flow Mock Dependencies
 
@@ -274,3 +283,4 @@ M1 ✅ <commit> <summary>
 M0 ✅ 67e8f25 Protocol 锁定状态已真实传递至测试执行，未锁定访问会被阻止，TestRun 与 locked protocolId 保持一致。
 M1 ✅ 9dc36c5 建立 22 表证据链 Schema、RLS/Blind 边界、不可变评分与 append-only 人工复核审计，并补齐数据库设计文档和合约测试。
 M2 ✅ 0b59fc4 Supabase server foundation 已连接远端空库并实际应用 migration，Schema lint、生成类型、服务端查询、typecheck、测试与 build 均通过。
+Provider Routing ✅ pending 建立 Provider-neutral AI Task Service、集中 Router、智谱/DeepSeek Adapter、按 TestCase 一致 Judge 路由与 AI Run 元数据；完成验证后替换为对应 commit。

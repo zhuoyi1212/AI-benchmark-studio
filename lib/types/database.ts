@@ -1,4 +1,5 @@
 import type { Database as GeneratedDatabase } from "@/lib/types/database.generated";
+import type { AIProviderName } from "@/lib/ai/types";
 
 /**
  * Domain-refined row types layered over the generated Supabase catalog.
@@ -62,6 +63,7 @@ export type ResearchRunRow = {
   version: number;
   status: RunStatus;
   model: string | null;
+  provider: AIProviderName | null;
   prompt_version: string | null;
   input_snapshot: Json;
   input_signature: string | null;
@@ -71,6 +73,10 @@ export type ResearchRunRow = {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
 };
 
 export type ProductResearchRow = {
@@ -100,6 +106,11 @@ export type ProtocolRow = {
   test_mode: "standardized" | "best_practice" | "mixed";
   rules: Json;
   generation_model: string | null;
+  generation_provider: AIProviderName | null;
+  generation_input_tokens: number | null;
+  generation_output_tokens: number | null;
+  generation_latency_ms: number | null;
+  generation_estimated_cost: number | null;
   prompt_version: string | null;
   input_signature: string | null;
   created_at: string;
@@ -202,9 +213,31 @@ export type JudgeRunArtifactRow = {
   created_at: string;
 };
 
+export type JudgeCaseRunRow = {
+  id: string;
+  judge_run_id: string;
+  protocol_id: string;
+  test_case_id: string;
+  status: RunStatus;
+  provider: AIProviderName;
+  model: string;
+  prompt_version: string;
+  input_signature: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type JudgeScoreRow = {
   id: string;
   judge_run_id: string;
+  judge_case_run_id: string;
   protocol_id: string;
   test_case_id: string;
   blind_sample_id: string;
@@ -257,12 +290,17 @@ export type ResultAnalysisRow = {
   winner_product_id: string | null;
   output: Json | null;
   model: string | null;
+  provider: AIProviderName | null;
   prompt_version: string | null;
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
 };
 
 export type ReportRow = {
@@ -273,11 +311,16 @@ export type ReportRow = {
   status: RunStatus;
   content: Json | null;
   model: string | null;
+  provider: AIProviderName | null;
   prompt_version: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
 };
 
 export type ReportArtifactRow = {
@@ -299,12 +342,17 @@ export type PublishPackRow = {
   selected_idea: Json | null;
   community_post: Json | null;
   model: string | null;
+  provider: AIProviderName | null;
   prompt_version: string | null;
   input_signature: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
 };
 
 export type PublishPackArtifactRow = {
@@ -342,6 +390,7 @@ export type DatabaseTableRows = {
   blind_samples: BlindSampleRow;
   blind_mappings: BlindMappingRow;
   judge_runs: JudgeRunRow;
+  judge_case_runs: JudgeCaseRunRow;
   judge_run_artifacts: JudgeRunArtifactRow;
   judge_scores: JudgeScoreRow;
   review_sessions: ReviewSessionRow;

@@ -57,7 +57,7 @@ git log -5 --oneline
 永远禁止提交：
 
 - `.env`、`.env.local`
-- OpenAI API Key
+- 智谱 / DeepSeek API Key
 - Supabase Service Role Key
 - Access Token、Password 或其他 Secret
 
@@ -71,23 +71,28 @@ git log -5 --oneline
 
 `Page → Service → Repository/API → DB/AI`
 
-UI 组件不得拼 SQL、调用 OpenAI、使用 Service Role、读取 Blind Mapping 或写死业务结论。
+UI 组件不得拼 SQL、调用任何 AI Provider、使用 Service Role、读取 Blind Mapping 或写死业务结论。
 
 真实 Project 主流程不得 silent fallback 到 Mock。真实调用失败必须进入明确的 failed 状态、显示错误并支持 retry；Mock 仅用于 demo fixture、test fixture 或 development seed。
 
 ## 5. AI 与 Blind Security
 
-所有 OpenAI 调用必须：
+所有 AI Provider 调用必须：
 
 - server-side
+- 通过 AI Task Service → Router → Provider Adapter
 - 使用 structured output
 - 有 schema / runtime validation
 - 有 error handling
-- 记录 model、prompt_version 和必要的输入快照或签名
+- 记录 provider、model、prompt_version 和必要的输入快照或签名
+- 不保存 provider-specific chain-of-thought
+- 不跨厂商 silent fallback；切换 Provider 必须创建新的 AI Run
+
+第一版 Provider 为智谱与 DeepSeek。任务映射集中维护，页面、Domain 和 Application Service 禁止硬编码 `glm-*`、`deepseek-*` 或调用 `callGlm` / `callDeepSeek`。禁止使用 `deepseek-chat`、`deepseek-reasoner` 旧 alias。
 
 任何涉及 Blind 的改动都必须验证：Reveal 前浏览器不能通过 Network、API、客户端 DB 查询或页面源码获得真实 product identity。若能获得，视为 P0。
 
-Judge 输入不得包含真实产品身份。人工不得修改 `judge_scores.ai_score`、AI 原始 reason 或 evidence；Human Review 只能写独立、append-only event。
+Judge 输入不得包含真实产品身份。同一 TestCase 的全部 Blind Samples 必须共享一个 JudgeCaseRun 的 provider/model/promptVersion；存在图片、PDF 或混合 Artifact 时不得路由到 text-only Judge。人工不得修改 `judge_scores.ai_score`、AI 原始 reason 或 evidence；Human Review 只能写独立、append-only event。
 
 ## 6. Database 与 Storage
 

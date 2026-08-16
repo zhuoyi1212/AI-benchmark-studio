@@ -34,8 +34,8 @@
 30. MVP 不自动发帖到第三方社区。
 31. 继续使用 Next.js + TypeScript + Tailwind + shadcn。
 32. 后端使用 Supabase Postgres + Storage；Auth 后续接入。
-33. OpenAI 用于 Research/Protocol/Judge/Final Analysis/Report/Content Discovery/Post。
-34. 所有 OpenAI Key 只在 server-side。
+33. AI 能力通过 Provider-neutral Task Service 与集中 Router 接入；第一版供应商为智谱 AI / GLM 与 DeepSeek，不使用 OpenAI 或 Kimi。
+34. 所有 Provider 调用和 `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY` 只在 server-side；页面与业务 Service 不知道供应商和模型名。
 35. 暂不使用 LangChain/LangGraph。
 36. 暂不使用 Vector DB。
 37. 不做过度架构，代码应适合“产品经理 + AI Coding”维护。
@@ -47,3 +47,10 @@
 43. 重要实验历史优先保留，不为“数据库简洁”覆盖原始记录。
 44. 删除策略要保护历史，尤其 Product 全局实体不能无脑 cascade。
 45. MVP 优先完成真实闭环，不优先做复杂登录、团队权限、SEO、Dashboard 花哨图表。
+46. Product Research 使用智谱 Web Search 获取可追溯 Sources，并由 `glm-5.2` 整理；DeepSeek 不凭已有知识生成官网事实。
+47. Comparability、Protocol、Final Result Analysis、Content Discovery 默认使用 `deepseek-v4-pro`；Report 与 Community Post 默认使用 `glm-5.2`。
+48. Judge 按 TestCase 而非 Sample 路由：全纯文本使用 `deepseek-v4-pro`，任一图片/PDF/视觉或混合 Artifact 则全 Case 使用 `glm-4.6v`。
+49. `judge_runs` 是 Protocol 级批次，`judge_case_runs` 是 TestCase 级唯一 Provider/Model/Prompt 路由；Sample A/B/C 必须共享后者。
+50. Provider 输出必须 Normalize 并通过运行时 Schema 校验；失败可在同 Provider 重试，不得静默跨厂商 fallback 或回退 Mock。
+51. 不保存 Provider 内部完整 reasoning/thinking；只保存业务结构化结果与必要的 provider/model/token/latency/cost 元数据。
+52. 模型默认值集中配置，可通过 server-side 环境变量覆盖；禁止 `deepseek-chat` 与 `deepseek-reasoner` 旧 alias。

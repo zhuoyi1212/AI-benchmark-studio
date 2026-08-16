@@ -32,8 +32,8 @@ const [
 
 test("keeps elevated Supabase credentials server-only", () => {
   assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_URL=/m);
-  assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=replace-with-/m);
-  assert.match(envExample, /^SUPABASE_SECRET_KEY=replace-with-/m);
+  assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$/m);
+  assert.match(envExample, /^SUPABASE_SECRET_KEY=$/m);
   assert.doesNotMatch(envExample, /NEXT_PUBLIC_.*(?:SECRET|SERVICE_ROLE)/);
   assert.match(serverEnv, /^import "server-only";/);
   assert.match(serverEnv, /process\.env\.SUPABASE_URL \?\? process\.env\.NEXT_PUBLIC_SUPABASE_URL/);

@@ -107,6 +107,6 @@
 
 ## 外部服务
 
-后续 Codex 可能需要：Supabase 项目、Supabase URL/keys、OpenAI API Key、`.env.local`、Node/npm、GitHub 写权限。
+后续 Codex 可能需要：Supabase 项目、Supabase URL/keys、智谱 `ZHIPU_API_KEY`、DeepSeek `DEEPSEEK_API_KEY`、`.env.local`、Node/npm、GitHub 写权限。第一版不使用 OpenAI 或 Kimi。
 
 任何 Secret 只放环境变量或安全本地配置，禁止写进 Markdown、源码、migration、README 或 commit。
