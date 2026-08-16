@@ -14,6 +14,7 @@
     "test:schema": "node --test tests/schema.test.mjs",
     "test:foundation": "node --test tests/supabase-foundation.test.mjs",
     "test:ai": "node --test tests/ai-routing.test.mjs",
+    "test:projects": "node --test tests/project-creation.test.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "db:reset": "supabase db reset --local",

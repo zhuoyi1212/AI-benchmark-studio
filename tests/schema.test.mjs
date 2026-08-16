@@ -8,6 +8,8 @@ const providerMigrationUrl = new URL("../supabase/migrations/202608170002_ai_pro
 const providerSql = await readFile(providerMigrationUrl, "utf8");
 const judgeHardeningUrl = new URL("../supabase/migrations/202608170003_harden_judge_case_runs.sql", import.meta.url);
 const judgeHardeningSql = await readFile(judgeHardeningUrl, "utf8");
+const projectCreationUrl = new URL("../supabase/migrations/202608170004_create_project_transaction.sql", import.meta.url);
+const projectCreationSql = await readFile(projectCreationUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -116,4 +118,14 @@ test("routes every Blind Sample in a TestCase through one immutable JudgeCaseRun
   assert.match(providerSql, /revoke all on table public\.judge_case_runs from public, anon, authenticated/);
   assert.match(judgeHardeningSql, /JudgeCaseRun can only start inside a running JudgeRun/);
   assert.match(judgeHardeningSql, /full Sample × Rubric score matrix for its TestCase/);
+});
+
+test("creates a Project and its 1-3 Products atomically", () => {
+  assert.match(projectCreationSql, /create function public\.create_benchmark_project/);
+  assert.match(projectCreationSql, /jsonb_array_length\(p_products\)/);
+  assert.match(projectCreationSql, /product_count < 1 or product_count > 3/);
+  assert.match(projectCreationSql, /on conflict \(normalized_name\) do update/);
+  assert.match(projectCreationSql, /insert into public\.project_products/);
+  assert.match(projectCreationSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(projectCreationSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
 });

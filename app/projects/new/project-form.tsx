@@ -1,0 +1,106 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { ArrowRight, Globe2, LoaderCircle, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { createProjectAction, type CreateProjectActionState } from "@/app/projects/new/actions";
+
+type DraftProduct = { key: number; name: string; website: string };
+
+const initialState: CreateProjectActionState = { message: null };
+
+export function ProjectForm() {
+  const [state, formAction, pending] = useActionState(createProjectAction, initialState);
+  const [products, setProducts] = useState<DraftProduct[]>([{ key: 1, name: "", website: "" }]);
+  const [nextKey, setNextKey] = useState(2);
+  const [intent, setIntent] = useState("");
+
+  const updateProduct = (key: number, field: "name" | "website", value: string) => {
+    setProducts((current) => current.map((product) => product.key === key ? { ...product, [field]: value } : product));
+  };
+
+  const addProduct = () => {
+    setProducts((current) => [...current, { key: nextKey, name: "", website: "" }]);
+    setNextKey((current) => current + 1);
+  };
+
+  return (
+    <form action={formAction}>
+      <div className="space-y-7">
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium">测评名称</span>
+          <Input name="name" maxLength={120} required placeholder="例如：AI 产品横向测评" />
+        </label>
+        <div>
+          <div className="mb-2 flex items-end justify-between">
+            <div><span className="block text-sm font-medium">测评产品</span><span className="mt-1 block text-xs text-muted-foreground">添加 1–3 个产品</span></div>
+            <span className="text-xs tabular-nums text-muted-foreground">{products.length} / 3</span>
+          </div>
+          <div className="space-y-2.5">
+            {products.map((product, index) => (
+              <div key={product.key} className="grid gap-2 sm:grid-cols-[1fr_1.4fr_36px]">
+                <Input
+                  aria-label={`产品 ${index + 1} 名称`}
+                  name="productName"
+                  value={product.name}
+                  maxLength={120}
+                  required
+                  onChange={(event) => updateProduct(product.key, "name", event.target.value)}
+                  placeholder="产品名称"
+                />
+                <div className="relative">
+                  <Globe2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    aria-label={`产品 ${index + 1} 官网`}
+                    className="pl-9"
+                    name="productWebsite"
+                    type="url"
+                    value={product.website}
+                    onChange={(event) => updateProduct(product.key, "website", event.target.value)}
+                    placeholder="官网（可选）"
+                  />
+                </div>
+                <Button
+                  aria-label="移除产品"
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={products.length === 1 || pending}
+                  onClick={() => setProducts((current) => current.filter((item) => item.key !== product.key))}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          {products.length < 3 && (
+            <Button className="mt-3" type="button" variant="outline" size="sm" disabled={pending} onClick={addProduct}>
+              <Plus className="h-3.5 w-3.5" />添加产品
+            </Button>
+          )}
+        </div>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium">我想测什么</span>
+          <Textarea
+            name="intent"
+            value={intent}
+            maxLength={4000}
+            required
+            onChange={(event) => setIntent(event.target.value)}
+            rows={5}
+            placeholder="描述你的核心问题、目标用户和使用场景…"
+          />
+          <span className="mt-1.5 block text-right text-[11px] text-muted-foreground">{intent.length} 字</span>
+        </label>
+        {state.message && <p role="alert" className="text-sm text-red-600">{state.message}</p>}
+      </div>
+      <div className="mt-8 flex justify-end border-t pt-5">
+        <Button size="lg" type="submit" disabled={pending}>
+          {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在保存项目...</> : <>开始分析<ArrowRight className="h-4 w-4" /></>}
+        </Button>
+      </div>
+    </form>
+  );
+}

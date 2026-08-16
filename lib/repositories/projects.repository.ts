@@ -2,12 +2,24 @@ import "server-only";
 
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { ProjectRow, TestRunRow } from "@/lib/types/database";
+import type { Json, ProjectProductRow, ProjectRow, TestRunRow } from "@/lib/types/database";
 
 const projectListColumns = "id, owner_id, name, intent, status, created_at, updated_at, deleted_at";
 const progressColumns = "id, project_id, status";
+const projectProductColumns = "project_id, product_id, display_order, submitted_name, submitted_official_url";
 
 export type ProjectProgressRow = Pick<TestRunRow, "id" | "project_id" | "status">;
+export type ProjectProductListRow = Pick<
+  ProjectProductRow,
+  "project_id" | "product_id" | "display_order" | "submitted_name" | "submitted_official_url"
+>;
+
+export type CreateProjectRecord = {
+  name: string;
+  intent: string;
+  products: Array<{ name: string; officialUrl: string | null }>;
+  ownerId?: string | null;
+};
 
 export const projectsRepository = {
   async listActive(): Promise<ProjectRow[]> {
@@ -28,6 +40,28 @@ export const projectsRepository = {
       .is("deleted_at", null)
       .maybeSingle();
     if (error) throwRepositoryError("projects.findActiveById", error);
+    return data;
+  },
+
+  async create(record: CreateProjectRecord): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc("create_benchmark_project", {
+      p_name: record.name,
+      p_intent: record.intent,
+      p_products: record.products as Json,
+      ...(record.ownerId ? { p_owner_id: record.ownerId } : {}),
+    });
+    if (error) throwRepositoryError("projects.create", error);
+    return data;
+  },
+
+  async listProductRows(projectIds: string[]): Promise<ProjectProductListRow[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await getSupabaseServerClient()
+      .from("project_products")
+      .select(projectProductColumns)
+      .in("project_id", projectIds)
+      .order("display_order", { ascending: true });
+    if (error) throwRepositoryError("projects.listProductRows", error);
     return data;
   },
 

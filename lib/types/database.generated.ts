@@ -1376,7 +1376,15 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      create_benchmark_project: {
+        Args: {
+          p_intent: string
+          p_name: string
+          p_owner_id?: string
+          p_products: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
