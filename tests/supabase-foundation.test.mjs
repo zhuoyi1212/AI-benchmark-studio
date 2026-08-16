@@ -6,13 +6,26 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [envExample, gitignore, serverEnv, serverClient, repository, projectService, config, packageJson] = await Promise.all([
+const [
+  envExample,
+  gitignore,
+  serverEnv,
+  serverClient,
+  repository,
+  projectService,
+  databaseTypes,
+  generatedDatabaseTypes,
+  config,
+  packageJson,
+] = await Promise.all([
   read(".env.example"),
   read(".gitignore"),
   read("lib/env/server.ts"),
   read("lib/supabase/server.ts"),
   read("lib/repositories/projects.repository.ts"),
   read("lib/services/projects.service.ts"),
+  read("lib/types/database.ts"),
+  read("lib/types/database.generated.ts"),
   read("supabase/config.toml"),
   read("package.json").then(JSON.parse),
 ]);
@@ -41,6 +54,15 @@ test("uses a non-persistent typed server client", () => {
   assert.match(serverClient, /persistSession: false/);
   assert.match(serverClient, /autoRefreshToken: false/);
   assert.match(serverClient, /detectSessionInUrl: false/);
+});
+
+test("uses catalog-generated write and relationship types", () => {
+  assert.match(generatedDatabaseTypes, /__InternalSupabase/);
+  assert.match(generatedDatabaseTypes, /Relationships:/);
+  assert.match(generatedDatabaseTypes, /Insert:/);
+  assert.match(databaseTypes, /Database as GeneratedDatabase/);
+  assert.match(databaseTypes, /Omit<GeneratedTables\[Table\], "Row">/);
+  assert.doesNotMatch(databaseTypes, /Insert: Partial<Row>/);
 });
 
 test("initializes reproducible local migrations", () => {

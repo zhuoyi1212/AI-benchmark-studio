@@ -56,12 +56,12 @@ npm run db:lint
 
 ## 类型
 
-`lib/types/database.ts` 当前提供 Supabase-compatible Database shape 与严格 Row types。由于本机尚无容器运行时且未连接远端，M2 不能从实际 catalog 生成 relationships 与精确 Insert optionality。
+`lib/types/database.generated.ts` 由已应用 migration 的远端 Catalog 生成，保存精确的 Insert/Update optionality、relationships 与 PostgREST metadata。`lib/types/database.ts` 在生成类型上叠加由数据库 check constraint 保证的严格业务状态 union，页面与 Service 继续使用清晰的 Domain Row types。
 
-数据库可用后必须运行并比较：
+Schema 变更并应用 migration 后必须重新生成并 review：
 
 ```bash
-npx supabase gen types typescript --local
+npx supabase gen types typescript --linked --schema public > lib/types/database.generated.ts
 ```
 
 生成结果不得未经 review 覆盖 domain types。迁移 SQL 仍是数据库权威，生成类型用于验证 TypeScript 映射。
@@ -74,8 +74,11 @@ npx supabase gen types typescript --local
 - Reveal 使用专用服务端方法，并先校验 ReviewSession 已 `revealed`。
 - 真实调用失败返回 failed/error 并支持 retry；禁止 silent fallback 到 Mock。
 
-## 当前本地验证状态
+## M2 验证状态
 
 - Supabase CLI 已固定为项目 devDependency。
 - `supabase/config.toml` 与 migration/seed 已纳入版本控制范围。
-- 本机未检测到兼容容器运行时，因此 migration 尚未实际执行；这不是用静态测试替代数据库验证，M2 完成前必须在本地容器或授权的 Supabase 项目上真正应用 migration。
+- 初始化 migration 已在空的远端项目实际应用；本地与远端 migration history 一致。
+- 远端 `public`、`private` 与 `extensions` Schema lint 无错误，22 张证据链数据表已创建。
+- Catalog 类型已从远端重新生成并接入 server client。
+- 本机仍未检测到兼容容器运行时，因此本地 `db reset` 尚不可运行；后续 migration 仍需同时通过 linked dry-run/lint，安装容器运行时后补跑本地 reset。

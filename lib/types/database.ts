@@ -1,6 +1,8 @@
+import type { Database as GeneratedDatabase } from "@/lib/types/database.generated";
+
 /**
- * Hand-maintained M1 schema map. The SQL migration is authoritative.
- * M2 will verify this shape against Supabase-generated types.
+ * Domain-refined row types layered over the generated Supabase catalog.
+ * The migration remains authoritative for database shape and constraints.
  */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -354,33 +356,28 @@ export type DatabaseTableRows = {
 export type DatabaseTableName = keyof DatabaseTableRows;
 export type TableRow<Table extends DatabaseTableName> = DatabaseTableRows[Table];
 
-type TableDefinition<Row extends Record<string, unknown>> = {
-  Row: Row;
-  Insert: Partial<Row>;
-  Update: Partial<Row>;
-  Relationships: [];
-};
+type GeneratedPublic = GeneratedDatabase["public"];
+type GeneratedTables = GeneratedPublic["Tables"];
 
 type PublicTables = {
-  [Table in DatabaseTableName]: TableDefinition<DatabaseTableRows[Table]>;
+  [Table in keyof GeneratedTables]: Omit<GeneratedTables[Table], "Row"> & {
+    Row: Table extends DatabaseTableName ? DatabaseTableRows[Table] : never;
+  };
 };
 
 /**
- * Supabase-compatible database shape for typed M2 queries. Relationships and
- * exact Insert optionality will be replaced by CLI-generated types after the
- * first local/remote migration is available; Row types remain strict today.
+ * Supabase's generated Insert, Update, relationship, and internal metadata are
+ * preserved. Rows use narrower domain unions where Postgres check constraints
+ * are more precise than the generator's plain string output.
  */
-export type Database = {
-  public: {
+export type Database = Omit<GeneratedDatabase, "public"> & {
+  public: Omit<GeneratedPublic, "Tables" | "Views"> & {
     Tables: PublicTables;
-    Views: {
+    Views: Omit<GeneratedPublic["Views"], "review_final_scores"> & {
       review_final_scores: {
         Row: ReviewFinalScoreRow;
         Relationships: [];
       };
     };
-    Functions: Record<never, never>;
-    Enums: Record<never, never>;
-    CompositeTypes: Record<never, never>;
   };
 };
