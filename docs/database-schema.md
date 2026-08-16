@@ -1,0 +1,218 @@
+# AI Benchmark Studio 数据库 Schema v1
+
+## 设计目标
+
+本 Schema 将一次测评保存为可追溯的数据链：
+
+`Project → Research → Protocol → TestRun → Artifact → Blind Judge → Human Review → Final Result Analysis → Report → Publish`
+
+原则：
+
+- Postgres 是业务状态的唯一事实来源；Project progress 由 `test_runs` 推导。
+- 重要运行采用 append-only 或新 version，不覆盖历史。
+- locked Protocol 及其 TestCase、Rubric 不可原地修改。
+- AI Judge 原始评分不可修改；人工复核只追加事件。
+- Reveal 前后普通客户端均不能直接读取 `blind_mappings`。
+- Report 绑定有效 ResultAnalysis；PublishPack 绑定 Report；配图必须绑定真实图片 Artifact。
+
+迁移文件：`supabase/migrations/202608170001_initial_benchmark_schema.sql`
+
+## 表与职责
+
+| 表 | Source of Truth | 关键约束 |
+|---|---|---|
+| `projects` | 项目基本信息与流程状态 | owner；软删除；不保存 progress |
+| `products` | 可复用产品实体 | `normalized_name` 唯一；项目删除不级联删除产品 |
+| `project_products` | 项目选择的 1–3 个产品 | `(project_id, product_id)` 唯一；`display_order` 1–3 且唯一 |
+| `research_runs` | 每次 AI Research 运行 | `(project_id, version)` 唯一；保留 input/model/prompt/error |
+| `product_research` | 某次 Research 的逐产品结论 | 必须同时属于该 Project 和 ResearchRun |
+| `protocols` | Protocol 版本与锁定状态 | `(project_id, version)` 唯一；引用具体 ResearchRun |
+| `test_cases` | Protocol 的动态 Test Cases | 顺序唯一；locked 后不可变 |
+| `rubric_dimensions` | Protocol 的动态 Rubric | 权重 `> 0, <= 100`；锁定时总和必须为 100 |
+| `test_runs` | `Protocol × TestCase × Product` | 三元组唯一；只能为 locked Protocol 创建 |
+| `test_artifacts` | 原始证据 metadata | Storage path 唯一；image/PDF/text；写入后不可变 |
+| `blind_samples` | 客户端可见的 Sample label | 每个 Protocol label 唯一 |
+| `blind_mappings` | Sample → Product 的真实映射 | server-only；每个 Protocol 的 Product 只映射一次 |
+| `judge_runs` | 一次 Blind Judge 运行 | 绑定 locked Protocol、模型、Prompt 版本、输入签名 |
+| `judge_run_artifacts` | JudgeRun 使用的证据集合 | Artifact 必须属于相同 Project/Protocol |
+| `judge_scores` | AI 原始逐项评分 | `Case × Sample × Rubric` 唯一；0–10；不可更新/删除 |
+| `review_sessions` | 人工复核状态 | 只允许 `reviewing → locked → revealed` |
+| `human_review_events` | 人工 override/revert 历史 | append-only；override 理由必填；只允许复核期写入 |
+| `result_analyses` | Reveal 后最终分析 | 绑定 ReviewSession 和 `final_score_signature` |
+| `reports` | 深度报告 | 只能绑定 completed 且非 stale 的 ResultAnalysis |
+| `report_artifacts` | 报告证据引用 | 只能引用 ResultAnalysis 同一 Protocol 的真实 Artifact |
+| `publish_packs` | 社区选题、配置与帖子 | 绑定 completed Report；保留运行元数据 |
+| `publish_pack_artifacts` | 社区截图推荐 | 只允许同 Project/Protocol 的 image TestArtifact；顺序 1–9 |
+
+三张 Artifact 关联表用 FK 取代不可校验的 JSON ID 列表：`judge_run_artifacts` 固化 Judge 输入，`report_artifacts` 固化报告证据，`publish_pack_artifacts` 固化社区截图。Report/Publish 引用还必须与 ResultAnalysis 属于同一 Protocol。
+
+## ER
+
+```mermaid
+erDiagram
+  PROJECTS ||--|{ PROJECT_PRODUCTS : selects
+  PRODUCTS ||--o{ PROJECT_PRODUCTS : reused_by
+  PROJECTS ||--o{ RESEARCH_RUNS : has_versions
+  RESEARCH_RUNS ||--|{ PRODUCT_RESEARCH : produces
+  PRODUCTS ||--o{ PRODUCT_RESEARCH : described_by
+  RESEARCH_RUNS ||--o{ PROTOCOLS : grounds
+  PROJECTS ||--o{ PROTOCOLS : versions
+  PROTOCOLS ||--|{ TEST_CASES : contains
+  PROTOCOLS ||--|{ RUBRIC_DIMENSIONS : scores_with
+  PROTOCOLS ||--o{ TEST_RUNS : governs
+  TEST_CASES ||--o{ TEST_RUNS : executed_as
+  PRODUCTS ||--o{ TEST_RUNS : tested_in
+  TEST_RUNS ||--o{ TEST_ARTIFACTS : provides
+  PROTOCOLS ||--|{ BLIND_SAMPLES : aliases
+  BLIND_SAMPLES ||--|| BLIND_MAPPINGS : resolves_server_side
+  PRODUCTS ||--o{ BLIND_MAPPINGS : hidden_identity
+  PROTOCOLS ||--o{ JUDGE_RUNS : judged_by
+  JUDGE_RUNS ||--|{ JUDGE_RUN_ARTIFACTS : consumes
+  TEST_ARTIFACTS ||--o{ JUDGE_RUN_ARTIFACTS : evidence
+  JUDGE_RUNS ||--|{ JUDGE_SCORES : produces
+  TEST_CASES ||--o{ JUDGE_SCORES : case_score
+  BLIND_SAMPLES ||--o{ JUDGE_SCORES : sample_score
+  RUBRIC_DIMENSIONS ||--o{ JUDGE_SCORES : dimension_score
+  JUDGE_RUNS ||--|| REVIEW_SESSIONS : reviewed_in
+  REVIEW_SESSIONS ||--o{ HUMAN_REVIEW_EVENTS : audits
+  JUDGE_SCORES ||--o{ HUMAN_REVIEW_EVENTS : adjusts
+  REVIEW_SESSIONS ||--o{ RESULT_ANALYSES : analyzed_as
+  RESULT_ANALYSES ||--o{ REPORTS : reported_as
+  REPORTS ||--o{ REPORT_ARTIFACTS : cites
+  TEST_ARTIFACTS ||--o{ REPORT_ARTIFACTS : evidence
+  REPORTS ||--o{ PUBLISH_PACKS : repurposed_as
+  PUBLISH_PACKS ||--o{ PUBLISH_PACK_ARTIFACTS : recommends
+  TEST_ARTIFACTS ||--o{ PUBLISH_PACK_ARTIFACTS : screenshot
+```
+
+## 状态与版本
+
+### Research
+
+- 每次运行创建新的 `research_runs.version`。
+- 状态：`pending → running → completed | failed`。
+- failed run 保留 error；retry 创建新 run，不覆盖旧 run。
+- completed 前必须包含当前 Project 的全部产品；完成或失败后 run 与逐产品输出不可再修改。
+
+### Protocol
+
+- Protocol 必须引用具体 `research_run_id`。
+- 只有 completed 且可比性为 comparable/partially comparable 的 ResearchRun 才能创建 Protocol。
+- 新版本先以 `draft` 创建；数据库拒绝直接插入 locked Protocol。
+- Lock 时数据库检查：至少 1 个 TestCase、至少 1 个 Rubric、Rubric 总权重恰好 100。
+- locked 后 Protocol、TestCase、Rubric 的 UPDATE/DELETE/INSERT 均被 trigger 阻止；修改方案必须创建新 version。
+
+### Review
+
+- ReviewSession 创建时必须绑定 completed JudgeRun，并从 `reviewing` 开始。
+- 唯一合法迁移为 `reviewing → locked → revealed`。
+- 只有 `reviewing` 状态可追加 HumanReviewEvent；locked 后分数不再变化。
+- Reveal 只改变身份可见状态，不改变已锁定 Final Score。
+
+### Judge
+
+- JudgeRun 只能绑定 locked Protocol，且 BlindSample/Mapping 必须一一覆盖项目产品。
+- 从 pending 进入 running 前，必须存在完整 `Product × TestCase` TestRun 矩阵；所有 TestRun 必须 ready，并为本 JudgeRun 绑定至少一个真实 Artifact。
+- completed 前必须存在完整 `Case × Sample × Rubric` JudgeScore 矩阵。
+- JudgeScore 与 JudgeRun 使用的 Artifact 集均不可修改；重试创建新的 `attempt`。
+
+## Final Score 与人工审计
+
+`judge_scores.ai_score` 永久保存 AI 原值，UPDATE/DELETE 会被数据库拒绝。
+
+`human_review_events` 只追加：
+
+- `override`：保存一位小数的 0–10 分数，理由必填。
+- `revert`：必须指向当前生效的 override，恢复 AI Score。
+- 多次 override 均保留；全局 `event_sequence` 用于审计，按评分项串行生成的 `score_revision` 决定生效顺序，避免并发复核产生歧义。
+
+`review_final_scores` 是 Final Score 的唯一计算视图：
+
+```text
+latest event = override → final_score = override_score
+latest event = revert / no event → final_score = ai_score
+```
+
+不保存第二份可漂移的 overall score。产品综合分在应用层按 locked Rubric 权重从该视图计算。
+
+`private.final_score_signature(review_session_id)` 对全部 `judge_score_id:final_score` 排序后计算 SHA-256。ResultAnalysis 可按 `attempt` 重试，但每次插入或更新时数据库都要求：
+
+1. ReviewSession 已 revealed；
+2. 保存的 signature 等于当前 Final Score signature。
+
+Report 创建时会再次检查 ResultAnalysis completed 且 signature 仍然有效，避免只换数字却沿用旧 winner reason、strengths 或 recommendation。
+
+## Blind Security
+
+Blind 分为两层数据：
+
+- `blind_samples`：Sample A/B/C，可提供给 Judge 和 Review 客户端。
+- `blind_mappings`：Sample 与真实 Product 的关系，只能由可信服务端读取。
+
+安全边界：
+
+- 所有表启用 RLS。
+- `blind_mappings` 对 `anon` / `authenticated` 撤销全部权限，且不创建任何 RLS policy。
+- `test_artifacts`、`judge_runs`、`judge_run_artifacts`、`report_artifacts` 与 `publish_pack_artifacts` 同样不开放客户端直查，避免通过 Artifact 关联反推出 Sample 身份。
+- Review/Judge 的普通查询只返回 Sample ID/label，不能 join Mapping。
+- Reveal 必须走 server-only Service；服务端先验证 ReviewSession 为 `revealed`，再按需返回揭晓结果。
+- Service Role 只能存在于 server-only 模块，不进入浏览器 bundle。
+
+RLS 不是 UI 隐藏。即使用户直接调用客户端 Supabase Query，也无法读取 Mapping。
+
+## Storage 与证据链
+
+私有 bucket：`benchmark-artifacts`
+
+路径：
+
+```text
+projects/{projectId}/runs/{testRunId}/{artifactId}.{ext}
+```
+
+限制：
+
+- 单文件上限 50 MB。
+- MIME：PNG、JPEG、WebP、PDF、纯文本。
+- bucket 不公开，M1 不给 `anon` / `authenticated` 创建 `storage.objects` policy。
+- M6 由可信服务端校验 Project 与 Blind 状态后签发短期 URL。
+- Postgres 只保存 path、filename、MIME、size、preview path、hash、metadata，不保存永久公网 URL。
+- Artifact metadata 写入后不可修改；错误上传通过新增 Artifact 和 TestRun 状态表达，不覆盖原始证据。
+
+这遵循 Supabase 的私有 bucket 与 RLS 模型；service role 可绕过 RLS，因此必须只在服务端使用。参考：[Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)、[Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control)、[Storage Ownership](https://supabase.com/docs/guides/storage/security/ownership)。
+
+## RLS 与写入边界
+
+- `authenticated` 仅获得所属 Project 的 blind-safe 表 SELECT。
+- `anon` 不获得业务表权限。
+- 所有真实写操作暂定由 M2 的 server-only repository 使用 Service Role 完成，并在 Service 层验证用户/项目权限。
+- `blind_mappings` 不提供普通客户端 SELECT，即使 revealed 后也只通过收敛的服务端响应揭晓。
+- Artifact metadata、Judge input snapshot、JudgeRun–Artifact 关联和 Storage 原始对象都不开放客户端直接列举；由 server-only Service 返回与当前阶段匹配的最小投影。
+
+Auth 在后续接入。`projects.owner_id` 可为空是为了允许第一阶段由服务端创建项目；接 Auth 后写入真实 `auth.users.id`。空 owner 的记录不会被普通 authenticated RLS 查询读取。
+
+## Delete Strategy
+
+- `projects.deleted_at` 为软删除入口。
+- 全局 `products` 只归档，不因 Project 删除而 cascade。
+- 核心 FK 使用 `ON DELETE RESTRICT`，避免误删 Protocol、Artifact、Judge、Review 与报告历史。
+- Auth 用户删除时，`owner_id/actor_id/created_by` 使用 `SET NULL`，保留实验与审计记录。
+- M1 不执行任何真实数据库 reset 或破坏性迁移。
+
+若未来需要永久清除整个项目，应实现单独的管理员维护流程：先删除 Storage 对象，再按明确依赖顺序清除数据库记录，并记录操作审计；不能依赖无差别 cascade。
+
+## TypeScript 映射
+
+`lib/types/database.ts` 提供：
+
+- `Json`
+- 所有 22 张表的 Row 类型
+- `DatabaseTableName` / `TableRow<T>`
+- 常用状态联合类型
+- `ReviewFinalScoreRow` 视图类型
+
+M2 接入 Supabase CLI 后，以 `supabase gen types --lang typescript` 生成的实际类型校验并替换手写结构；迁移是最终数据库权威来源。官方建议将 migrations 纳入版本控制，并从 Schema 生成 TypeScript 类型：[Local development with schema migrations](https://supabase.com/docs/guides/local-development/overview)。
+
+## M1 验证边界
+
+当前仓库未安装 Supabase CLI/Postgres 本地运行时，因此 M1 只做静态 SQL、关系与安全审查，不连接远端、不执行 migration。M2 安装依赖并初始化本地 Supabase 后，必须运行全量 migration reset/test；任何真实远端 push 或破坏性 reset 仍需单独确认。
