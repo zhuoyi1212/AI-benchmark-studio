@@ -353,3 +353,34 @@ export type DatabaseTableRows = {
 
 export type DatabaseTableName = keyof DatabaseTableRows;
 export type TableRow<Table extends DatabaseTableName> = DatabaseTableRows[Table];
+
+type TableDefinition<Row extends Record<string, unknown>> = {
+  Row: Row;
+  Insert: Partial<Row>;
+  Update: Partial<Row>;
+  Relationships: [];
+};
+
+type PublicTables = {
+  [Table in DatabaseTableName]: TableDefinition<DatabaseTableRows[Table]>;
+};
+
+/**
+ * Supabase-compatible database shape for typed M2 queries. Relationships and
+ * exact Insert optionality will be replaced by CLI-generated types after the
+ * first local/remote migration is available; Row types remain strict today.
+ */
+export type Database = {
+  public: {
+    Tables: PublicTables;
+    Views: {
+      review_final_scores: {
+        Row: ReviewFinalScoreRow;
+        Relationships: [];
+      };
+    };
+    Functions: Record<never, never>;
+    Enums: Record<never, never>;
+    CompositeTypes: Record<never, never>;
+  };
+};

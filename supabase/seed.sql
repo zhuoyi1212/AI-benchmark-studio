@@ -1,0 +1,2 @@
+-- Development seed data will be added only when a real flow needs it.
+-- Schema definitions belong in migrations, not in this file.
