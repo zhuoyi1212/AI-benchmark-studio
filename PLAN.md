@@ -270,3 +270,5 @@ M0 ✅ <commit> <summary>
 M1 ✅ <commit> <summary>
 ...
 ```
+
+M0 ✅ 67e8f25 Protocol 锁定状态已真实传递至测试执行，未锁定访问会被阻止，TestRun 与 locked protocolId 保持一致。
