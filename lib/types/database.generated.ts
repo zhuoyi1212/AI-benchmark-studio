@@ -1476,6 +1476,10 @@ export type Database = {
         }
         Returns: string
       }
+      begin_result_analysis: {
+        Args: { p_project_id: string; p_review_session_id: string }
+        Returns: string
+      }
       complete_judge_case_run: {
         Args: { p_judge_case_run_id: string; p_scores: Json; p_usage: Json }
         Returns: undefined
@@ -1499,6 +1503,15 @@ export type Database = {
           p_synthesis_prompt_version: string
           p_synthesis_provider: string
           p_synthesis_usage: Json
+        }
+        Returns: undefined
+      }
+      complete_result_analysis: {
+        Args: {
+          p_output: Json
+          p_result_analysis_id: string
+          p_usage: Json
+          p_winner_product_id: string
         }
         Returns: undefined
       }
@@ -1538,6 +1551,10 @@ export type Database = {
       }
       fail_product_research: {
         Args: { p_error_message: string; p_research_run_id: string }
+        Returns: undefined
+      }
+      fail_result_analysis: {
+        Args: { p_error_message: string; p_result_analysis_id: string }
         Returns: undefined
       }
       finalize_test_execution: {
@@ -1583,6 +1600,15 @@ export type Database = {
       }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
+      }
+      start_result_analysis: {
+        Args: {
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_result_analysis_id: string
+        }
         Returns: undefined
       }
     }

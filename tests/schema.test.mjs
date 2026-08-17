@@ -26,6 +26,8 @@ const blindIdentityGuardUrl = new URL("../supabase/migrations/202608170011_blind
 const blindIdentityGuardSql = await readFile(blindIdentityGuardUrl, "utf8");
 const humanReviewLifecycleUrl = new URL("../supabase/migrations/202608170012_human_review_lifecycle.sql", import.meta.url);
 const humanReviewLifecycleSql = await readFile(humanReviewLifecycleUrl, "utf8");
+const resultAnalysisLifecycleUrl = new URL("../supabase/migrations/202608170013_result_analysis_lifecycle.sql", import.meta.url);
+const resultAnalysisLifecycleSql = await readFile(resultAnalysisLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -219,4 +221,15 @@ test("persists the Human Review lock and reveal lifecycle through service-role t
   assert.match(humanReviewLifecycleSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(humanReviewLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(humanReviewLifecycleSql, /on delete cascade/i);
+});
+
+test("persists signature-bound Final Result Analysis through service-role transactions", () => {
+  assert.match(resultAnalysisLifecycleSql, /begin_result_analysis/);
+  assert.match(resultAnalysisLifecycleSql, /start_result_analysis/);
+  assert.match(resultAnalysisLifecycleSql, /complete_result_analysis/);
+  assert.match(resultAnalysisLifecycleSql, /fail_result_analysis/);
+  assert.match(resultAnalysisLifecycleSql, /private\.final_score_signature/);
+  assert.match(resultAnalysisLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(resultAnalysisLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(resultAnalysisLifecycleSql, /on delete cascade/i);
 });

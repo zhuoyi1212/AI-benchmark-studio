@@ -57,7 +57,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   result_analysis: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "result-analysis.v1",
+    promptVersion: "result-analysis.v2",
     reasoning: "high",
     model: (models) => models.deepSeekReasoningModel,
   },
