@@ -21,6 +21,7 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /comparability:[\s\S]*provider: "deepseek"/);
   assert.match(config, /judge_text:[\s\S]*provider: "deepseek"/);
   assert.match(config, /judge_multimodal:[\s\S]*provider: "zhipu"/);
+  assert.match(config, /judge_multimodal:[\s\S]*reasoning: "standard"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);

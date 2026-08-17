@@ -120,11 +120,12 @@ export async function runBlindJudge(projectId: string): Promise<string> {
     if (persistedRun?.status === "completed") return judgeRunId;
     if (!persistedRun || persistedRun.status !== "running") throw new RepositoryError("judge.requireRunning", { message: "JudgeRun did not enter running state" });
 
-    const outcomes = await Promise.allSettled(
-      context.testCases.map((testCase) => executeJudgeCase(judgeRunId!, context, testCase)),
-    );
-    const failure = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
-    if (failure) throw failure.reason;
+    // Provider quotas are shared across Cases. Run them sequentially so one
+    // JudgeRun does not create its own rate-limit spike; all Samples inside a
+    // Case still use the same immutable JudgeCaseRun route.
+    for (const testCase of context.testCases) {
+      await executeJudgeCase(judgeRunId, context, testCase);
+    }
     await judgeRepository.complete(judgeRunId);
     return judgeRunId;
   } catch (error) {
@@ -177,7 +178,7 @@ async function executeJudgeCase(
       },
       { role: "user", content },
     ],
-    maxTokens: 12_000,
+    maxTokens: 6_000,
     maxAttempts: 2,
     beforeExecute: async (route) => {
       judgeCaseRunId = await judgeRepository.beginCase(judgeRunId, testCase.id, route, inputSignature);

@@ -43,7 +43,7 @@ test("routes all Samples in one TestCase through one immutable JudgeCaseRun", ()
   assert.match(providerMetadata, /unique \(judge_run_id, test_case_id\)/);
   assert.match(providerMetadata, /Every Blind Sample in a TestCase must use the JudgeCaseRun model and prompt version/);
   assert.match(hardening, /full Sample × Rubric score matrix for its TestCase/);
-  assert.match(service, /context\.testCases\.map\(\(testCase\) => executeJudgeCase/);
+  assert.match(service, /for \(const testCase of context\.testCases\)[\s\S]*executeJudgeCase/);
   assert.match(service, /aiTaskService\.judgeSamples\(testCase\.id, descriptors/);
   assert.match(service, /beforeExecute:[\s\S]*judgeRepository\.beginCase/);
   assert.ok(router.indexOf("await request.beforeExecute?.(route)") < router.indexOf("provider.generateStructured"));
@@ -73,9 +73,14 @@ test("validates and atomically stores the exact Sample × Rubric score matrix", 
 
 test("records failed runs and never falls back to Mock or another provider", () => {
   assert.match(migration, /create function public\.fail_judge_run/);
-  assert.match(service, /Promise\.allSettled/);
   assert.match(service, /judgeRepository\.fail/);
   assert.doesNotMatch(service + repository + actions, /@\/lib\/mock|mockJudge|fallback/i);
+});
+
+test("runs Judge Cases sequentially to avoid provider quota spikes", () => {
+  assert.match(service, /for \(const testCase of context\.testCases\)/);
+  assert.match(service, /maxTokens: 6_000/);
+  assert.doesNotMatch(service, /Promise\.allSettled\([\s\S]*executeJudgeCase/);
 });
 
 test("keeps every Judge mutation service-role only", () => {

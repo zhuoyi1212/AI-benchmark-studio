@@ -51,7 +51,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     provider: "zhipu",
     capability: "multimodal",
     promptVersion: "judge.v1",
-    reasoning: "high",
+    reasoning: "standard",
     model: (models) => models.zhipuVisionModel,
   },
   result_analysis: {

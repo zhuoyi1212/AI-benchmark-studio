@@ -45,6 +45,8 @@ test("keeps score, ranking, winner, evidence, and limitations outside generated 
   assert.match(service, /不得重新判分，不得改变排名、冠军、Judge Evidence 或限制/);
   assert.match(schema, /generatedReportResponseSchema/);
   assert.match(schema, /Report contains an internal identifier/);
+  assert.match(schema, /userVisibleText/);
+  assert.doesNotMatch(schema, /internalIdentifierPattern\.test\(JSON\.stringify\(value\)\)/);
   assert.match(service, /assertExactCoverage/);
   assert.match(service, /calculateCaseScores/);
   assert.match(page, /workspace\.ranking/);
