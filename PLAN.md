@@ -287,3 +287,4 @@ Provider Routing ✅ 6552e80 建立 Provider-neutral AI Task Service、集中 Ro
 M3 ✅ bf62800 新建测评通过原子事务持久化 Project、复用 Product 并创建 ProjectProduct，项目列表与动态 Research 路由读取真实数据库且不回退 demo。
 M4 ✅ 7649340 Z.AI Web Search + GLM 结构化保存真实官方来源，DeepSeek 基于已保存 Research 完成可比性分析；ResearchRun 版本、failed/retry、路由元数据与真实 E2E 均通过。
 M5 ✅ 13396fc 基于指定 ResearchRun 动态生成并原子保存 Protocol/TestCases/Rubric，100% 权重与最新版本锁定由数据库保护；真实生成、锁定、刷新持久化、typecheck、测试与 build 均通过。
+M6 ✅ 4e3a756 从最新 locked Protocol 幂等生成 Product × TestCase 矩阵，支持校验后的 image/PDF/text 私有 Storage 上传、SHA-256、执行元数据与完整矩阵确认；正式 12/12 TestRuns 及隔离 Artifact E2E 均通过。
