@@ -364,6 +364,17 @@ export type PublishPackRow = {
   output_tokens: number | null;
   latency_ms: number | null;
   estimated_cost: number | null;
+  discovery_provider: AIProviderName | null;
+  discovery_model: string | null;
+  discovery_prompt_version: string | null;
+  discovery_input_signature: string | null;
+  discovery_input_tokens: number | null;
+  discovery_output_tokens: number | null;
+  discovery_latency_ms: number | null;
+  discovery_estimated_cost: number | null;
+  discovery_started_at: string | null;
+  discovered_at: string | null;
+  generation_started_at: string | null;
 };
 
 export type PublishPackArtifactRow = {

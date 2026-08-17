@@ -30,6 +30,8 @@ const resultAnalysisLifecycleUrl = new URL("../supabase/migrations/202608170013_
 const resultAnalysisLifecycleSql = await readFile(resultAnalysisLifecycleUrl, "utf8");
 const reportLifecycleUrl = new URL("../supabase/migrations/202608170014_report_lifecycle.sql", import.meta.url);
 const reportLifecycleSql = await readFile(reportLifecycleUrl, "utf8");
+const publishLifecycleUrl = new URL("../supabase/migrations/202608170015_publish_pack_lifecycle.sql", import.meta.url);
+const publishLifecycleSql = await readFile(publishLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -246,4 +248,15 @@ test("persists an evidence-linked Report lifecycle through service-role transact
   assert.match(reportLifecycleSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(reportLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(reportLifecycleSql, /on delete cascade/i);
+});
+
+test("persists separate Content Discovery and Community Post runs", () => {
+  assert.match(publishLifecycleSql, /begin_publish_pack/);
+  assert.match(publishLifecycleSql, /start_content_discovery/);
+  assert.match(publishLifecycleSql, /complete_content_discovery/);
+  assert.match(publishLifecycleSql, /start_community_post/);
+  assert.match(publishLifecycleSql, /complete_publish_pack/);
+  assert.match(publishLifecycleSql, /insert into public\.publish_pack_artifacts/);
+  assert.match(publishLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(publishLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
 });

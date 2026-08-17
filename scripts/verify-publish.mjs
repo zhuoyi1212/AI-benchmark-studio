@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
+const projectId = process.argv[2];
+if (!projectId) throw new Error("Usage: npm run verify:publish -- <projectId>");
+const env = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
+const client = createClient(env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
+const { data: project } = await client.from("projects").select("status,deleted_at").eq("id", projectId).single();
+assert.equal(project.status, "published"); assert.equal(project.deleted_at, null);
+const { data: pack, error } = await client.from("publish_packs").select("id,report_id,version,status,content_ideas,selected_idea,config,community_post,discovery_provider,discovery_model,discovery_prompt_version,provider,model,prompt_version,input_signature,completed_at").eq("project_id", projectId).order("version", { ascending: false }).limit(1).single();
+if (error) throw new Error("PublishPack not found");
+assert.equal(pack.status, "ready"); assert.equal(pack.discovery_provider, "deepseek"); assert.equal(pack.provider, "zhipu");
+assert.match(pack.discovery_prompt_version, /^content-discovery\.v\d+$/); assert.match(pack.prompt_version, /^community-post\.v\d+$/);
+assert.ok(pack.content_ideas.length >= 1); assert.equal(pack.content_ideas.filter((idea) => idea.recommended).length, 1);
+assert.ok(pack.selected_idea?.id); assert.ok(pack.community_post?.title && pack.community_post?.body && pack.community_post?.tags?.length); assert.ok(pack.input_signature && pack.completed_at);
+const { data: links, error: linksError } = await client.from("publish_pack_artifacts").select("artifact_id,display_order,reason,supports_claim,supports_paragraph").eq("publish_pack_id", pack.id).order("display_order");
+if (linksError || links.length === 0) throw new Error("Publish screenshot links not found");
+assert.deepEqual(links.map((item) => item.display_order), links.map((_, index) => index + 1));
+const { data: artifacts } = await client.from("test_artifacts").select("id,kind,mime_type").in("id", links.map((item) => item.artifact_id));
+assert.ok(artifacts.every((item) => item.kind === "image" && item.mime_type.startsWith("image/")));
+const { error: immutablePack } = await client.from("publish_packs").update({ community_post: pack.community_post }).eq("id", pack.id);
+assert.ok(immutablePack); const { error: immutableLinks } = await client.from("publish_pack_artifacts").update({ reason: links[0].reason }).eq("publish_pack_id", pack.id).eq("artifact_id", links[0].artifact_id); assert.ok(immutableLinks);
+const response = await fetch(`http://localhost:3000/projects/${projectId}/publish`); assert.equal(response.ok, true); const html = await response.text(); assert.equal(html.includes(pack.community_post.title), true); assert.equal(html.includes("帖子编辑器"), true); assert.equal(html.includes("下载全部图片"), true);
+console.log(`PublishPack version: ${pack.version}`); console.log(`Discovery: ${pack.discovery_model} · ${pack.discovery_prompt_version}`); console.log(`Post: ${pack.model} · ${pack.prompt_version}`); console.log(`Real screenshots: ${links.length}`); console.log("Dynamic ideas, separate routes, real screenshot evidence, immutability, and page: verified");
+function parseEnv(text) { return Object.fromEntries(text.split(/\r?\n/).flatMap((line) => { const value = line.trim(); if (!value || value.startsWith("#")) return []; const index = value.indexOf("="); if (index < 1) return []; return [[value.slice(0, index).trim(), value.slice(index + 1).trim().replace(/^(['"])(.*)\1$/, "$2")]]; })); }

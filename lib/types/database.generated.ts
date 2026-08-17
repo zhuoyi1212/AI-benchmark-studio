@@ -759,8 +759,19 @@ export type Database = {
           config: Json
           content_ideas: Json
           created_at: string
+          discovered_at: string | null
+          discovery_estimated_cost: number | null
+          discovery_input_signature: string | null
+          discovery_input_tokens: number | null
+          discovery_latency_ms: number | null
+          discovery_model: string | null
+          discovery_output_tokens: number | null
+          discovery_prompt_version: string | null
+          discovery_provider: string | null
+          discovery_started_at: string | null
           error_message: string | null
           estimated_cost: number | null
+          generation_started_at: string | null
           id: string
           input_signature: string | null
           input_tokens: number | null
@@ -782,8 +793,19 @@ export type Database = {
           config?: Json
           content_ideas?: Json
           created_at?: string
+          discovered_at?: string | null
+          discovery_estimated_cost?: number | null
+          discovery_input_signature?: string | null
+          discovery_input_tokens?: number | null
+          discovery_latency_ms?: number | null
+          discovery_model?: string | null
+          discovery_output_tokens?: number | null
+          discovery_prompt_version?: string | null
+          discovery_provider?: string | null
+          discovery_started_at?: string | null
           error_message?: string | null
           estimated_cost?: number | null
+          generation_started_at?: string | null
           id?: string
           input_signature?: string | null
           input_tokens?: number | null
@@ -805,8 +827,19 @@ export type Database = {
           config?: Json
           content_ideas?: Json
           created_at?: string
+          discovered_at?: string | null
+          discovery_estimated_cost?: number | null
+          discovery_input_signature?: string | null
+          discovery_input_tokens?: number | null
+          discovery_latency_ms?: number | null
+          discovery_model?: string | null
+          discovery_output_tokens?: number | null
+          discovery_prompt_version?: string | null
+          discovery_provider?: string | null
+          discovery_started_at?: string | null
           error_message?: string | null
           estimated_cost?: number | null
+          generation_started_at?: string | null
           id?: string
           input_signature?: string | null
           input_tokens?: number | null
@@ -1479,6 +1512,10 @@ export type Database = {
         }
         Returns: string
       }
+      begin_publish_pack: {
+        Args: { p_project_id: string; p_report_id: string }
+        Returns: string
+      }
       begin_report: {
         Args: { p_project_id: string; p_result_analysis_id: string }
         Returns: string
@@ -1486,6 +1523,14 @@ export type Database = {
       begin_result_analysis: {
         Args: { p_project_id: string; p_review_session_id: string }
         Returns: string
+      }
+      complete_content_discovery: {
+        Args: {
+          p_content_ideas: Json
+          p_publish_pack_id: string
+          p_usage: Json
+        }
+        Returns: undefined
       }
       complete_judge_case_run: {
         Args: { p_judge_case_run_id: string; p_scores: Json; p_usage: Json }
@@ -1510,6 +1555,15 @@ export type Database = {
           p_synthesis_prompt_version: string
           p_synthesis_provider: string
           p_synthesis_usage: Json
+        }
+        Returns: undefined
+      }
+      complete_publish_pack: {
+        Args: {
+          p_community_post: Json
+          p_publish_pack_id: string
+          p_recommendations: Json
+          p_usage: Json
         }
         Returns: undefined
       }
@@ -1564,6 +1618,10 @@ export type Database = {
         Args: { p_error_message: string; p_research_run_id: string }
         Returns: undefined
       }
+      fail_publish_pack: {
+        Args: { p_error_message: string; p_publish_pack_id: string }
+        Returns: undefined
+      }
       fail_report: {
         Args: { p_error_message: string; p_report_id: string }
         Returns: undefined
@@ -1615,6 +1673,28 @@ export type Database = {
       }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
+      }
+      start_community_post: {
+        Args: {
+          p_config: Json
+          p_input_signature: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_publish_pack_id: string
+          p_selected_idea: Json
+        }
+        Returns: undefined
+      }
+      start_content_discovery: {
+        Args: {
+          p_input_signature: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_publish_pack_id: string
+        }
         Returns: undefined
       }
       start_report: {

@@ -39,7 +39,10 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
       const response = await provider.generateStructured({ model: route.model, messages, maxTokens: request.maxTokens, reasoning: route.reasoning });
       const json = parseJson(response.content, route.task, request.schemaName);
       const validated = request.schema.safeParse(json);
-      if (!validated.success) throw new AIValidationError(route.task, request.schemaName);
+      if (!validated.success) {
+        const issuePaths = validated.error.issues.slice(0, 6).map((issue) => `${issue.path.join(".") || "root"}:${issue.code}`).join(",");
+        throw new AIValidationError(route.task, `${request.schemaName}[${issuePaths}]`);
+      }
       return { data: validated.data, route, requestId: response.requestId, usage: response.usage, attempts: attempt };
     } catch (error) {
       lastError = error;
