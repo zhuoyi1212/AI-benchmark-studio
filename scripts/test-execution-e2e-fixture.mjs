@@ -9,14 +9,15 @@ const supabaseSecretKey = env.SUPABASE_SECRET_KEY;
 if (!supabaseUrl || !supabaseSecretKey) throw new Error("Missing Supabase server environment");
 const client = createClient(supabaseUrl, supabaseSecretKey, { auth: { persistSession: false } });
 
-if (mode === "archive") {
+if (mode === "archive" || mode === "restore") {
   const projectId = process.argv[3];
-  if (!projectId) throw new Error("Usage: node scripts/test-execution-e2e-fixture.mjs archive <projectId>");
+  if (!projectId) throw new Error(`Usage: node scripts/test-execution-e2e-fixture.mjs ${mode} <projectId>`);
   const { data: project, error: readError } = await client.from("projects").select("id,name").eq("id", projectId).single();
-  if (readError || project.name !== fixtureName) throw new Error("Refusing to archive a non-fixture project");
-  const { error } = await client.from("projects").update({ deleted_at: new Date().toISOString() }).eq("id", projectId);
-  if (error) throw new Error(`Fixture archive failed (${error.code})`);
-  console.log(JSON.stringify({ archivedProjectId: projectId }));
+  if (readError || project.name !== fixtureName) throw new Error(`Refusing to ${mode} a non-fixture project`);
+  const deletedAt = mode === "archive" ? new Date().toISOString() : null;
+  const { error } = await client.from("projects").update({ deleted_at: deletedAt }).eq("id", projectId);
+  if (error) throw new Error(`Fixture ${mode} failed (${error.code})`);
+  console.log(JSON.stringify({ [`${mode}dProjectId`]: projectId }));
 } else if (mode === "setup") {
   const { data: projectId, error: projectError } = await client.rpc("create_benchmark_project", {
     p_name: fixtureName,
@@ -126,7 +127,7 @@ if (mode === "archive") {
   if (lockError) throw new Error(`Fixture Protocol lock failed (${lockError.code})`);
   console.log(JSON.stringify({ projectId, protocolId }));
 } else {
-  throw new Error("Mode must be setup or archive");
+  throw new Error("Mode must be setup, archive, or restore");
 }
 
 function parseEnv(text) {

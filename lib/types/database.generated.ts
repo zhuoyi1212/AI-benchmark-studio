@@ -1491,6 +1491,10 @@ export type Database = {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
+      initialize_blind_layer: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
       lock_protocol: { Args: { p_protocol_id: string }; Returns: undefined }
       record_test_artifact: {
         Args: { p_artifact: Json; p_run_metadata: Json; p_test_run_id: string }

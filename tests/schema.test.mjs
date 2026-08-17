@@ -18,6 +18,8 @@ const protocolLifecycleUrl = new URL("../supabase/migrations/202608170007_protoc
 const protocolLifecycleSql = await readFile(protocolLifecycleUrl, "utf8");
 const testExecutionLifecycleUrl = new URL("../supabase/migrations/202608170008_test_execution_lifecycle.sql", import.meta.url);
 const testExecutionLifecycleSql = await readFile(testExecutionLifecycleUrl, "utf8");
+const blindLayerLifecycleUrl = new URL("../supabase/migrations/202608170009_blind_layer_lifecycle.sql", import.meta.url);
+const blindLayerLifecycleSql = await readFile(blindLayerLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -169,4 +171,14 @@ test("derives TestRuns and stores immutable raw Artifacts through service-role t
   assert.match(testExecutionLifecycleSql, /finalize_test_execution/);
   assert.match(testExecutionLifecycleSql, /ready_for_review/);
   assert.doesNotMatch(testExecutionLifecycleSql, /on delete cascade/i);
+});
+
+test("initializes one stable randomized Blind Layer without returning identity data", () => {
+  assert.match(blindLayerLifecycleSql, /create function public\.initialize_blind_layer/);
+  assert.match(blindLayerLifecycleSql, /order by extensions\.gen_random_uuid\(\)/);
+  assert.match(blindLayerLifecycleSql, /Existing Blind Layer is incomplete and cannot be silently repaired/);
+  assert.match(blindLayerLifecycleSql, /returns void/);
+  assert.match(blindLayerLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(blindLayerLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(blindLayerLifecycleSql, /on delete cascade/i);
 });

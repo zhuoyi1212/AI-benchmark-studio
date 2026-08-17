@@ -46,7 +46,9 @@ export async function getTestExecutionWorkspace(projectId: string): Promise<Test
   if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
 
   try {
-    await testExecutionRepository.ensureMatrix(projectId, protocol.id);
+    if (["protocol_locked", "testing"].includes(protocolWorkspace.research.project.status)) {
+      await testExecutionRepository.ensureMatrix(projectId, protocol.id);
+    }
     const rows = await testExecutionRepository.listRuns(protocol.id);
     const artifacts = await testExecutionRepository.listArtifacts(rows.map((row) => row.id));
     const artifactsByRun = Map.groupBy(artifacts, (artifact) => artifact.test_run_id);
