@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RunBlindJudgeAction } from "@/app/projects/[projectId]/review/judge-action";
+import { HumanReviewPanel } from "@/app/projects/[projectId]/review/human-review-panel";
+import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getJudgeReviewWorkspace, JudgeExecutionError, type JudgeReviewWorkspace } from "@/lib/services/judge.service";
 
 export const maxDuration = 300;
@@ -23,6 +25,11 @@ export default async function BlindReviewPage({ params }: ReviewPageProps) {
     if (!(error instanceof JudgeExecutionError)) throw error;
   }
   if (!workspace) redirect(`/projects/${projectId}/test`);
+  if (workspace.latestRun?.status === "completed") {
+    const reviewWorkspace = await getHumanReviewWorkspace(projectId);
+    if (!reviewWorkspace) redirect(`/projects/${projectId}/review`);
+    return <HumanReviewPanel workspace={reviewWorkspace} />;
+  }
   const run = workspace.latestRun;
   const completedCases = run?.caseRuns.filter((caseRun) => caseRun.status === "completed").length ?? 0;
   const progress = workspace.testCases.length === 0 ? 0 : completedCases / workspace.testCases.length * 100;
@@ -43,8 +50,6 @@ export default async function BlindReviewPage({ params }: ReviewPageProps) {
         <div><div className="mb-3 flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-blue-700" /><h2 className="section-title">Test Cases</h2></div><Card className="divide-y shadow-none">{workspace.testCases.map((testCase) => { const caseRun = run?.caseRuns.find((item) => item.testCaseId === testCase.id); return <div key={testCase.id} className="flex items-center gap-4 px-4 py-3.5"><span className="font-mono text-[11px] text-blue-700">CASE {String(testCase.position).padStart(2, "0")}</span><span className="min-w-0 flex-1 text-sm font-medium">{testCase.title}</span>{caseRun && <Badge variant={caseRun.status === "completed" ? "success" : caseRun.status === "failed" ? "warning" : "neutral"}>{caseRun.status === "completed" ? "评分完成" : caseRun.status === "failed" ? "失败" : "评分中"}</Badge>}</div>; })}</Card></div>
         <JudgeStatus workspace={workspace} progress={progress} />
       </section>
-
-      {run?.status === "completed" && <JudgeScoreResults workspace={workspace} />}
     </div>
   );
 }
@@ -55,19 +60,4 @@ function JudgeStatus({ workspace, progress }: { workspace: JudgeReviewWorkspace;
   if (run.status === "failed") return <aside className="h-fit rounded-lg border border-amber-200 bg-amber-50 p-5"><div className="flex items-center gap-2 text-amber-900"><AlertTriangle className="h-4 w-4" /><h2 className="text-sm font-semibold">AI Judge 未完成</h2></div><p className="mt-3 text-xs leading-5 text-amber-800/80">{run.errorMessage ?? "本次运行失败，已保留审计记录。"}</p><div className="mt-5 border-t border-amber-200 pt-4"><RunBlindJudgeAction projectId={workspace.projectId} retry /></div></aside>;
   if (run.status === "completed") return <aside className="h-fit rounded-lg border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-center gap-2 text-emerald-800"><CheckCircle2 className="h-4 w-4" /><h2 className="text-sm font-semibold">AI Judge 已完成</h2></div><p className="mt-3 text-sm leading-6 text-emerald-900/80">{workspace.testCases.length} 个 Test Cases、{workspace.samples.length} 个 Sample 与 {workspace.rubric.length} 个 Rubric 维度已形成完整评分矩阵。</p><div className="mt-4 flex items-center justify-between border-t border-emerald-200 pt-4 text-xs"><span>评分项</span><strong className="tabular-nums">{run.scores.length}</strong></div></aside>;
   return <aside className="h-fit rounded-lg border bg-slate-50 p-5"><div className="flex items-center gap-2"><Scale className="h-4 w-4 animate-pulse text-blue-700" /><h2 className="text-sm font-semibold">AI Judge 进行中</h2></div><div className="mt-4 flex justify-between text-xs"><span className="text-muted-foreground">Case 进度</span><span className="font-medium tabular-nums">{run.caseRuns.filter((item) => item.status === "completed").length} / {workspace.testCases.length}</span></div><Progress className="mt-2" value={progress} /><p className="mt-4 text-xs leading-5 text-muted-foreground">请保持页面打开；评分结果会在本次运行完成后统一保存。</p></aside>;
-}
-
-function JudgeScoreResults({ workspace }: { workspace: JudgeReviewWorkspace }) {
-  const run = workspace.latestRun!;
-  return <section className="mt-10"><div className="mb-4 flex items-end justify-between gap-4"><div><div className="flex items-center gap-2"><Scale className="h-4 w-4 text-blue-700" /><h2 className="section-title">AI 原始评分</h2></div><p className="mt-1.5 text-xs text-muted-foreground">原始 Score、Reason 与 Evidence 已锁定；下一阶段人工复核只会追加纠偏记录。</p></div><Badge variant="neutral">Run #{run.attempt}</Badge></div><div className="space-y-6">{workspace.testCases.map((testCase) => { const caseRun = run.caseRuns.find((item) => item.testCaseId === testCase.id); return <Card key={testCase.id} className="overflow-hidden shadow-none"><div className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-5 py-4"><div><span className="font-mono text-[10px] text-blue-700">CASE {String(testCase.position).padStart(2, "0")}</span><h3 className="mt-1 text-sm font-semibold">{testCase.title}</h3></div>{caseRun && <div className="text-right"><p className="text-[10px] text-muted-foreground">统一 Judge 路由</p><p className="mt-0.5 text-xs font-medium">{caseRun.model} · {caseRun.promptVersion}</p></div>}</div><div className="divide-y">{workspace.samples.map((sample) => { const sampleScores = run.scores.filter((score) => score.testCaseId === testCase.id && score.blindSampleId === sample.sampleId); const weightedScore = calculateWeightedScore(sampleScores, workspace.rubric); return <div key={sample.sampleId} className="p-5"><div className="mb-4 flex items-center justify-between"><h4 className="text-sm font-semibold">{sample.label}</h4><div className="text-right"><span className="text-xl font-semibold tabular-nums">{weightedScore.toFixed(1)}</span><span className="ml-1 text-xs text-muted-foreground">/ 10</span></div></div><div className="grid gap-3 xl:grid-cols-2">{workspace.rubric.map((dimension) => { const score = sampleScores.find((item) => item.rubricDimensionId === dimension.id); if (!score) return null; return <div key={dimension.id} className="rounded-lg border p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold">{dimension.name}</span><span className="text-sm font-semibold tabular-nums text-blue-700">{score.aiScore.toFixed(1)}</span></div><p className="mt-3 text-xs leading-5 text-slate-700">{score.reason}</p><div className="mt-3 border-t pt-3"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Evidence</p>{score.evidence.map((item, index) => <p key={index} className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{item}</p>)}<p className="mt-2 text-[10px] text-muted-foreground">Confidence {Math.round(score.confidence * 100)}%</p></div></div>; })}</div></div>; })}</div></Card>; })}</div></section>;
-}
-
-function calculateWeightedScore(
-  scores: NonNullable<JudgeReviewWorkspace["latestRun"]>["scores"],
-  rubric: JudgeReviewWorkspace["rubric"],
-) {
-  return rubric.reduce((total, dimension) => {
-    const score = scores.find((item) => item.rubricDimensionId === dimension.id)?.aiScore ?? 0;
-    return total + score * dimension.weight / 100;
-  }, 0);
 }

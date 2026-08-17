@@ -24,6 +24,8 @@ const judgeLifecycleUrl = new URL("../supabase/migrations/202608170010_judge_lif
 const judgeLifecycleSql = await readFile(judgeLifecycleUrl, "utf8");
 const blindIdentityGuardUrl = new URL("../supabase/migrations/202608170011_blind_protocol_identity_guard.sql", import.meta.url);
 const blindIdentityGuardSql = await readFile(blindIdentityGuardUrl, "utf8");
+const humanReviewLifecycleUrl = new URL("../supabase/migrations/202608170012_human_review_lifecycle.sql", import.meta.url);
+const humanReviewLifecycleSql = await readFile(humanReviewLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -205,4 +207,16 @@ test("blocks identity-bearing Protocol text before Blind Review projection", () 
   assert.match(blindIdentityGuardSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(blindIdentityGuardSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(blindIdentityGuardSql, /on delete cascade/i);
+});
+
+test("persists the Human Review lock and reveal lifecycle through service-role transactions", () => {
+  assert.match(humanReviewLifecycleSql, /ensure_review_session/);
+  assert.match(humanReviewLifecycleSql, /append_human_override/);
+  assert.match(humanReviewLifecycleSql, /append_human_revert/);
+  assert.match(humanReviewLifecycleSql, /lock_review_session/);
+  assert.match(humanReviewLifecycleSql, /reveal_review_session/);
+  assert.match(humanReviewLifecycleSql, /get_revealed_review_mapping/);
+  assert.match(humanReviewLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(humanReviewLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(humanReviewLifecycleSql, /on delete cascade/i);
 });

@@ -1431,6 +1431,24 @@ export type Database = {
       }
     }
     Functions: {
+      append_human_override: {
+        Args: {
+          p_judge_score_id: string
+          p_override_score: number
+          p_project_id: string
+          p_reason: string
+          p_review_session_id: string
+        }
+        Returns: string
+      }
+      append_human_revert: {
+        Args: {
+          p_judge_score_id: string
+          p_project_id: string
+          p_review_session_id: string
+        }
+        Returns: string
+      }
       assert_blind_protocol_safe: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
@@ -1506,6 +1524,10 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_review_session: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: string
+      }
       ensure_test_run_matrix: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
@@ -1536,14 +1558,32 @@ export type Database = {
           storage_path: string
         }[]
       }
+      get_revealed_review_mapping: {
+        Args: { p_review_session_id: string }
+        Returns: {
+          blind_sample_id: string
+          product_id: string
+          product_logo_url: string
+          product_name: string
+          sample_label: string
+        }[]
+      }
       initialize_blind_layer: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
       lock_protocol: { Args: { p_protocol_id: string }; Returns: undefined }
+      lock_review_session: {
+        Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
+      }
       record_test_artifact: {
         Args: { p_artifact: Json; p_run_metadata: Json; p_test_run_id: string }
         Returns: string
+      }
+      reveal_review_session: {
+        Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
       }
     }
     Enums: {
