@@ -5,6 +5,8 @@ export const PROTOCOL_STORAGE_KEY = "ai-benchmark-protocol-v3";
 export const mockProtocol: TestProtocol = {
   id: "protocol-demo-v1",
   projectId: "demo",
+  researchRunId: "research-demo-v1",
+  version: 1,
   title: "AI PPT 横向测试",
   goal: "判断哪款 AI PPT 产品最适合普通职场用户制作商业汇报，重点关注内容质量、视觉呈现与后续编辑成本。",
   status: "draft",

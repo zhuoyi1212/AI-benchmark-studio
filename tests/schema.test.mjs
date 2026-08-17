@@ -14,6 +14,8 @@ const researchLifecycleUrl = new URL("../supabase/migrations/202608170005_resear
 const researchLifecycleSql = await readFile(researchLifecycleUrl, "utf8");
 const neutralResearchUrl = new URL("../supabase/migrations/202608170006_provider_neutral_research_completion.sql", import.meta.url);
 const neutralResearchSql = await readFile(neutralResearchUrl, "utf8");
+const protocolLifecycleUrl = new URL("../supabase/migrations/202608170007_protocol_lifecycle.sql", import.meta.url);
+const protocolLifecycleSql = await readFile(protocolLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -144,4 +146,16 @@ test("enforces traceable versioned ResearchRun lifecycle", () => {
   assert.doesNotMatch(researchLifecycleSql, /on delete cascade/i);
   assert.match(neutralResearchSql, /create or replace function public\.complete_product_research/);
   assert.doesNotMatch(neutralResearchSql, /p_search_provider <> 'zhipu'|p_comparability_provider <> 'deepseek'/);
+});
+
+test("persists and locks complete Protocol versions through service-role transactions", () => {
+  assert.match(protocolLifecycleSql, /create function public\.create_protocol_draft/);
+  assert.match(protocolLifecycleSql, /insert into public\.protocols/);
+  assert.match(protocolLifecycleSql, /insert into public\.test_cases/);
+  assert.match(protocolLifecycleSql, /insert into public\.rubric_dimensions/);
+  assert.match(protocolLifecycleSql, /Rubric weights must total exactly 100/);
+  assert.match(protocolLifecycleSql, /Only the latest Protocol version can be locked/);
+  assert.match(protocolLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(protocolLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(protocolLifecycleSql, /on delete cascade/i);
 });

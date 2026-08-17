@@ -29,6 +29,8 @@ export type RubricDimension = {
 export type TestProtocol = {
   id: string;
   projectId: string;
+  researchRunId: string;
+  version: number;
   title: string;
   goal: string;
   status: ProtocolStatus;
