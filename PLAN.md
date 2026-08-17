@@ -296,3 +296,4 @@ M11 ✅ 4edacec Report 绑定当前有效 ResultAnalysis，以 GLM 组织 Resear
 M12 ✅ 8af8e4d 以 DeepSeek 动态发现社区选题、GLM 生成可编辑社区帖子，并仅从当前 Protocol 的真实图片 TestArtifact 推荐和持久化证据；选题与帖子路由血缘、重试版本、真实 E2E、typecheck、测试、build 与数据库 lint 均通过。
 M13 ✅ 85cc7a4 真实项目 routes、Application Services、Repositories 与全局导航已移除 Mock import 和 demo fallback；Sidebar 改读真实最近项目，工作流链接绑定当前 projectId，95 项测试、typecheck、build 与浏览器检查均通过。
 M14 ✅ 5f37200 完整真实跑通 Create → Research → Protocol → Lock → TestRun/Artifact → Blind Judge → Human Review → Lock/Reveal → Results → Report → Publish；保留 Judge/Report 失败审计，修复报告 ID 文案校验冲突与 Judge 并发配额问题，9 类异常路径、105 项测试、typecheck、build、浏览器交互及真实数据链验证均通过。
+M15 ✅ 6537a7d 完成 Code、Database、Security、Product Rule 与 Mock 五项最终审查；修复社区选题/帖子暴露内部 Schema 字段名的 P1，新增可重复 Secret/Client/Provider/Mock 边界审计。远端 DB lint 零错误、16 个 migration 对齐、105 项测试、typecheck、build 与浏览器检查均通过，未发现剩余 P0/P1。
