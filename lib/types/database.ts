@@ -324,6 +324,7 @@ export type ReportRow = {
   provider: AIProviderName | null;
   prompt_version: string | null;
   error_message: string | null;
+  started_at: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

@@ -148,7 +148,7 @@ function calculateProductScores(review: HumanReviewWorkspace): FinalProductScore
   }).sort((left, right) => right.finalScore - left.finalScore || left.productId.localeCompare(right.productId));
 }
 
-function calculateInputRanking(input: ResultAnalysisInput) {
+export function calculateInputRanking(input: ResultAnalysisInput) {
   return input.products.map((product) => {
     const dimensions = input.protocol.rubric.map((dimension) => ({
       dimensionId: dimension.id,

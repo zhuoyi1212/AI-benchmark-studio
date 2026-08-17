@@ -64,7 +64,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   report: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "report.v1",
+    promptVersion: "report.v2",
     reasoning: "standard",
     model: (models) => models.zhipuTextModel,
   },

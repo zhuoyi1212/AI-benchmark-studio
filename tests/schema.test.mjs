@@ -28,6 +28,8 @@ const humanReviewLifecycleUrl = new URL("../supabase/migrations/202608170012_hum
 const humanReviewLifecycleSql = await readFile(humanReviewLifecycleUrl, "utf8");
 const resultAnalysisLifecycleUrl = new URL("../supabase/migrations/202608170013_result_analysis_lifecycle.sql", import.meta.url);
 const resultAnalysisLifecycleSql = await readFile(resultAnalysisLifecycleUrl, "utf8");
+const reportLifecycleUrl = new URL("../supabase/migrations/202608170014_report_lifecycle.sql", import.meta.url);
+const reportLifecycleSql = await readFile(reportLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -232,4 +234,16 @@ test("persists signature-bound Final Result Analysis through service-role transa
   assert.match(resultAnalysisLifecycleSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(resultAnalysisLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(resultAnalysisLifecycleSql, /on delete cascade/i);
+});
+
+test("persists an evidence-linked Report lifecycle through service-role transactions", () => {
+  assert.match(reportLifecycleSql, /begin_report/);
+  assert.match(reportLifecycleSql, /start_report/);
+  assert.match(reportLifecycleSql, /complete_report/);
+  assert.match(reportLifecycleSql, /fail_report/);
+  assert.match(reportLifecycleSql, /private\.final_score_signature/);
+  assert.match(reportLifecycleSql, /insert into public\.report_artifacts/);
+  assert.match(reportLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(reportLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(reportLifecycleSql, /on delete cascade/i);
 });

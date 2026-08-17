@@ -887,6 +887,7 @@ export type Database = {
           prompt_version: string | null
           provider: string | null
           result_analysis_id: string
+          started_at: string | null
           status: string
           updated_at: string
           version: number
@@ -906,6 +907,7 @@ export type Database = {
           prompt_version?: string | null
           provider?: string | null
           result_analysis_id: string
+          started_at?: string | null
           status?: string
           updated_at?: string
           version?: number
@@ -925,6 +927,7 @@ export type Database = {
           prompt_version?: string | null
           provider?: string | null
           result_analysis_id?: string
+          started_at?: string | null
           status?: string
           updated_at?: string
           version?: number
@@ -1476,6 +1479,10 @@ export type Database = {
         }
         Returns: string
       }
+      begin_report: {
+        Args: { p_project_id: string; p_result_analysis_id: string }
+        Returns: string
+      }
       begin_result_analysis: {
         Args: { p_project_id: string; p_review_session_id: string }
         Returns: string
@@ -1504,6 +1511,10 @@ export type Database = {
           p_synthesis_provider: string
           p_synthesis_usage: Json
         }
+        Returns: undefined
+      }
+      complete_report: {
+        Args: { p_content: Json; p_report_id: string; p_usage: Json }
         Returns: undefined
       }
       complete_result_analysis: {
@@ -1553,6 +1564,10 @@ export type Database = {
         Args: { p_error_message: string; p_research_run_id: string }
         Returns: undefined
       }
+      fail_report: {
+        Args: { p_error_message: string; p_report_id: string }
+        Returns: undefined
+      }
       fail_result_analysis: {
         Args: { p_error_message: string; p_result_analysis_id: string }
         Returns: undefined
@@ -1600,6 +1615,15 @@ export type Database = {
       }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
+      }
+      start_report: {
+        Args: {
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_report_id: string
+        }
         Returns: undefined
       }
       start_result_analysis: {

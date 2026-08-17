@@ -9,6 +9,16 @@ import type { Json, ResultAnalysisRow } from "@/lib/types/database";
 const analysisColumns = "id, project_id, protocol_id, review_session_id, judge_run_id, attempt, status, final_score_signature, input_snapshot, winner_product_id, output, model, provider, prompt_version, error_message, started_at, completed_at, created_at, updated_at, input_tokens, output_tokens, latency_ms, estimated_cost";
 
 export const resultAnalysisRepository = {
+  async getById(resultAnalysisId: string): Promise<ResultAnalysisRow | null> {
+    const { data, error } = await getSupabaseServerClient()
+      .from("result_analyses")
+      .select(analysisColumns)
+      .eq("id", resultAnalysisId)
+      .maybeSingle();
+    if (error) throwRepositoryError("resultAnalysis.getById", error);
+    return data;
+  },
+
   async begin(projectId: string, reviewSessionId: string): Promise<string> {
     const { data, error } = await getSupabaseServerClient().rpc("begin_result_analysis", {
       p_project_id: projectId,
