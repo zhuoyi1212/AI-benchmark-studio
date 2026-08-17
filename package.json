@@ -37,6 +37,7 @@
     "verify:report": "node scripts/verify-report.mjs",
     "verify:publish": "node scripts/verify-publish.mjs",
     "verify:full-e2e": "node scripts/verify-full-e2e.mjs",
+    "audit:final": "node scripts/final-audit.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "db:reset": "supabase db reset --local",

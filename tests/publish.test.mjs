@@ -17,6 +17,10 @@ test("separates Content Discovery and Community Post AI runs", () => {
 });
 test("keeps dynamic ContentIdeas and real rediscovery", () => {
   assert.match(schema, /ideas: z\.array\(contentIdeaSchema\)\.min\(1\)\.max\(6\)/);
+  assert.match(schema, /Content Idea contains an internal identifier/);
+  assert.match(schema, /internalIdentifierPattern\.test\(publicCopy\)/);
+  assert.doesNotMatch(service, /humanOverrideReason:/);
+  assert.match(service, /humanReviewAdjustment:/);
   assert.match(service, /uniqueIdeasAndSingleRecommendation/); assert.match(editor, /重新发现选题/);
   assert.doesNotMatch(service + page + editor + actions, /createMockContentIdeas|mockCommunityPost|@\/lib\/mock/);
 });

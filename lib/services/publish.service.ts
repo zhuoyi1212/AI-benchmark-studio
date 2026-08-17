@@ -86,7 +86,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
       schema: contentIdeasOutputSchema,
       schemaName: "ContentIdeas",
       messages: [
-        { role: "system", content: "你是社区内容选题编辑。基于完整实验结构发现真正有信息增量、反直觉或讨论价值的观点，不要把深度报告机械缩短。只使用输入中的 Final Score、分析、Case、Judge Evidence、人工复核、Research 与真实 Artifact metadata；不得创造事实。选题数量、类型、标题与角度必须动态。relatedArtifactIds 只能引用输入中的 imageArtifacts。输出简体中文。" },
+        { role: "system", content: "你是社区内容选题编辑。基于完整实验结构发现真正有信息增量、反直觉或讨论价值的观点，不要把深度报告机械缩短。只使用输入中的 Final Score、分析、Case、Judge Evidence、人工复核、Research 与真实 Artifact metadata；不得创造事实。选题数量、类型、标题与角度必须动态。relatedArtifactIds 只能引用输入中的 imageArtifacts。用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。输出简体中文。" },
         { role: "user", content: JSON.stringify(input) },
       ],
       maxTokens: 8_000,
@@ -125,7 +125,7 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
       schema: communityPostOutputSchema,
       schemaName: "CommunityPost",
       messages: [
-        { role: "system", content: "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子，不是报告摘要，不使用夸张营销表达。结构包含 Hook、测试动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。截图只作为证据，artifactId 只能从 imageArtifacts 中选择；同一 Case 的多产品对比应连续排列。不得创造实验数据，不得输出内部 UUID。" },
+        { role: "system", content: "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子，不是报告摘要，不使用夸张营销表达。结构包含 Hook、测试动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。截图只作为证据，artifactId 只能从 imageArtifacts 中选择；同一 Case 的多产品对比应连续排列。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,
@@ -168,7 +168,7 @@ async function getPublishSource(projectId: string) {
 }
 
 function buildDiscoveryInput(source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
-  return { project: { name: source.report.projectName, intent: source.report.projectIntent }, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: source.experiment.products.map((product) => ({ productId: product.productId, scores: product.scores.map((score) => ({ testCaseId: score.testCaseId, dimensionId: score.rubricDimensionId, finalScore: score.finalScore, reason: score.reason, evidence: score.evidence, humanOverrideReason: score.humanOverrideReason })) })), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
+  return { project: { name: source.report.projectName, intent: source.report.projectIntent }, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: source.experiment.products.map((product) => ({ productId: product.productId, scores: product.scores.map((score) => ({ testCaseId: score.testCaseId, dimensionId: score.rubricDimensionId, finalScore: score.finalScore, reason: score.reason, evidence: score.evidence, humanReviewAdjustment: score.humanOverrideReason })) })), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
 }
 
 function assertIdeas(ideas: ContentIdea[], source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const text = z.string().trim().min(1);
+const internalIdentifierPattern = /(?:\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b|\b(?:blindSampleId|TestRun|artifactId|productId|testCaseId|rubricDimensionId|dimensionId|finalScoreSignature|humanOverrideReason)\b)/i;
 
 export const contentIdeaSchema = z.object({
   id: z.string().trim().min(2).max(80).regex(/^[a-z0-9][a-z0-9-]*$/),
@@ -20,6 +21,18 @@ export const contentIdeaSchema = z.object({
 
 export const contentIdeasOutputSchema = z.object({
   ideas: z.array(contentIdeaSchema).min(1).max(6),
+}).superRefine((value, context) => {
+  const publicCopy = value.ideas.flatMap((idea) => [
+    idea.title,
+    idea.type,
+    idea.angle,
+    idea.insight,
+    idea.whyInteresting,
+    ...idea.supportingEvidence,
+  ]).join("\n");
+  if (internalIdentifierPattern.test(publicCopy)) {
+    context.addIssue({ code: "custom", message: "Content Idea contains an internal identifier" });
+  }
 });
 export type ContentIdea = z.infer<typeof contentIdeaSchema>;
 
@@ -72,7 +85,7 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
   screenshotRecommendations: z.array(screenshotRecommendationSchema).min(1).max(9),
 }).superRefine((value, context) => {
   const publicCopy = [value.title, value.body, value.interactionQuestion, ...value.tags].join(" ");
-  if (/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(publicCopy)) {
+  if (internalIdentifierPattern.test(publicCopy)) {
     context.addIssue({ code: "custom", message: "Community Post contains an internal identifier" });
   }
 });
