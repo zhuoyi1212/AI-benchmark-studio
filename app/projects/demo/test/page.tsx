@@ -38,7 +38,7 @@ function TestExecution({ workspace }: { workspace: TestExecutionWorkspace }) {
   const total = protocol.testCases.length * project.products.length;
   const progress = total === 0 ? 0 : completed / total * 100;
   const upload = (run: TestRun, productName: string) => {
-    setRuns((current) => current.map((item) => item.id === run.id ? { ...item, status: "uploaded", artifacts: [{ id: `artifact-${item.id}`, fileName: `${item.productId}-${item.testCaseId}-output.pdf`, fileType: "application/pdf", fileUrl: `mock://${item.id}`, createdAt: new Date().toISOString() }] } : item));
+    setRuns((current) => current.map((item) => item.id === run.id ? { ...item, status: "uploaded", artifacts: [{ id: `artifact-${item.id}`, kind: "pdf", fileName: `${item.productId}-${item.testCaseId}-output.pdf`, fileType: "application/pdf", sizeBytes: 120000, fileUrl: `mock://${item.id}`, createdAt: new Date().toISOString() }] } : item));
     toast.success(`${productName} 测试结果已上传`, { description: "Mock 文件已记录，可随时替换。" });
   };
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); toast.success("Prompt 已复制"); } catch { toast.success("Prompt 已复制（演示）"); } };

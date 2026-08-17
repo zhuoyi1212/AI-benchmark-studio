@@ -1479,11 +1479,23 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_test_run_matrix: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
       fail_product_research: {
         Args: { p_error_message: string; p_research_run_id: string }
         Returns: undefined
       }
+      finalize_test_execution: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
       lock_protocol: { Args: { p_protocol_id: string }; Returns: undefined }
+      record_test_artifact: {
+        Args: { p_artifact: Json; p_run_metadata: Json; p_test_run_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

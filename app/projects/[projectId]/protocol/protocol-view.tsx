@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, ClipboardCheck, FileText, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GenerateProtocolAction, LockProtocolAction } from "@/app/projects/[projectId]/protocol/protocol-actions";
 import type { TestProtocol } from "@/lib/types/protocol";
 
-export function ProtocolView({ protocol, productCount }: { protocol: TestProtocol; productCount: number }) {
+export function ProtocolView({ protocol, productCount, canRegenerate }: { protocol: TestProtocol; productCount: number; canRegenerate: boolean }) {
   const [selectedRubricId, setSelectedRubricId] = useState(protocol.rubric[0]?.id ?? "");
   const selectedRubric = protocol.rubric.find((item) => item.id === selectedRubricId) ?? protocol.rubric[0];
   const totalWeight = useMemo(() => protocol.rubric.reduce((total, item) => total + item.weight, 0), [protocol.rubric]);
@@ -50,7 +52,7 @@ export function ProtocolView({ protocol, productCount }: { protocol: TestProtoco
 
       <div className="sticky bottom-5 z-20 mt-9 flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-white shadow-xl">
         <div className="hidden items-center gap-3 sm:flex">{protocol.status === "locked" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}<div><p className="text-xs font-medium">{protocol.status === "locked" ? `Protocol v${protocol.version} 已锁定` : `Protocol v${protocol.version} 锁定后不可修改`}</p><p className="text-[10px] text-slate-400">{protocol.testCases.length} Cases · {protocol.rubric.length} 评分维度</p></div></div>
-        <div className="ml-auto flex items-center gap-2"><GenerateProtocolAction projectId={protocol.projectId} regenerate />{protocol.status === "draft" && totalWeight === 100 ? <LockProtocolAction projectId={protocol.projectId} protocolId={protocol.id} testCaseCount={protocol.testCases.length} rubricCount={protocol.rubric.length} /> : protocol.status === "locked" ? <Badge variant="success"><LockKeyhole className="h-3 w-3" />已锁定</Badge> : null}</div>
+        <div className="ml-auto flex items-center gap-2">{canRegenerate && <GenerateProtocolAction projectId={protocol.projectId} regenerate />}{protocol.status === "draft" && totalWeight === 100 ? <LockProtocolAction projectId={protocol.projectId} protocolId={protocol.id} testCaseCount={protocol.testCases.length} rubricCount={protocol.rubric.length} /> : protocol.status === "locked" ? <Button size="lg" className="bg-white text-slate-950 hover:bg-slate-100" asChild><Link href={`/projects/${protocol.projectId}/test`}>进入测试执行<ArrowRight className="h-4 w-4" /></Link></Button> : null}</div>
       </div>
     </>
   );

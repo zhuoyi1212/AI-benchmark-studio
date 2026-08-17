@@ -17,7 +17,7 @@ export const mockTestRuns: TestRun[] = mockProtocol.testCases.flatMap((testCase)
       status: uploaded ? "uploaded" : "pending",
       retryCount: 0,
       manuallyEdited: false,
-      artifacts: uploaded ? [{ id: `artifact-${id}`, fileName: `${product.id}-${testCase.id}-output.pdf`, fileType: "application/pdf", fileUrl: `mock://${id}`, createdAt: "2026-08-13T08:00:00.000Z" }] : [],
+      artifacts: uploaded ? [{ id: `artifact-${id}`, kind: "pdf", fileName: `${product.id}-${testCase.id}-output.pdf`, fileType: "application/pdf", sizeBytes: 120000, fileUrl: `mock://${id}`, createdAt: "2026-08-13T08:00:00.000Z" }] : [],
     } satisfies TestRun;
   }),
 );

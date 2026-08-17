@@ -36,7 +36,7 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
 
       {versionCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {versionCount} 个 Protocol 版本；当前展示最新版本，历史锁定版本未被覆盖。</p>}
 
-      {protocol ? <ProtocolView protocol={protocol} productCount={research.project.products.length} /> : (
+      {protocol ? <ProtocolView protocol={protocol} productCount={research.project.products.length} canRegenerate={["research_ready", "protocol_draft", "protocol_locked"].includes(research.project.status)} /> : (
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center shadow-none">
             <div className="grid h-11 w-11 place-items-center rounded-lg bg-blue-50 text-blue-700"><Sparkles className="h-5 w-5" /></div>

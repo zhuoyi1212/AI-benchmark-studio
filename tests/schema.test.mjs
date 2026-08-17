@@ -16,6 +16,8 @@ const neutralResearchUrl = new URL("../supabase/migrations/202608170006_provider
 const neutralResearchSql = await readFile(neutralResearchUrl, "utf8");
 const protocolLifecycleUrl = new URL("../supabase/migrations/202608170007_protocol_lifecycle.sql", import.meta.url);
 const protocolLifecycleSql = await readFile(protocolLifecycleUrl, "utf8");
+const testExecutionLifecycleUrl = new URL("../supabase/migrations/202608170008_test_execution_lifecycle.sql", import.meta.url);
+const testExecutionLifecycleSql = await readFile(testExecutionLifecycleUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -158,4 +160,13 @@ test("persists and locks complete Protocol versions through service-role transac
   assert.match(protocolLifecycleSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(protocolLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(protocolLifecycleSql, /on delete cascade/i);
+});
+
+test("derives TestRuns and stores immutable raw Artifacts through service-role transactions", () => {
+  assert.match(testExecutionLifecycleSql, /ensure_test_run_matrix/);
+  assert.match(testExecutionLifecycleSql, /Product x TestCase/);
+  assert.match(testExecutionLifecycleSql, /record_test_artifact/);
+  assert.match(testExecutionLifecycleSql, /finalize_test_execution/);
+  assert.match(testExecutionLifecycleSql, /ready_for_review/);
+  assert.doesNotMatch(testExecutionLifecycleSql, /on delete cascade/i);
 });
