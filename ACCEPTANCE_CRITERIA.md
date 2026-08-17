@@ -173,7 +173,7 @@ Reveal 只能发生在 locked 后，且不改变已锁定 Final Score。
 
 停止前确认：
 
-- `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY` 不在前端或 Client Bundle
+- `ZAI_API_KEY`、`DEEPSEEK_API_KEY` 不在前端或 Client Bundle
 - 页面和 Application Service 不依赖具体 Provider 或模型名
 - AI Provider 失败不跨厂商静默 fallback，也不回退 Mock
 - Service Role Key 不在前端

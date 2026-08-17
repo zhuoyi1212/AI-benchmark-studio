@@ -10,6 +10,10 @@ const judgeHardeningUrl = new URL("../supabase/migrations/202608170003_harden_ju
 const judgeHardeningSql = await readFile(judgeHardeningUrl, "utf8");
 const projectCreationUrl = new URL("../supabase/migrations/202608170004_create_project_transaction.sql", import.meta.url);
 const projectCreationSql = await readFile(projectCreationUrl, "utf8");
+const researchLifecycleUrl = new URL("../supabase/migrations/202608170005_research_run_lifecycle.sql", import.meta.url);
+const researchLifecycleSql = await readFile(researchLifecycleUrl, "utf8");
+const neutralResearchUrl = new URL("../supabase/migrations/202608170006_provider_neutral_research_completion.sql", import.meta.url);
+const neutralResearchSql = await readFile(neutralResearchUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -128,4 +132,16 @@ test("creates a Project and its 1-3 Products atomically", () => {
   assert.match(projectCreationSql, /insert into public\.project_products/);
   assert.match(projectCreationSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(projectCreationSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+});
+
+test("enforces traceable versioned ResearchRun lifecycle", () => {
+  assert.match(researchLifecycleSql, /product_research_sources_nonempty/);
+  assert.match(researchLifecycleSql, /begin_product_research/);
+  assert.match(researchLifecycleSql, /complete_product_research/);
+  assert.match(researchLifecycleSql, /fail_product_research/);
+  assert.match(researchLifecycleSql, /search_provider/);
+  assert.match(researchLifecycleSql, /comparability_provider/);
+  assert.doesNotMatch(researchLifecycleSql, /on delete cascade/i);
+  assert.match(neutralResearchSql, /create or replace function public\.complete_product_research/);
+  assert.doesNotMatch(neutralResearchSql, /p_search_provider <> 'zhipu'|p_comparability_provider <> 'deepseek'/);
 });

@@ -1,19 +1,26 @@
 import "server-only";
 
 import type { ZodType } from "zod";
+import { AIValidationError } from "@/lib/ai/errors";
 import { runOCR, runResearchSearch, runStructuredAITask, selectJudgeTaskForCase } from "@/lib/ai/router";
 import type { JudgeArtifactDescriptor, OCRRequest, StructuredTaskRequest, WebSearchRequest } from "@/lib/ai/types";
 
 type ProductResearchRequest<Schema extends ZodType> = StructuredTaskRequest<Schema> & {
   searches: WebSearchRequest[];
+  allowedDomains?: string[];
 };
 
-async function researchProducts<Schema extends ZodType>({ searches, ...request }: ProductResearchRequest<Schema>) {
+async function researchProducts<Schema extends ZodType>({ searches, allowedDomains, ...request }: ProductResearchRequest<Schema>) {
   if (searches.length === 0) throw new Error("Product Research requires at least one source search");
   const searchResults = await Promise.all(searches.map((search) => runResearchSearch(search)));
-  const sources = [...new Map(
+  const retrievedSources = [...new Map(
     searchResults.flatMap((result) => result.sources).map((source) => [source.url, source]),
   ).values()];
+  const sources = retrievedSources
+    .filter((source) => !allowedDomains?.length || allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))
+    .slice(0, 18)
+    .map((source) => ({ ...source, snippet: source.snippet.slice(0, 3000) }));
+  if (sources.length === 0) throw new AIValidationError("research", "nonEmptyTraceableSearchSources");
   const synthesis = await runStructuredAITask("research", {
     ...request,
     messages: [
@@ -24,7 +31,17 @@ async function researchProducts<Schema extends ZodType>({ searches, ...request }
       },
     ],
   });
-  return { ...synthesis, sources };
+  return { ...synthesis, sources, searchRoute: searchResults[0]!.route };
+}
+
+function isDomainOrSubdomain(value: string, allowedDomain: string) {
+  try {
+    const hostname = new URL(value).hostname.replace(/^www\./, "").toLowerCase();
+    const normalizedAllowed = allowedDomain.replace(/^www\./, "").toLowerCase();
+    return hostname === normalizedAllowed || hostname.endsWith(`.${normalizedAllowed}`);
+  } catch {
+    return false;
+  }
 }
 
 export const aiTaskService = {

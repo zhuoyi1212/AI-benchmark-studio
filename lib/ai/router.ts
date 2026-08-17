@@ -35,7 +35,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await provider.generateStructured({ model: route.model, messages, maxTokens: request.maxTokens });
+      const response = await provider.generateStructured({ model: route.model, messages, maxTokens: request.maxTokens, reasoning: route.reasoning });
       const json = parseJson(response.content, route.task, request.schemaName);
       const validated = request.schema.safeParse(json);
       if (!validated.success) throw new AIValidationError(route.task, request.schemaName);

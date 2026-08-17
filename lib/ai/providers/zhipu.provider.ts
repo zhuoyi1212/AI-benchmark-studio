@@ -7,7 +7,7 @@ import { postProviderJson } from "@/lib/ai/providers/http";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import type { ProviderCompletionRequest, ProviderOCRRequest, ProviderWebSearchRequest } from "@/lib/ai/types";
 
-const zhipuBaseUrl = "https://open.bigmodel.cn/api/paas/v4";
+const zhipuBaseUrl = "https://api.z.ai/api/paas/v4";
 
 const searchEnvelopeSchema = z.object({
   search_result: z.array(z.object({
@@ -40,7 +40,7 @@ export class ZhipuProvider implements AIProvider {
       messages: request.messages,
       response_format: { type: "json_object" },
       max_tokens: request.maxTokens ?? 16_384,
-      thinking: { type: "enabled" },
+      thinking: { type: request.reasoning === "high" ? "enabled" : "disabled" },
       stream: false,
     });
 
@@ -52,11 +52,9 @@ export class ZhipuProvider implements AIProvider {
     const { data } = await postProviderJson(this.name, `${zhipuBaseUrl}/web_search`, this.apiKey, {
       search_query: request.query,
       search_engine: request.engine,
-      search_intent: true,
       count: request.count ?? 10,
       search_domain_filter: request.domain,
       search_recency_filter: "noLimit",
-      content_size: "high",
     });
     const parsed = searchEnvelopeSchema.safeParse(data);
     if (!parsed.success) throw new AIProviderError(this.name, "zhipu returned an invalid web search response");

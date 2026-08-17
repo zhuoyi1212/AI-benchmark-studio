@@ -288,7 +288,7 @@ AI 调用失败不能破坏已有实验记录，也不能 silent fallback 到 Mo
 
 - Secret 不进前端
 - 所有 AI Provider 调用与凭据 server-side
-- Client Bundle 不得包含 `ZHIPU_API_KEY` 或 `DEEPSEEK_API_KEY`
+- Client Bundle 不得包含 `ZAI_API_KEY` 或 `DEEPSEEK_API_KEY`
 - Service Role server-only
 - Blind Mapping reveal 前不可读
 - Storage 按项目控制

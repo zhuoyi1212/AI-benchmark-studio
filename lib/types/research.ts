@@ -2,6 +2,9 @@ export type ResearchSource = {
   title: string;
   url: string;
   sourceType: "official_website" | "documentation" | "pricing" | "help_center" | "blog" | "other";
+  snippet: string;
+  siteName: string | null;
+  publishedAt: string | null;
 };
 
 export type ProductResearch = {
@@ -35,6 +38,8 @@ export type ComparabilityResult = {
 
 export type ResearchResponse = {
   projectId: string;
+  researchRunId: string;
+  version: number;
   products: ProductResearch[];
   comparability: ComparabilityResult;
   generatedAt: string;

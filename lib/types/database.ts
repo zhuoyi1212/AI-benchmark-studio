@@ -77,6 +77,16 @@ export type ResearchRunRow = {
   output_tokens: number | null;
   latency_ms: number | null;
   estimated_cost: number | null;
+  search_provider: AIProviderName | null;
+  search_model: string | null;
+  search_prompt_version: string | null;
+  comparability_provider: AIProviderName | null;
+  comparability_model: string | null;
+  comparability_prompt_version: string | null;
+  comparability_input_tokens: number | null;
+  comparability_output_tokens: number | null;
+  comparability_latency_ms: number | null;
+  comparability_estimated_cost: number | null;
 };
 
 export type ProductResearchRow = {

@@ -35,7 +35,7 @@ test("new project UI submits named product inputs without mock navigation", () =
 test("project list and research workspace read persisted service data", () => {
   assert.match(projectList, /await listProjectSummaries\(\)/);
   assert.match(projectList, /await connection\(\)/);
-  assert.match(researchPage, /await getProjectSummary\(projectId\)/);
+  assert.match(researchPage, /await getResearchWorkspace\(projectId\)/);
   assert.match(service, /listProductRows/);
   assert.match(service, /listProgressRows/);
   assert.doesNotMatch(projectList + researchPage, /@\/lib\/mock|"demo"/);

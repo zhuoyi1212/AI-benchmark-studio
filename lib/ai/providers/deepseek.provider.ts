@@ -13,13 +13,14 @@ export class DeepSeekProvider implements AIProvider {
   constructor(private readonly apiKey: string) {}
 
   async generateStructured(request: ProviderCompletionRequest) {
+    const highReasoning = request.reasoning === "high";
     const { data, latencyMs } = await postProviderJson(this.name, deepSeekChatEndpoint, this.apiKey, {
       model: request.model,
       messages: request.messages,
       response_format: { type: "json_object" },
       max_tokens: request.maxTokens ?? 16_384,
-      thinking: { type: "enabled" },
-      reasoning_effort: "high",
+      thinking: { type: highReasoning ? "enabled" : "disabled" },
+      ...(highReasoning ? { reasoning_effort: "high" } : {}),
       stream: false,
     });
 

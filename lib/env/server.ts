@@ -55,16 +55,16 @@ export function getAIModelEnvironment(): AIModelEnvironment {
   }
 
   cachedAIModels = {
-    zhipuTextModel: process.env.ZHIPU_TEXT_MODEL?.trim() || "glm-5.2",
-    zhipuVisionModel: process.env.ZHIPU_VISION_MODEL?.trim() || "glm-4.6v",
-    zhipuOcrModel: process.env.ZHIPU_OCR_MODEL?.trim() || "glm-ocr",
+    zhipuTextModel: process.env.ZAI_TEXT_MODEL?.trim() || "glm-5.2",
+    zhipuVisionModel: process.env.ZAI_VISION_MODEL?.trim() || "glm-4.6v",
+    zhipuOcrModel: process.env.ZAI_OCR_MODEL?.trim() || "glm-ocr",
     deepSeekReasoningModel,
   };
   return cachedAIModels;
 }
 
 export function getAIProviderKey(provider: AIProviderName): string {
-  const variableName = provider === "zhipu" ? "ZHIPU_API_KEY" : "DEEPSEEK_API_KEY";
+  const variableName = provider === "zhipu" ? "ZAI_API_KEY" : "DEEPSEEK_API_KEY";
   const value = process.env[variableName]?.trim();
   if (!value) throw new AIConfigurationError(`Missing required server environment variable: ${variableName}`);
   return value;

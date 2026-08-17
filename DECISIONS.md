@@ -35,7 +35,7 @@
 31. 继续使用 Next.js + TypeScript + Tailwind + shadcn。
 32. 后端使用 Supabase Postgres + Storage；Auth 后续接入。
 33. AI 能力通过 Provider-neutral Task Service 与集中 Router 接入；第一版供应商为智谱 AI / GLM 与 DeepSeek，不使用 OpenAI 或 Kimi。
-34. 所有 Provider 调用和 `ZHIPU_API_KEY`、`DEEPSEEK_API_KEY` 只在 server-side；页面与业务 Service 不知道供应商和模型名。
+34. 所有 Provider 调用和 `ZAI_API_KEY`、`DEEPSEEK_API_KEY` 只在 server-side；页面与业务 Service 不知道供应商和模型名。
 35. 暂不使用 LangChain/LangGraph。
 36. 暂不使用 Vector DB。
 37. 不做过度架构，代码应适合“产品经理 + AI Coding”维护。

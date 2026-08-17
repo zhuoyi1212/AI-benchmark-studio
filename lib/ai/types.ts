@@ -18,6 +18,7 @@ export const aiTaskTypes = [
 export type AITaskType = (typeof aiTaskTypes)[number];
 export type AIProviderName = "zhipu" | "deepseek";
 export type AICapability = "structured_text" | "multimodal" | "web_search" | "ocr";
+export type AIReasoningMode = "standard" | "high";
 
 export type AITextContent = { type: "text"; text: string };
 export type AIImageContent = { type: "image_url"; image_url: { url: string } };
@@ -35,6 +36,7 @@ export type AITaskRoute = {
   model: string;
   capability: AICapability;
   promptVersion: string;
+  reasoning: AIReasoningMode;
 };
 
 export type AIUsage = {
@@ -48,6 +50,7 @@ export type ProviderCompletionRequest = {
   model: string;
   messages: AIMessage[];
   maxTokens?: number;
+  reasoning: AIReasoningMode;
 };
 
 export type ProviderCompletionResponse = {

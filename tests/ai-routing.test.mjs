@@ -23,6 +23,8 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /judge_multimodal:[\s\S]*provider: "zhipu"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
+  assert.match(config, /research:[\s\S]*reasoning: "standard"/);
+  assert.match(config, /protocol:[\s\S]*reasoning: "high"/);
   assert.doesNotMatch(taskService, /glm-|deepseek-v/);
   assert.match(taskService, /Product Research requires at least one source search/);
   assert.match(taskService, /Use only these retrieved sources for product facts/);
@@ -41,6 +43,7 @@ test("normalizes and validates structured output without cross-provider fallback
   assert.doesNotMatch(router, /fallback|mock/i);
   assert.match(deepSeek, /reasoning_content is intentionally ignored/);
   assert.match(zhipu, /thinking fields are intentionally discarded/);
+  assert.match(zhipu, /request\.reasoning === "high"/);
 });
 
 test("uses current default models and rejects retired DeepSeek aliases", () => {
@@ -51,10 +54,16 @@ test("uses current default models and rejects retired DeepSeek aliases", () => {
   assert.match(serverEnv, /\["deepseek-chat", "deepseek-reasoner"\]/);
 });
 
+test("uses current Z.AI endpoints and Web Search engine", () => {
+  assert.match(zhipu, /https:\/\/api\.z\.ai\/api\/paas\/v4/);
+  assert.match(config, /research_search:[\s\S]*"search-prime"/);
+  assert.doesNotMatch(zhipu, /open\.bigmodel\.cn|search_intent|content_size/);
+});
+
 test("keeps provider credentials server-only", () => {
-  assert.match(envExample, /^ZHIPU_API_KEY=$/m);
+  assert.match(envExample, /^ZAI_API_KEY=$/m);
   assert.match(envExample, /^DEEPSEEK_API_KEY=$/m);
-  assert.doesNotMatch(envExample, /^NEXT_PUBLIC_.*(?:ZHIPU|DEEPSEEK)/m);
+  assert.doesNotMatch(envExample, /^NEXT_PUBLIC_.*(?:ZAI|ZHIPU|DEEPSEEK)/m);
   assert.match(serverEnv, /^import "server-only";/);
   assert.match(deepSeek, /^import "server-only";/);
   assert.match(zhipu, /^import "server-only";/);

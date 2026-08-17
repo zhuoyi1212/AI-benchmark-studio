@@ -917,6 +917,13 @@ export type Database = {
       research_runs: {
         Row: {
           comparability: Json | null
+          comparability_estimated_cost: number | null
+          comparability_input_tokens: number | null
+          comparability_latency_ms: number | null
+          comparability_model: string | null
+          comparability_output_tokens: number | null
+          comparability_prompt_version: string | null
+          comparability_provider: string | null
           completed_at: string | null
           created_at: string
           error_message: string | null
@@ -931,6 +938,9 @@ export type Database = {
           project_id: string
           prompt_version: string | null
           provider: string | null
+          search_model: string | null
+          search_prompt_version: string | null
+          search_provider: string | null
           started_at: string | null
           status: string
           updated_at: string
@@ -938,6 +948,13 @@ export type Database = {
         }
         Insert: {
           comparability?: Json | null
+          comparability_estimated_cost?: number | null
+          comparability_input_tokens?: number | null
+          comparability_latency_ms?: number | null
+          comparability_model?: string | null
+          comparability_output_tokens?: number | null
+          comparability_prompt_version?: string | null
+          comparability_provider?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
@@ -952,6 +969,9 @@ export type Database = {
           project_id: string
           prompt_version?: string | null
           provider?: string | null
+          search_model?: string | null
+          search_prompt_version?: string | null
+          search_provider?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -959,6 +979,13 @@ export type Database = {
         }
         Update: {
           comparability?: Json | null
+          comparability_estimated_cost?: number | null
+          comparability_input_tokens?: number | null
+          comparability_latency_ms?: number | null
+          comparability_model?: string | null
+          comparability_output_tokens?: number | null
+          comparability_prompt_version?: string | null
+          comparability_provider?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
@@ -973,6 +1000,9 @@ export type Database = {
           project_id?: string
           prompt_version?: string | null
           provider?: string | null
+          search_model?: string | null
+          search_prompt_version?: string | null
+          search_provider?: string | null
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -1376,6 +1406,32 @@ export type Database = {
       }
     }
     Functions: {
+      begin_product_research: {
+        Args: {
+          p_input_signature: string
+          p_input_snapshot: Json
+          p_project_id: string
+        }
+        Returns: string
+      }
+      complete_product_research: {
+        Args: {
+          p_comparability: Json
+          p_comparability_model: string
+          p_comparability_prompt_version: string
+          p_comparability_provider: string
+          p_comparability_usage: Json
+          p_research_run_id: string
+          p_search_model: string
+          p_search_prompt_version: string
+          p_search_provider: string
+          p_synthesis_model: string
+          p_synthesis_prompt_version: string
+          p_synthesis_provider: string
+          p_synthesis_usage: Json
+        }
+        Returns: undefined
+      }
       create_benchmark_project: {
         Args: {
           p_intent: string
@@ -1384,6 +1440,10 @@ export type Database = {
           p_products: Json
         }
         Returns: string
+      }
+      fail_product_research: {
+        Args: { p_error_message: string; p_research_run_id: string }
+        Returns: undefined
       }
     }
     Enums: {
