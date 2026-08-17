@@ -31,6 +31,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
     },
     ...request.messages,
   ];
+  await request.beforeExecute?.(route);
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

@@ -103,7 +103,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: "你是严谨的 AI 产品实验设计师。只基于给定 Project Intent、已保存 ProductResearch 与 Comparability 设计公平且可执行的标准化横向测试。TestCase 和 Rubric 必须根据产品类别动态生成，不能套用固定 AI PPT 模板。不要搜索互联网，不要引用尚未存在的测试结果。输出简体中文。",
+          content: "你是严谨的 AI 产品实验设计师。只基于给定 Project Intent、已保存 ProductResearch 与 Comparability 设计公平且可执行的标准化横向测试。TestCase 和 Rubric 必须根据产品类别动态生成，不能套用固定 AI PPT 模板。Protocol 标题、目标、规则、TestCase、Prompt 与 Rubric 中不得出现任何被测产品名称或品牌，以保证后续 Blind Review。不要搜索互联网，不要引用尚未存在的测试结果。输出简体中文。",
         },
         {
           role: "user",

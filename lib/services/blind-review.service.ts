@@ -25,6 +25,7 @@ export async function getBlindReviewWorkspace(projectId: string): Promise<BlindR
   const protocol = protocolWorkspace?.protocol;
   if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
   try {
+    await blindReviewRepository.assertProtocolSafe(projectId, protocol.id);
     await blindReviewRepository.initialize(projectId, protocol.id);
     const samples = await blindReviewRepository.listSamples(protocol.id);
     return {

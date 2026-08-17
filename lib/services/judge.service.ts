@@ -1,0 +1,388 @@
+import "server-only";
+
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
+import { judgeCaseOutputSchema, type JudgeCaseScoreOutput } from "@/lib/ai/schemas/judge.schemas";
+import { aiTaskService } from "@/lib/ai/task-service";
+import type { AIMessageContent, JudgeArtifactDescriptor } from "@/lib/ai/types";
+import { judgeRepository, type JudgeCaseInputRow } from "@/lib/repositories/judge.repository";
+import { RepositoryError } from "@/lib/repositories/repository-error";
+import { protocolsRepository } from "@/lib/repositories/protocols.repository";
+import { createInputSignature } from "@/lib/signatures";
+import { BlindReviewError, getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
+import type { JudgeCaseRunRow, JudgeRunRow, JudgeScoreRow, RubricDimensionRow, TestCaseRow } from "@/lib/types/database";
+
+const storedTextListSchema = z.array(z.string().trim().min(1));
+const storedRulesSchema = z.array(z.object({ id: z.string(), text: z.string().trim().min(1) }));
+const storedScoringStandardSchema = z.object({
+  excellent: z.string().trim().min(1),
+  good: z.string().trim().min(1),
+  acceptable: z.string().trim().min(1),
+  poor: z.string().trim().min(1),
+});
+const storedEvidenceSchema = z.array(z.string().trim().min(1));
+const maxTextArtifactCharacters = 500_000;
+
+type JudgeTestCase = {
+  id: string;
+  position: number;
+  title: string;
+  objective: string;
+  prompt: string;
+  inputDescription: string | null;
+  observationFocus: string[];
+  executionRules: string[];
+};
+
+type JudgeRubric = {
+  id: string;
+  position: number;
+  name: string;
+  weight: number;
+  description: string | null;
+  scoringStandard: z.infer<typeof storedScoringStandardSchema>;
+};
+
+export type JudgeReviewWorkspace = {
+  projectId: string;
+  protocolId: string;
+  protocolVersion: number;
+  samples: Array<{ sampleId: string; label: string }>;
+  testCases: JudgeTestCase[];
+  rubric: JudgeRubric[];
+  attemptCount: number;
+  latestRun: {
+    id: string;
+    attempt: number;
+    status: JudgeRunRow["status"];
+    errorMessage: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    caseRuns: Array<{
+      id: string;
+      testCaseId: string;
+      status: JudgeCaseRunRow["status"];
+      provider: JudgeCaseRunRow["provider"];
+      model: string;
+      promptVersion: string;
+      errorMessage: string | null;
+    }>;
+    scores: Array<{
+      id: string;
+      testCaseId: string;
+      blindSampleId: string;
+      rubricDimensionId: string;
+      aiScore: number;
+      reason: string;
+      evidence: string[];
+      confidence: number;
+      model: string;
+      promptVersion: string;
+    }>;
+  } | null;
+};
+
+export class JudgeExecutionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JudgeExecutionError";
+  }
+}
+
+export async function getJudgeReviewWorkspace(projectId: string): Promise<JudgeReviewWorkspace | null> {
+  const context = await loadJudgeContext(projectId);
+  if (!context) return null;
+  const runs = await judgeRepository.listRuns(context.protocolId);
+  const latest = runs[0] ?? null;
+  const [caseRuns, scores] = latest
+    ? await Promise.all([judgeRepository.listCaseRuns(latest.id), judgeRepository.listScores(latest.id)])
+    : [[], []];
+  return {
+    projectId,
+    protocolId: context.protocolId,
+    protocolVersion: context.protocolVersion,
+    samples: context.samples,
+    testCases: context.testCases,
+    rubric: context.rubric,
+    attemptCount: runs.length,
+    latestRun: latest ? mapRun(latest, caseRuns, scores) : null,
+  };
+}
+
+export async function runBlindJudge(projectId: string): Promise<string> {
+  const context = await loadJudgeContext(projectId);
+  if (!context) throw new JudgeExecutionError("Blind Review 尚未就绪。");
+  let judgeRunId: string | null = null;
+  try {
+    judgeRunId = await judgeRepository.begin(projectId, context.protocolId);
+    const persistedRun = (await judgeRepository.listRuns(context.protocolId)).find((run) => run.id === judgeRunId);
+    if (persistedRun?.status === "completed") return judgeRunId;
+    if (!persistedRun || persistedRun.status !== "running") throw new RepositoryError("judge.requireRunning", { message: "JudgeRun did not enter running state" });
+
+    const outcomes = await Promise.allSettled(
+      context.testCases.map((testCase) => executeJudgeCase(judgeRunId!, context, testCase)),
+    );
+    const failure = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+    if (failure) throw failure.reason;
+    await judgeRepository.complete(judgeRunId);
+    return judgeRunId;
+  } catch (error) {
+    if (judgeRunId) {
+      try {
+        await judgeRepository.fail(judgeRunId, safeFailureMessage(error));
+      } catch {
+        // Keep the original execution failure; persisted running state remains auditable for recovery.
+      }
+    }
+    if (error instanceof JudgeExecutionError) throw error;
+    throw new JudgeExecutionError(toUserFacingError(error));
+  }
+}
+
+async function executeJudgeCase(
+  judgeRunId: string,
+  context: NonNullable<Awaited<ReturnType<typeof loadJudgeContext>>>,
+  testCase: JudgeTestCase,
+) {
+  const inputs = await judgeRepository.listCaseInputs(judgeRunId, testCase.id);
+  assertCompleteSampleInputs(inputs, context.samples);
+  const descriptors = inputs.map((input): JudgeArtifactDescriptor => ({
+    id: input.artifact_id,
+    testCaseId: testCase.id,
+    mimeType: input.mime_type,
+  }));
+  const inputSignature = createInputSignature({
+    protocolId: context.protocolId,
+    testCase,
+    rubric: context.rubric,
+    samples: context.samples,
+    artifacts: inputs.map((input) => ({
+      blindSampleId: input.blind_sample_id,
+      artifactId: input.artifact_id,
+      mimeType: input.mime_type,
+      sizeBytes: input.size_bytes,
+      sha256: input.sha256,
+    })),
+  });
+  const content = await buildJudgeContent(context, testCase, inputs);
+  let judgeCaseRunId: string | null = null;
+  const result = await aiTaskService.judgeSamples(testCase.id, descriptors, {
+    schema: judgeCaseOutputSchema,
+    schemaName: "JudgeCaseScores",
+    messages: [
+      {
+        role: "system",
+        content: "你是严格的 Blind AI Judge。你只能使用匿名 Sample、Locked Protocol、TestCase、Rubric 与原始 Artifact 评分。不得猜测产品身份，不得使用品牌先验，不得改变 Rubric。每条 Evidence 必须引用给定 Artifact ID，并指出可核查的页面、段落、图表或原文。输出简体中文。",
+      },
+      { role: "user", content },
+    ],
+    maxTokens: 12_000,
+    maxAttempts: 2,
+    beforeExecute: async (route) => {
+      judgeCaseRunId = await judgeRepository.beginCase(judgeRunId, testCase.id, route, inputSignature);
+    },
+  });
+  if (!judgeCaseRunId) throw new JudgeExecutionError("JudgeCaseRun 未正确启动。");
+  assertExactScoreMatrix(result.data.scores, context.samples, context.rubric);
+  await judgeRepository.completeCase(judgeCaseRunId, result.data.scores, result.usage);
+}
+
+async function loadJudgeContext(projectId: string) {
+  let blind;
+  try {
+    blind = await getBlindReviewWorkspace(projectId);
+  } catch (error) {
+    if (error instanceof BlindReviewError) throw new JudgeExecutionError(error.message);
+    throw error;
+  }
+  if (!blind) return null;
+  const protocols = await protocolsRepository.listByProject(projectId);
+  const protocol = protocols[0];
+  if (!protocol || protocol.id !== blind.protocolId || protocol.status !== "locked") return null;
+  const [testCaseRows, rubricRows] = await Promise.all([
+    protocolsRepository.listTestCases(protocol.id),
+    protocolsRepository.listRubric(protocol.id),
+  ]);
+  const rules = storedRulesSchema.parse(protocol.rules);
+  return {
+    projectId,
+    protocolId: protocol.id,
+    protocolVersion: protocol.version,
+    rules,
+    samples: blind.samples,
+    testCases: testCaseRows.map(mapTestCase),
+    rubric: rubricRows.map(mapRubric),
+  };
+}
+
+async function buildJudgeContent(
+  context: NonNullable<Awaited<ReturnType<typeof loadJudgeContext>>>,
+  testCase: JudgeTestCase,
+  inputs: JudgeCaseInputRow[],
+): Promise<AIMessageContent> {
+  const prepared = await Promise.all(inputs.map(prepareArtifact));
+  const instruction = {
+    lockedProtocol: {
+      id: context.protocolId,
+      version: context.protocolVersion,
+      rules: context.rules,
+    },
+    testCase,
+    rubricDimensions: context.rubric,
+    blindSamples: context.samples,
+    requiredOutput: {
+      oneScorePerSampleAndRubricDimension: true,
+      exactScoreCount: context.samples.length * context.rubric.length,
+      aiScoreRange: "0-10, one decimal",
+      confidenceRange: "0-1",
+      evidenceMustReferenceArtifactId: true,
+    },
+  };
+  if (prepared.every((artifact) => artifact.mimeType === "text/plain")) {
+    return JSON.stringify({
+      ...instruction,
+      rawArtifacts: prepared.map((artifact) => ({
+        blindSampleId: artifact.blindSampleId,
+        sampleLabel: artifact.sampleLabel,
+        artifactId: artifact.artifactId,
+        mimeType: artifact.mimeType,
+        sizeBytes: artifact.sizeBytes,
+        sha256: artifact.sha256,
+        integrityVerified: true,
+        content: artifact.text,
+      })),
+    });
+  }
+
+  const content: Exclude<AIMessageContent, string> = [{
+    type: "text",
+    text: `${JSON.stringify(instruction)}\n下面按 Sample 顺序提供完整原始 Artifact。`,
+  }];
+  for (const artifact of prepared) {
+    content.push({
+      type: "text",
+      text: `Blind Sample: ${artifact.sampleLabel}; Artifact ID: ${artifact.artifactId}; MIME: ${artifact.mimeType}; Size: ${artifact.sizeBytes} bytes; SHA-256: ${artifact.sha256}; Integrity verified by server.`,
+    });
+    if (artifact.mimeType === "text/plain") {
+      content.push({ type: "text", text: artifact.text! });
+    } else if (artifact.mimeType.startsWith("image/")) {
+      content.push({ type: "image_url", image_url: { url: artifact.url! } });
+    } else {
+      content.push({ type: "file_url", file_url: { url: artifact.url! } });
+    }
+  }
+  return content;
+}
+
+async function prepareArtifact(input: JudgeCaseInputRow) {
+  const url = await judgeRepository.createSignedArtifactUrl(input.storage_path);
+  if (input.mime_type !== "text/plain") {
+    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url, text: null };
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new JudgeExecutionError("无法读取原始文本 Artifact。");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length !== input.size_bytes || createHash("sha256").update(bytes).digest("hex") !== input.sha256) {
+    throw new JudgeExecutionError("原始文本 Artifact 完整性校验失败。");
+  }
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new JudgeExecutionError("原始文本 Artifact 不是有效 UTF-8。");
+  }
+  if (text.length > maxTextArtifactCharacters) throw new JudgeExecutionError("单个文本 Artifact 超出当前 Judge 处理上限。");
+  return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url: null, text };
+}
+
+function assertCompleteSampleInputs(inputs: JudgeCaseInputRow[], samples: Array<{ sampleId: string; label: string }>) {
+  if (inputs.length === 0) throw new JudgeExecutionError("TestCase 没有可评分的原始 Artifact。");
+  const inputSamples = new Set(inputs.map((input) => input.blind_sample_id));
+  if (samples.some((sample) => !inputSamples.has(sample.sampleId))) {
+    throw new JudgeExecutionError("TestCase 的匿名 Sample Artifact 矩阵不完整。");
+  }
+}
+
+function assertExactScoreMatrix(
+  scores: JudgeCaseScoreOutput[],
+  samples: Array<{ sampleId: string }>,
+  rubric: JudgeRubric[],
+) {
+  const expected = new Set(samples.flatMap((sample) => rubric.map((dimension) => `${sample.sampleId}:${dimension.id}`)));
+  const actual = scores.map((score) => `${score.blindSampleId}:${score.rubricDimensionId}`);
+  if (actual.length !== expected.size || new Set(actual).size !== expected.size || actual.some((key) => !expected.has(key))) {
+    throw new AIValidationError("judge", "exactSampleByRubricScoreMatrix");
+  }
+}
+
+function mapTestCase(row: TestCaseRow): JudgeTestCase {
+  return {
+    id: row.id,
+    position: row.position,
+    title: row.title,
+    objective: row.objective,
+    prompt: row.prompt,
+    inputDescription: row.input_description,
+    observationFocus: storedTextListSchema.parse(row.observation_focus),
+    executionRules: storedTextListSchema.parse(row.execution_rules),
+  };
+}
+
+function mapRubric(row: RubricDimensionRow): JudgeRubric {
+  return {
+    id: row.id,
+    position: row.position,
+    name: row.name,
+    weight: Number(row.weight),
+    description: row.description,
+    scoringStandard: storedScoringStandardSchema.parse(row.scoring_standard),
+  };
+}
+
+function mapRun(run: JudgeRunRow, caseRuns: JudgeCaseRunRow[], scores: JudgeScoreRow[]) {
+  return {
+    id: run.id,
+    attempt: run.attempt,
+    status: run.status,
+    errorMessage: run.error_message,
+    startedAt: run.started_at,
+    completedAt: run.completed_at,
+    caseRuns: caseRuns.map((caseRun) => ({
+      id: caseRun.id,
+      testCaseId: caseRun.test_case_id,
+      status: caseRun.status,
+      provider: caseRun.provider,
+      model: caseRun.model,
+      promptVersion: caseRun.prompt_version,
+      errorMessage: caseRun.error_message,
+    })),
+    scores: scores.map((score) => ({
+      id: score.id,
+      testCaseId: score.test_case_id,
+      blindSampleId: score.blind_sample_id,
+      rubricDimensionId: score.rubric_dimension_id,
+      aiScore: Number(score.ai_score),
+      reason: score.reason,
+      evidence: storedEvidenceSchema.parse(score.evidence),
+      confidence: Number(score.confidence),
+      model: score.model,
+      promptVersion: score.prompt_version,
+    })),
+  };
+}
+
+function safeFailureMessage(error: unknown) {
+  if (error instanceof AIValidationError) return "AI Judge structured output validation failed";
+  if (error instanceof AIProviderError) return "AI Provider request failed";
+  if (error instanceof RepositoryError) return `Judge persistence failed at ${error.operation}`;
+  if (error instanceof JudgeExecutionError) return error.message;
+  return "AI Judge execution failed";
+}
+
+function toUserFacingError(error: unknown) {
+  if (error instanceof AIValidationError) return "AI Judge 返回结果未通过评分矩阵校验，请重新运行。";
+  if (error instanceof AIProviderError) return "AI Provider 暂时无法完成 Blind Judge，请稍后重试。";
+  if (error instanceof RepositoryError) return "AI Judge 数据保存失败，请刷新后重试。";
+  return "AI Judge 执行失败，请稍后重试。";
+}

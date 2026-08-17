@@ -35,6 +35,7 @@ test("generates from the selected completed ResearchRun without test output", ()
   assert.doesNotMatch(service, /testRuns|testArtifacts|judgeScores|finalScore/);
   assert.match(service, /generateProtocol/);
   assert.doesNotMatch(service, /glm-|deepseek-v|provider:\s*["']/);
+  assert.match(service, /不得出现任何被测产品名称或品牌/);
 });
 
 test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", () => {

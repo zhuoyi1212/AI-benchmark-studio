@@ -44,6 +44,7 @@ test("normalizes and validates structured output without cross-provider fallback
   assert.match(deepSeek, /reasoning_content is intentionally ignored/);
   assert.match(zhipu, /thinking fields are intentionally discarded/);
   assert.match(zhipu, /request\.reasoning === "high"/);
+  assert.ok(router.indexOf("await request.beforeExecute?.(route)") < router.indexOf("provider.generateStructured"));
 });
 
 test("uses current default models and rejects retired DeepSeek aliases", () => {

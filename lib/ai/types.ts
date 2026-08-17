@@ -93,6 +93,7 @@ export type StructuredTaskRequest<Schema extends ZodType> = {
   messages: AIMessage[];
   maxTokens?: number;
   maxAttempts?: number;
+  beforeExecute?: (route: AITaskRoute) => Promise<void>;
 };
 
 export type StructuredTaskResult<Output> = {

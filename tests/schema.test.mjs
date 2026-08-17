@@ -20,6 +20,10 @@ const testExecutionLifecycleUrl = new URL("../supabase/migrations/202608170008_t
 const testExecutionLifecycleSql = await readFile(testExecutionLifecycleUrl, "utf8");
 const blindLayerLifecycleUrl = new URL("../supabase/migrations/202608170009_blind_layer_lifecycle.sql", import.meta.url);
 const blindLayerLifecycleSql = await readFile(blindLayerLifecycleUrl, "utf8");
+const judgeLifecycleUrl = new URL("../supabase/migrations/202608170010_judge_lifecycle.sql", import.meta.url);
+const judgeLifecycleSql = await readFile(judgeLifecycleUrl, "utf8");
+const blindIdentityGuardUrl = new URL("../supabase/migrations/202608170011_blind_protocol_identity_guard.sql", import.meta.url);
+const blindIdentityGuardSql = await readFile(blindIdentityGuardUrl, "utf8");
 
 const coreTables = [
   "projects",
@@ -181,4 +185,24 @@ test("initializes one stable randomized Blind Layer without returning identity d
   assert.match(blindLayerLifecycleSql, /grant execute[\s\S]*to service_role/);
   assert.doesNotMatch(blindLayerLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
   assert.doesNotMatch(blindLayerLifecycleSql, /on delete cascade/i);
+});
+
+test("persists a complete Blind Judge lifecycle through service-role transactions", () => {
+  assert.match(judgeLifecycleSql, /begin_judge_run/);
+  assert.match(judgeLifecycleSql, /begin_judge_case_run/);
+  assert.match(judgeLifecycleSql, /complete_judge_case_run/);
+  assert.match(judgeLifecycleSql, /complete_judge_run/);
+  assert.match(judgeLifecycleSql, /fail_judge_run/);
+  assert.match(judgeLifecycleSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(judgeLifecycleSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(judgeLifecycleSql, /on delete cascade/i);
+});
+
+test("blocks identity-bearing Protocol text before Blind Review projection", () => {
+  assert.match(blindIdentityGuardSql, /assert_blind_protocol_safe/);
+  assert.match(blindIdentityGuardSql, /Locked Protocol contains product identity/);
+  assert.match(blindIdentityGuardSql, /returns void/);
+  assert.match(blindIdentityGuardSql, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(blindIdentityGuardSql, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.doesNotMatch(blindIdentityGuardSql, /on delete cascade/i);
 });

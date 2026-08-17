@@ -6,8 +6,9 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, initialSchema, repository, service, page, testPage] = await Promise.all([
+const [migration, identityGuard, initialSchema, repository, service, page, testPage] = await Promise.all([
   read("supabase/migrations/202608170009_blind_layer_lifecycle.sql"),
+  read("supabase/migrations/202608170011_blind_protocol_identity_guard.sql"),
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
   read("lib/repositories/blind-review.repository.ts"),
   read("lib/services/blind-review.service.ts"),
@@ -36,10 +37,23 @@ test("never exposes mappings through the initialization RPC or ordinary client g
 });
 
 test("repository deliberately offers samples but no identity-mapping read method", () => {
+  assert.match(repository, /\.rpc\("assert_blind_protocol_safe"/);
   assert.match(repository, /\.rpc\("initialize_blind_layer"/);
   assert.match(repository, /\.from\("blind_samples"\)/);
   assert.match(repository, /id, protocol_id, label, created_at/);
   assert.doesNotMatch(repository, /blind_mappings|product_id|products/);
+});
+
+test("rejects identity-bearing Protocol text before initializing or projecting Blind Review", () => {
+  assert.match(identityGuard, /create function public\.assert_blind_protocol_safe/);
+  assert.match(identityGuard, /status = 'locked'/);
+  assert.match(identityGuard, /project_products/);
+  assert.match(identityGuard, /test_cases/);
+  assert.match(identityGuard, /rubric_dimensions/);
+  assert.match(identityGuard, /returns void/);
+  assert.match(identityGuard, /revoke all[\s\S]*from public, anon, authenticated/);
+  assert.doesNotMatch(identityGuard, /grant execute[\s\S]*to (?:anon|authenticated)/);
+  assert.ok(service.indexOf("assertProtocolSafe") < service.indexOf("blindReviewRepository.initialize"));
 });
 
 test("server projection contains only anonymous samples and neutral TestCase metadata", () => {
@@ -51,7 +65,7 @@ test("server projection contains only anonymous samples and neutral TestCase met
 });
 
 test("Blind Review UI never serializes project or product identity", () => {
-  assert.match(page, /getBlindReviewWorkspace/);
+  assert.match(page, /getJudgeReviewWorkspace/);
   assert.match(page, /workspace\.samples\.map/);
   assert.match(page, /workspace\.testCases\.map/);
   assert.doesNotMatch(page, /project\.name|product\.name|productId|productName|workspace\.products/);

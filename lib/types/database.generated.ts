@@ -1431,6 +1431,25 @@ export type Database = {
       }
     }
     Functions: {
+      assert_blind_protocol_safe: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
+      begin_judge_case_run: {
+        Args: {
+          p_input_signature: string
+          p_judge_run_id: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_test_case_id: string
+        }
+        Returns: string
+      }
+      begin_judge_run: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: string
+      }
       begin_product_research: {
         Args: {
           p_input_signature: string
@@ -1438,6 +1457,14 @@ export type Database = {
           p_project_id: string
         }
         Returns: string
+      }
+      complete_judge_case_run: {
+        Args: { p_judge_case_run_id: string; p_scores: Json; p_usage: Json }
+        Returns: undefined
+      }
+      complete_judge_run: {
+        Args: { p_judge_run_id: string }
+        Returns: undefined
       }
       complete_product_research: {
         Args: {
@@ -1483,6 +1510,10 @@ export type Database = {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
+      fail_judge_run: {
+        Args: { p_error_message: string; p_judge_run_id: string }
+        Returns: undefined
+      }
       fail_product_research: {
         Args: { p_error_message: string; p_research_run_id: string }
         Returns: undefined
@@ -1490,6 +1521,20 @@ export type Database = {
       finalize_test_execution: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
+      }
+      get_judge_case_inputs: {
+        Args: { p_judge_run_id: string; p_test_case_id: string }
+        Returns: {
+          artifact_id: string
+          artifact_kind: string
+          blind_sample_id: string
+          file_name: string
+          mime_type: string
+          sample_label: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+        }[]
       }
       initialize_blind_layer: {
         Args: { p_project_id: string; p_protocol_id: string }

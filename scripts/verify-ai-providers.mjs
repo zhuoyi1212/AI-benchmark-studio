@@ -14,6 +14,31 @@ if (!zaiResponse.ok) throw new Error(`Z.AI Web Search verification failed (${zai
 const zaiPayload = await zaiResponse.json();
 if (!Array.isArray(zaiPayload.search_result)) throw new Error("Z.AI Web Search returned an unexpected envelope");
 
+const zaiVisionResponse = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${zaiKey}`, "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: env.ZAI_VISION_MODEL || env.ZHIPU_VISION_MODEL || "glm-4.6v",
+    messages: [{
+      role: "user",
+      content: [
+        { type: "image_url", image_url: { url: "https://cdn.bigmodel.cn/static/logo/introduction.png" } },
+        { type: "text", text: "Return a JSON object with visible=true if the image is readable." },
+      ],
+    }],
+    response_format: { type: "json_object" },
+    thinking: { type: "enabled" },
+    max_tokens: 128,
+    stream: false,
+  }),
+  signal: AbortSignal.timeout(90_000),
+});
+if (!zaiVisionResponse.ok) throw new Error(`Z.AI Vision verification failed (${zaiVisionResponse.status})`);
+const zaiVisionPayload = await zaiVisionResponse.json();
+if (typeof zaiVisionPayload.choices?.[0]?.message?.content !== "string") {
+  throw new Error("Z.AI Vision returned an unexpected envelope");
+}
+
 const deepSeekResponse = await fetch("https://api.deepseek.com/chat/completions", {
   method: "POST",
   headers: { Authorization: `Bearer ${deepSeekKey}`, "Content-Type": "application/json" },
@@ -38,6 +63,7 @@ if (typeof deepSeekPayload.choices?.[0]?.message?.content !== "string") {
 }
 
 console.log("Z.AI Web Search: verified");
+console.log("Z.AI Vision structured image input: verified");
 console.log("DeepSeek V4: verified");
 
 function parseEnv(text) {
