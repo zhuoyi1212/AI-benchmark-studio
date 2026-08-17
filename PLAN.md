@@ -290,3 +290,4 @@ M5 ✅ 13396fc 基于指定 ResearchRun 动态生成并原子保存 Protocol/Tes
 M6 ✅ 4e3a756 从最新 locked Protocol 幂等生成 Product × TestCase 矩阵，支持校验后的 image/PDF/text 私有 Storage 上传、SHA-256、执行元数据与完整矩阵确认；正式 12/12 TestRuns 及隔离 Artifact E2E 均通过。
 M7 ✅ a52045a 基于完整 Artifact 矩阵一次性生成稳定随机 Blind Samples/Mapping，映射仅由 service role 保存且不进入页面投影；未完成测试被阻止，Blind Leakage E2E、51 项测试、typecheck 与 build 均通过。
 M8 ✅ 57953ba 按 TestCase 全样本模态统一路由 DeepSeek 文本 Judge 或 Z.AI 多模态 Judge，先持久化 Provider/Model/Prompt/Signature 再调用模型；完整 Sample × Rubric 评分矩阵、AI Score 不可变、Protocol 身份保护、真实 E2E、61 项测试、typecheck 与 build 均通过。
+M9 ✅ 49a8497 将人工复核迁移到 ReviewSession 与 append-only HumanReviewEvent，Final Score 由有效 override 或 AI Score 单一推导；改单、恢复、0 项调整锁定、锁后禁改、Blind Reveal、真实 E2E、68 项测试、typecheck 与 build 均通过。
