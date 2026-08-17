@@ -294,3 +294,4 @@ M9 ✅ 49a8497 将人工复核迁移到 ReviewSession 与 append-only HumanRevie
 M10 ✅ 10639e6 基于 revealed ReviewSession 与 locked Final Score 构建签名绑定输入，数据库确定排名与冠军，DeepSeek 仅生成解释性分析；真实 E2E、76 项测试、typecheck 与 build 均通过。
 M11 ✅ 4edacec Report 绑定当前有效 ResultAnalysis，以 GLM 组织 Research、Protocol、Final Score 与分析结论，并在完成前建立真实 Raw Artifact 证据关联；真实 E2E、84 项测试、typecheck 与 build 均通过。
 M12 ✅ 8af8e4d 以 DeepSeek 动态发现社区选题、GLM 生成可编辑社区帖子，并仅从当前 Protocol 的真实图片 TestArtifact 推荐和持久化证据；选题与帖子路由血缘、重试版本、真实 E2E、typecheck、测试、build 与数据库 lint 均通过。
+M13 ✅ 85cc7a4 真实项目 routes、Application Services、Repositories 与全局导航已移除 Mock import 和 demo fallback；Sidebar 改读真实最近项目，工作流链接绑定当前 projectId，95 项测试、typecheck、build 与浏览器检查均通过。
