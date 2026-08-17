@@ -62,7 +62,7 @@ export default function ReviewPage() {
 
   return <div className="page-shell">
     <MockLoader label="正在进行 AI Blind Review..." duration={700} />
-    <WorkflowSteps current={3} />
+    <WorkflowSteps current={3} projectId="demo" />
     <PageHeader eyebrow={`项目 / ${project.name}`} title="人工复核 AI 评分" description="默认接受 AI Judge 结果；仅在证据与评分明显不一致时修改对应 Rubric 维度。" action={<Badge variant="success"><EyeOff className="h-3 w-3" />产品身份已隐藏</Badge>} />
     <section className="mb-7 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-[1.3fr_repeat(3,1fr)]"><div className="flex items-center gap-3 bg-white p-5"><span className="grid h-10 w-10 place-items-center rounded-lg bg-blue-50 text-blue-600"><Scale className="h-5 w-5" /></span><div><div className="text-sm font-semibold">人工复核</div><div className="mt-0.5 flex items-center gap-1 text-[11px] text-emerald-700"><Check className="h-3 w-3" />复核进度：已完成</div></div></div><SummaryMetric label="评分项" value={summary.total} /><SummaryMetric label="人工调整" value={summary.adjusted} accent /><SummaryMetric label="接受 AI 评分" value={summary.accepted} /></section>
     <div className="mb-6 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4"><ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" /><div><p className="text-sm font-semibold text-blue-950">Blind 状态持续生效</p><p className="mt-1 text-xs leading-5 text-blue-800/70">人工复核者只能看到匿名 Sample。最终评分锁定后，才允许揭晓真实产品身份。</p></div></div>

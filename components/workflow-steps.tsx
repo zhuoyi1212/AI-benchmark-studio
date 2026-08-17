@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const workflowSteps = [
@@ -11,8 +11,9 @@ const workflowSteps = [
 ] as const;
 
 export function WorkflowSteps({ current, projectId }: { current: number; projectId?: string }) {
-  const params = useParams<{ projectId?: string }>();
-  const resolvedProjectId = projectId ?? params.projectId ?? "demo";
+  const pathname = usePathname();
+  const resolvedProjectId = projectId ?? pathname.match(/^\/projects\/([^/]+)\//)?.[1];
+  if (!resolvedProjectId) return null;
   const workflow = workflowSteps.map(([segment, label]) => ({ label, href: `/projects/${resolvedProjectId}/${segment}` }));
   const activeStep = Math.min(current, workflow.length - 1);
   return (

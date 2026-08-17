@@ -101,7 +101,7 @@ function PublishWorkspacePage({ workspace }: { workspace: PublishWorkspace }) {
 
   return <TooltipProvider><div className="page-shell max-w-[1420px]">
     <MockLoader label="正在分析这次测评中值得传播的发现..." duration={700} />
-    <WorkflowSteps current={6} />
+    <WorkflowSteps current={6} projectId="demo" />
     <PageHeader eyebrow={`项目 / ${project.name}`} title="社区发布包" description="从完整测评中提炼独立成立的社区观点，并用测试阶段的原始截图提供证据。" action={generated ? <Badge variant="success"><Check className="h-3 w-3" />已准备好 · 1 篇帖子 · {selectedImages.length} 张截图</Badge> : <Badge variant="neutral"><Sparkles className="h-3 w-3" />提炼中</Badge>} />
     <ProcessStrip current={generated ? 4 : 1} />
     {!generated ? <div className="space-y-10">

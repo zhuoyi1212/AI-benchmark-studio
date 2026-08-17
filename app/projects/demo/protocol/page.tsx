@@ -40,7 +40,7 @@ export default function ProtocolPage() {
 
   return <TooltipProvider><div className="page-shell">
     <MockLoader label="正在生成测试方案..." />
-    <WorkflowSteps current={1} />
+    <WorkflowSteps current={1} projectId="demo" />
     <PageHeader eyebrow={`项目 / ${project.name}`} title={protocol.title} description="统一 Prompt、输入与评分标准，确保每个产品在相同条件下接受测试。" action={protocol.status === "locked" ? <Badge variant="success"><LockKeyhole className="h-3 w-3" />已锁定</Badge> : <Badge variant="warning"><FileText className="h-3 w-3" />草稿</Badge>} />
     <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-7">

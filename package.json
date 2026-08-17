@@ -24,6 +24,7 @@
     "test:result-analysis": "node --test tests/result-analysis.test.mjs",
     "test:report": "node --test tests/report.test.mjs",
     "test:publish": "node --test tests/publish.test.mjs",
+    "test:mock-boundary": "node --test tests/mock-boundary.test.mjs",
     "verify:ai-providers": "node scripts/verify-ai-providers.mjs",
     "verify:research": "node scripts/verify-research-run.mjs",
     "verify:protocol": "node scripts/verify-protocol.mjs",
