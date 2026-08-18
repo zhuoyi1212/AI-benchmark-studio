@@ -77,6 +77,7 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
 export async function discoverContentIdeas(projectId: string): Promise<string> {
   const source = await getPublishSource(projectId);
   if (!source) throw new PublishExecutionError("请先生成当前有效的深度报告。");
+  const singleMode = source.report.ranking.length === 1;
   let packId: string | null = null;
   try {
     packId = await publishRepository.begin(projectId, source.report.report!.id);
@@ -86,7 +87,12 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
       schema: contentIdeasOutputSchema,
       schemaName: "ContentIdeas",
       messages: [
-        { role: "system", content: "你是社区内容选题编辑。基于完整实验结构发现真正有信息增量、反直觉或讨论价值的观点，不要把深度报告机械缩短。只使用输入中的 Final Score、分析、Case、Judge Evidence、人工复核、Research 与真实 Artifact metadata；不得创造事实。选题数量、类型、标题与角度必须动态。relatedArtifactIds 只能引用输入中的 imageArtifacts。用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。输出简体中文。" },
+        {
+          role: "system",
+          content: singleMode
+            ? "你是社区产品体验内容选题编辑。基于完整的单品真实体验实验，发现真正有信息增量、反直觉或讨论价值的观点，不要把深度报告机械缩短，也不要引入竞品、排名或胜负叙事。优先寻找：实际使用后才发现的亮点、官方卖点是否成立、明显槽点、适合与不适合的人群、具体场景中的意外表现。只使用输入中的 Final Score、分析、Case、Judge Evidence、人工复核、Research 与真实 Artifact metadata；不得创造事实。relatedArtifactIds 只能引用输入中的 imageArtifacts。用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。输出简体中文。"
+            : "你是社区内容选题编辑。基于完整实验结构发现真正有信息增量、反直觉或讨论价值的观点，不要把深度报告机械缩短。只使用输入中的 Final Score、分析、Case、Judge Evidence、人工复核、Research 与真实 Artifact metadata；不得创造事实。选题数量、类型、标题与角度必须动态。relatedArtifactIds 只能引用输入中的 imageArtifacts。用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。输出简体中文。",
+        },
         { role: "user", content: JSON.stringify(input) },
       ],
       maxTokens: 8_000,
@@ -106,6 +112,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
 export async function generateCommunityPost(projectId: string, input: { ideaId: string; customAngle?: string; config: unknown }): Promise<string> {
   const source = await getPublishSource(projectId);
   if (!source) throw new PublishExecutionError("请先生成当前有效的深度报告。");
+  const singleMode = source.report.ranking.length === 1;
   let packs = await publishRepository.listByReport(source.report.report!.id);
   if (packs[0]?.status === "ready" || packs[0]?.status === "failed") {
     await publishRepository.begin(projectId, source.report.report!.id);
@@ -118,14 +125,19 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
   const config = publishConfigSchema.parse(input.config);
   const imageArtifacts = source.screenshots;
   if (imageArtifacts.length === 0) throw new PublishExecutionError("当前测试没有可用的原始截图，不能生成社区发布包。");
-  const postInput = { selectedIdea, config, report: source.report.report!.content, ranking: source.report.ranking, analysis: source.report.analysis, protocol: source.report.protocol, caseScores: source.report.caseScores, imageArtifacts };
+  const postInput = { mode: singleMode ? "single_product_experience" : "comparison_benchmark", selectedIdea, config, report: source.report.report!.content, ranking: source.report.ranking, analysis: source.report.analysis, protocol: source.report.protocol, caseScores: source.report.caseScores, imageArtifacts };
   const inputSignature = createInputSignature(postInput);
   try {
     const result = await aiTaskService.generateCommunityPost({
       schema: communityPostOutputSchema,
       schemaName: "CommunityPost",
       messages: [
-        { role: "system", content: "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子，不是报告摘要，不使用夸张营销表达。结构包含 Hook、测试动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。截图只作为证据，artifactId 只能从 imageArtifacts 中选择；同一 Case 的多产品对比应连续排列。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
+        {
+          role: "system",
+          content: singleMode
+            ? "你是中文社区产品体验内容编辑。围绕用户选定观点写一篇像真实使用者体验后形成的帖子，可从“我真实用了这个 AI 产品后发现……”这样的叙事切入，但不要虚构第一人称行为。帖子要有证据、有判断、有讨论空间，不是报告摘要，不使用夸张营销表达。结构包含体验动机、关键发现、具体 Case 证据、为什么会这样、对用户意味着什么、亮点与槽点、适合与不适合的人、最终判断与真实讨论问题。不要引入竞品、排名、冠军或胜负。截图只作为证据，artifactId 只能从 imageArtifacts 中选择。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。"
+            : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子，不是报告摘要，不使用夸张营销表达。结构包含 Hook、测试动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。截图只作为证据，artifactId 只能从 imageArtifacts 中选择；同一 Case 的多产品对比应连续排列。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。",
+        },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,
@@ -168,7 +180,8 @@ async function getPublishSource(projectId: string) {
 }
 
 function buildDiscoveryInput(source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
-  return { project: { name: source.report.projectName, intent: source.report.projectIntent }, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: source.experiment.products.map((product) => ({ productId: product.productId, scores: product.scores.map((score) => ({ testCaseId: score.testCaseId, dimensionId: score.rubricDimensionId, finalScore: score.finalScore, reason: score.reason, evidence: score.evidence, humanReviewAdjustment: score.humanOverrideReason })) })), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
+  const singleMode = source.report.ranking.length === 1;
+  return { mode: singleMode ? "single_product_experience" : "comparison_benchmark", project: { name: source.report.projectName, intent: source.report.projectIntent }, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: source.experiment.products.map((product) => ({ productId: product.productId, scores: product.scores.map((score) => ({ testCaseId: score.testCaseId, dimensionId: score.rubricDimensionId, finalScore: score.finalScore, reason: score.reason, evidence: score.evidence, humanReviewAdjustment: score.humanOverrideReason })) })), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
 }
 
 function assertIdeas(ideas: ContentIdea[], source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
