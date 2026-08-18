@@ -5,7 +5,7 @@ alter table public.test_artifacts
 
 alter table public.test_artifacts
   add constraint test_artifacts_kind_check
-  check (kind in ('image', 'pdf', 'text', 'video', 'archive'));
+  check (kind in ('image', 'pdf', 'text', 'video'));
 
 alter table public.test_cases
   add column if not exists expected_output_types jsonb not null default '[]'::jsonb
