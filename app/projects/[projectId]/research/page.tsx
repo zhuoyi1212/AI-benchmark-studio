@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ResearchAction } from "@/app/projects/[projectId]/research/research-action";
+import { getProjectMode } from "@/lib/project-mode";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import type { ComparabilityResult, ProductResearch, ResearchSource } from "@/lib/types/research";
 
@@ -39,6 +40,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
   const { project, latestRun, completedResult, runCount } = workspace;
   const running = latestRun?.status === "pending" || latestRun?.status === "running";
   const latestFailed = latestRun?.status === "failed";
+  const singleMode = getProjectMode(project.products) === "single";
 
   return (
     <div className="page-shell">
@@ -46,36 +48,41 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
       <PageHeader
         eyebrow={`项目 / ${project.name}`}
         title="产品调研"
-        description={completedResult ? `ResearchRun v${completedResult.version} · 基于真实检索来源形成的结构化调研。` : "基于官网、文档、价格页与官方动态收集可追溯事实，再判断产品是否适合横向测试。"}
+        description={completedResult
+          ? `ResearchRun v${completedResult.version} · 基于真实检索来源形成的结构化调研。`
+          : singleMode
+            ? "基于官网、文档、价格页与官方动态收集可追溯事实，为后续真实体验任务做准备。"
+            : "基于官网、文档、价格页与官方动态收集可追溯事实，再判断产品是否适合横向测试。"}
         action={!completedResult && !running ? <ResearchAction projectId={project.id} retry={latestFailed} /> : undefined}
       />
 
-      {running && <StatusBanner icon={LoaderCircle} title="正在调研产品" description="正在检索真实来源、整理结构化产品信息并分析可比性。刷新页面可查看最新状态。" spinning />}
+      {running && <StatusBanner icon={LoaderCircle} title="正在调研产品" description={singleMode ? "正在检索真实来源、整理定位、能力、卖点、限制与值得体验的场景。刷新页面可查看最新状态。" : "正在检索真实来源、整理结构化产品信息并分析可比性。刷新页面可查看最新状态。"} spinning />}
       {latestFailed && <StatusBanner icon={FlaskConical} title={`ResearchRun v${latestRun.version} 未完成`} description={latestRun.error_message ?? "调研执行失败，可创建新的 ResearchRun 重试；历史运行不会被覆盖。"} error />}
       {runCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {runCount} 次 ResearchRun 历史；当前展示最近一次成功结果。</p>}
 
       {completedResult ? (
         <>
-          <ComparabilityCard comparability={completedResult.comparability} />
+          {!singleMode && <ComparabilityCard comparability={completedResult.comparability} />}
+          {singleMode && <Card className="mb-8 border-blue-200 bg-blue-50/50 p-5 shadow-none"><div className="flex gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-blue-700 ring-1 ring-blue-200"><Sparkles className="h-5 w-5" /></span><div><h2 className="section-title">单品体验准备完成</h2><p className="mt-2 text-sm leading-6 text-slate-700">接下来会根据你的目标、产品核心能力、官方推荐用法和已知限制，生成最值得真实体验的高价值场景，不进行竞品比较。</p></div></div></Card>}
           <section>
             <div className="mb-4 flex items-center justify-between"><h2 className="section-title">产品概览</h2><span className="text-xs text-muted-foreground">{completedResult.products.length} 个产品</span></div>
             <div className="grid gap-4 xl:grid-cols-3">{completedResult.products.map((product) => <ProductResearchCard key={product.productId} product={product} />)}</div>
           </section>
           <section className="mt-8 rounded-lg border bg-white p-5">
-            <h2 className="section-title">共同测试能力</h2>
-            <p className="mt-1 text-xs text-muted-foreground">下列能力来自已保存的 ProductResearch，可使用共同任务进行比较。</p>
-            {completedResult.comparability.commonCapabilities.length > 0 ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">{completedResult.comparability.commonCapabilities.map((ability, index) => <div key={ability} className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-3 text-sm font-medium"><span className="grid h-5 w-5 place-items-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">{index + 1}</span>{ability}</div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">没有识别到足以支持标准化横向测试的共同能力。</p>}
-            {completedResult.comparability.warnings?.length ? <ul className="mt-5 space-y-1.5 border-t pt-4 text-xs leading-5 text-amber-800">{completedResult.comparability.warnings.map((warning) => <li key={warning}>· {warning}</li>)}</ul> : null}
+            <h2 className="section-title">{singleMode ? "值得重点体验的能力" : "共同测试能力"}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{singleMode ? "这些能力来自已保存的 ProductResearch，后续体验方案会优先选择能验证核心价值与明显优缺点的场景。" : "下列能力来自已保存的 ProductResearch，可使用共同任务进行比较。"}</p>
+            {singleMode ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{completedResult.products[0]?.capabilities.map((ability, index) => <div key={ability} className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-3 text-sm font-medium"><span className="grid h-5 w-5 place-items-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">{index + 1}</span>{ability}</div>)}</div> : completedResult.comparability.commonCapabilities.length > 0 ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">{completedResult.comparability.commonCapabilities.map((ability, index) => <div key={ability} className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-3 text-sm font-medium"><span className="grid h-5 w-5 place-items-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">{index + 1}</span>{ability}</div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">没有识别到足以支持标准化横向测试的共同能力。</p>}
+            {!singleMode && completedResult.comparability.warnings?.length ? <ul className="mt-5 space-y-1.5 border-t pt-4 text-xs leading-5 text-amber-800">{completedResult.comparability.warnings.map((warning) => <li key={warning}>· {warning}</li>)}</ul> : null}
           </section>
           <div className="sticky bottom-5 z-20 mt-8 flex items-center justify-between rounded-lg border bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="text-xs text-muted-foreground">调研完成于 {formatDateTime(completedResult.generatedAt)}</div>
-            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry />{completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成测评方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
+            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry />{!singleMode && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>{singleMode ? "生成体验方案" : "生成测评方案"}<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
           </div>
         </>
       ) : !running ? (
         <section className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div><h2 className="section-title">待调研产品</h2><div className="mt-3 space-y-3">{project.products.map((product, index) => <Card key={product.id} className="flex items-center gap-4 p-5 shadow-none"><ProductLogo initials={product.initials} name={product.name} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="text-[11px] font-medium text-muted-foreground">{String(index + 1).padStart(2, "0")}</span><h3 className="font-semibold">{product.name}</h3></div>{product.officialUrl ? <a href={product.officialUrl} target="_blank" rel="noreferrer" className="mt-1.5 inline-flex max-w-full items-center gap-1 truncate text-xs text-blue-700 hover:underline">{product.officialUrl}<ExternalLink className="h-3 w-3 shrink-0" /></a> : <p className="mt-1.5 text-xs text-muted-foreground">未提供官网，将通过搜索识别官方来源。</p>}</div><Badge variant="outline">未开始</Badge></Card>)}</div></div>
-          <aside className="h-fit rounded-lg border bg-slate-50 p-5"><div className="flex items-center gap-2"><FlaskConical className="h-4 w-4 text-blue-700" /><h2 className="text-sm font-semibold">测评目标</h2></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{project.intent}</p><div className="mt-5 border-t pt-4"><p className="text-xs leading-5 text-muted-foreground">调研失败会明确记录为 failed，并允许创建新版本重试；不会显示 Mock 结果。</p></div></aside>
+          <aside className="h-fit rounded-lg border bg-slate-50 p-5"><div className="flex items-center gap-2"><FlaskConical className="h-4 w-4 text-blue-700" /><h2 className="text-sm font-semibold">{singleMode ? "体验目标" : "测评目标"}</h2></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{project.intent}</p><div className="mt-5 border-t pt-4"><p className="text-xs leading-5 text-muted-foreground">调研失败会明确记录为 failed，并允许创建新版本重试；不会显示 Mock 结果。</p></div></aside>
         </section>
       ) : null}
     </div>
