@@ -7,7 +7,7 @@ import type { GeneratedProtocol } from "@/lib/ai/schemas/protocol.schemas";
 import type { Json, ProtocolRow, RubricDimensionRow, TestCaseRow } from "@/lib/types/database";
 
 const protocolColumns = "id, project_id, research_run_id, version, title, goal, status, test_mode, rules, generation_model, generation_provider, generation_input_tokens, generation_output_tokens, generation_latency_ms, generation_estimated_cost, prompt_version, input_signature, created_at, updated_at, locked_at";
-const testCaseColumns = "id, protocol_id, position, title, objective, prompt, input_description, input_artifacts, observation_focus, execution_rules, created_at, updated_at";
+const testCaseColumns = "id, protocol_id, position, title, objective, prompt, input_description, input_artifacts, expected_output_types, evidence_requirements, observation_focus, execution_rules, created_at, updated_at";
 const rubricColumns = "id, protocol_id, position, name, weight, description, scoring_standard, created_at, updated_at";
 
 export type CreateProtocolRecord = {
