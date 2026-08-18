@@ -8,6 +8,8 @@ export const mandatoryProtocolRuleIds = [
   "complete-upload",
 ] as const;
 
+export const expectedOutputTypes = ["text", "image", "document", "video", "code", "mixed"] as const;
+
 const conciseText = z.string().trim().min(1).max(1000);
 const detailedText = z.string().trim().min(1).max(8000);
 const textList = z.array(z.string().trim().min(1).max(500)).min(1).max(20);
@@ -42,6 +44,8 @@ export const generatedProtocolSchema = z.object({
     prompt: detailedText,
     inputDescription: z.string().trim().max(3000).nullable(),
     inputArtifacts: z.array(inputArtifactSpecSchema).max(12),
+    expectedOutputTypes: z.array(z.enum(expectedOutputTypes)).min(1).max(4),
+    evidenceRequirements: textList,
     observationFocus: textList,
     executionRules: textList,
   })).min(1).max(12),
