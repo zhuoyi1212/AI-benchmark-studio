@@ -9,6 +9,7 @@ import {
   type ResultAnalysisInput,
 } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
+import { getProjectMode } from "@/lib/project-mode";
 import { resultAnalysisRepository } from "@/lib/repositories/result-analysis.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { getHumanReviewWorkspace, type HumanReviewWorkspace } from "@/lib/services/human-review.service";
@@ -93,17 +94,24 @@ export async function generateFinalResultAnalysis(projectId: string): Promise<st
 
     const input = resultAnalysisInputSchema.parse(persisted.input_snapshot);
     const ranking = calculateInputRanking(input);
+    const singleMode = getProjectMode(input.products) === "single";
     const result = await aiTaskService.analyzeFinalResults({
       schema: generatedResultAnalysisSchema,
       schemaName: "FinalResultAnalysis",
       messages: [
         {
           role: "system",
-          content: "你是 AI 产品测评的最终分析师。只基于已揭晓身份的锁定 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata 解释结果。不得改变任何分数、排名、冠军或证据，不得创造实验中不存在的数据。结论需区分综合得分与具体用户适配；用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
+          content: singleMode
+            ? "你是 AI 产品深度体验分析师。只基于这一款产品已锁定的 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata 解释真实体验结果。不得改变分数或证据，不得创造实验中不存在的数据。不要引入竞品、排名、冠军或胜负叙事。winnerReason 字段在单品模式中请写成综合体验结论；crossProductInsights 字段请写成跨场景体验洞察。重点说明核心能力是否成立、主要亮点、明显问题、适合与不适合的人群、反直觉发现与测试限制。用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。"
+            : "你是 AI 产品测评的最终分析师。只基于已揭晓身份的锁定 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata 解释结果。不得改变任何分数、排名、冠军或证据，不得创造实验中不存在的数据。结论需区分综合得分与具体用户适配；用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
         },
         {
           role: "user",
-          content: JSON.stringify({
+          content: JSON.stringify(singleMode ? {
+            experienceScore: ranking[0],
+            experiment: input,
+            required: "解释这一款产品的综合体验结论、优势、弱点、适合与不适合人群、跨场景洞察、反直觉发现和测试限制。products 必须且只能覆盖当前产品。不要输出任何横向比较结论。",
+          } : {
             lockedRanking: ranking,
             experiment: input,
             required: "解释 winner、每款产品优势/劣势/适合与不适合人群、跨产品洞察、反直觉发现和测试限制。products 必须且只能覆盖 lockedRanking 中的 productId。",
