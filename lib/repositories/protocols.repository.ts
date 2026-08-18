@@ -10,6 +10,11 @@ const protocolColumns = "id, project_id, research_run_id, version, title, goal, 
 const testCaseColumns = "id, protocol_id, position, title, objective, prompt, input_description, input_artifacts, expected_output_types, evidence_requirements, observation_focus, execution_rules, created_at, updated_at";
 const rubricColumns = "id, protocol_id, position, name, weight, description, scoring_standard, created_at, updated_at";
 
+export type ProtocolTestCaseRow = TestCaseRow & {
+  expected_output_types: Json;
+  evidence_requirements: Json;
+};
+
 export type CreateProtocolRecord = {
   projectId: string;
   researchRunId: string;
@@ -30,14 +35,14 @@ export const protocolsRepository = {
     return data;
   },
 
-  async listTestCases(protocolId: string): Promise<TestCaseRow[]> {
+  async listTestCases(protocolId: string): Promise<ProtocolTestCaseRow[]> {
     const { data, error } = await getSupabaseServerClient()
       .from("test_cases")
       .select(testCaseColumns)
       .eq("protocol_id", protocolId)
       .order("position", { ascending: true });
     if (error) throwRepositoryError("protocols.listTestCases", error);
-    return data;
+    return data as ProtocolTestCaseRow[];
   },
 
   async listRubric(protocolId: string): Promise<RubricDimensionRow[]> {
