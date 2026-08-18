@@ -1,4 +1,5 @@
 export type ProtocolStatus = "draft" | "locked";
+export type ExpectedOutputType = "text" | "image" | "document" | "video" | "code" | "mixed";
 
 export type TestRule = { id: string; text: string };
 
@@ -9,6 +10,8 @@ export type TestCase = {
   prompt: string;
   inputDescription?: string;
   inputArtifacts?: Array<{ id: string; name: string; type: string }>;
+  expectedOutputTypes: ExpectedOutputType[];
+  evidenceRequirements: string[];
   observationFocus: string[];
   executionRules?: string[];
 };
