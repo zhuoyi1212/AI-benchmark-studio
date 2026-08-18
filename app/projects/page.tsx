@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProductLogo } from "@/components/product-logo";
+import { ProjectCardActions } from "@/app/projects/project-card-actions";
 import { listProjectSummaries } from "@/lib/services/projects.service";
 import type { ProjectStatus } from "@/lib/types/database";
 
@@ -36,8 +37,11 @@ export default async function ProjectsPage() {
             <div><span className="mx-auto grid h-11 w-11 place-items-center rounded-lg border bg-slate-50 text-muted-foreground"><FolderPlus className="h-5 w-5" /></span><h3 className="mt-4 text-sm font-semibold">还没有测评项目</h3><p className="mt-1.5 text-xs text-muted-foreground">添加 1–3 个产品，建立你的第一个真实测评。</p><Button className="mt-5" size="sm" asChild><Link href="/projects/new">新建测评</Link></Button></div>
           </Card>
         ) : projects.map((project) => (
-          <Card key={project.id} className="group overflow-hidden shadow-none transition-colors hover:border-slate-300">
-            <Link href={getProjectHref(project.id, project.status)} className="block p-5 sm:p-6">
+          <Card key={project.id} className="group relative overflow-hidden shadow-none transition-colors hover:border-slate-300">
+            <div className="absolute right-4 top-4 z-10">
+              <ProjectCardActions projectId={project.id} projectName={project.name} />
+            </div>
+            <Link href={getProjectHref(project.id, project.status)} className="block p-5 pr-16 sm:p-6 sm:pr-16">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3"><h3 className="text-[17px] font-semibold tracking-tight">{project.name}</h3><Badge variant="warning"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{statusLabels[project.status]}</Badge></div>
