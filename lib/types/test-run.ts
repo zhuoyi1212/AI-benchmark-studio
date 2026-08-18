@@ -2,7 +2,7 @@ export type TestRunStatus = "pending" | "uploaded" | "invalid" | "ready_for_revi
 
 export type TestArtifact = {
   id: string;
-  kind: "image" | "pdf" | "text";
+  kind: "image" | "pdf" | "text" | "video" | "archive";
   fileName: string;
   fileType: string;
   sizeBytes: number;
