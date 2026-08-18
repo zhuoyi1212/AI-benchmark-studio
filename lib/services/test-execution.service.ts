@@ -10,6 +10,7 @@ import {
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
+import type { ExpectedOutputType } from "@/lib/types/protocol";
 
 const maxArtifactBytes = 50 * 1024 * 1024;
 const executionMetadataSchema = z.object({
@@ -20,9 +21,9 @@ const executionMetadataSchema = z.object({
 });
 
 type SupportedArtifact = {
-  kind: "image" | "pdf" | "text";
-  mimeType: "image/png" | "image/jpeg" | "image/webp" | "application/pdf" | "text/plain";
-  extension: "png" | "jpg" | "webp" | "pdf" | "txt";
+  kind: "image" | "pdf" | "text" | "video" | "archive";
+  mimeType: string;
+  extension: string;
 };
 
 const supportedArtifacts: Record<string, SupportedArtifact> = {
@@ -31,6 +32,12 @@ const supportedArtifacts: Record<string, SupportedArtifact> = {
   "image/webp": { kind: "image", mimeType: "image/webp", extension: "webp" },
   "application/pdf": { kind: "pdf", mimeType: "application/pdf", extension: "pdf" },
   "text/plain": { kind: "text", mimeType: "text/plain", extension: "txt" },
+  "text/markdown": { kind: "text", mimeType: "text/markdown", extension: "md" },
+  "application/json": { kind: "text", mimeType: "application/json", extension: "json" },
+  "text/csv": { kind: "text", mimeType: "text/csv", extension: "csv" },
+  "video/mp4": { kind: "video", mimeType: "video/mp4", extension: "mp4" },
+  "video/webm": { kind: "video", mimeType: "video/webm", extension: "webm" },
+  "video/quicktime": { kind: "video", mimeType: "video/quicktime", extension: "mov" },
 };
 
 export class TestExecutionError extends Error {
@@ -76,13 +83,12 @@ export async function uploadTestArtifact(input: {
   const metadata = executionMetadataSchema.parse(input.metadata);
   const run = await testExecutionRepository.findRun(input.testRunId);
   if (!run || run.project_id !== input.projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
-  if (run.status === "ready_for_review" || run.status === "invalid") {
-    throw new TestExecutionError("当前测试项已关闭上传。");
-  }
-  const file = validateFile(input.file);
+  if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+
+  const file = normalizeAndValidateFile(input.file);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  validateFileSignature(bytes, file.type);
-  const artifactType = supportedArtifacts[file.type]!;
+  validateFileSignature(bytes, file.mimeType);
+  const artifactType = supportedArtifacts[file.mimeType]!;
   const artifactId = randomUUID();
   const storagePath = `projects/${run.project_id}/runs/${run.id}/${artifactId}.${artifactType.extension}`;
   const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -94,21 +100,17 @@ export async function uploadTestArtifact(input: {
         id: artifactId,
         kind: artifactType.kind,
         storagePath,
-        fileName: file.name.trim(),
+        fileName: file.file.name.trim(),
         mimeType: artifactType.mimeType,
-        sizeBytes: file.size,
+        sizeBytes: file.file.size,
         sha256,
         metadata: {
-          originalLastModified: file.lastModified || null,
+          originalLastModified: file.file.lastModified || null,
           capturedAs: "raw_test_output",
         } satisfies Json,
       }, metadata);
     } catch (error) {
-      try {
-        await testExecutionRepository.removeStorageObject(storagePath);
-      } catch {
-        // The immutable database evidence was not created; preserve the original error.
-      }
+      try { await testExecutionRepository.removeStorageObject(storagePath); } catch { /* Preserve original persistence error. */ }
       throw error;
     }
   } catch (error) {
@@ -119,9 +121,17 @@ export async function uploadTestArtifact(input: {
 
 export async function finalizeTestExecution(projectId: string, protocolId: string): Promise<void> {
   const workspace = await getTestExecutionWorkspace(projectId);
-  if (!workspace || workspace.protocol.id !== protocolId) {
-    throw new TestExecutionError("只能完成当前锁定 Protocol 的测试。");
+  if (!workspace || workspace.protocol.id !== protocolId) throw new TestExecutionError("只能完成当前锁定 Protocol 的测试。");
+
+  for (const run of workspace.testRuns) {
+    const testCase = workspace.protocol.testCases.find((item) => item.id === run.testCaseId);
+    if (!testCase) throw new TestExecutionError("测试项与锁定 Protocol 不一致。");
+    const missing = missingEvidenceTypes(testCase.expectedOutputTypes, run.artifacts);
+    if (missing.length > 0) {
+      throw new TestExecutionError(`「${testCase.title}」仍缺少可验证的原始结果：${missing.join("、")}。`);
+    }
   }
+
   try {
     await testExecutionRepository.finalize(projectId, protocolId);
   } catch (error) {
@@ -160,15 +170,25 @@ async function mapArtifact(row: TestArtifactRow): Promise<TestArtifact> {
   };
 }
 
-function validateFile(file: File) {
+function normalizeAndValidateFile(file: File) {
   if (!(file instanceof File) || file.size <= 0) throw new TestExecutionError("请选择非空的测试结果文件。");
   if (file.size > maxArtifactBytes) throw new TestExecutionError("单个文件不能超过 50 MB。");
-  if (!file.name.trim() || file.name.trim().length > 255) throw new TestExecutionError("文件名无效或过长。");
-  if (!supportedArtifacts[file.type]) throw new TestExecutionError("仅支持 PNG、JPEG、WebP、PDF 或纯文本文件。");
-  return file;
+  const fileName = file.name.trim();
+  if (!fileName || fileName.length > 255) throw new TestExecutionError("文件名无效或过长。");
+
+  let mimeType = file.type.toLowerCase();
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  if ((!mimeType || mimeType === "application/octet-stream") && extension === "md") mimeType = "text/markdown";
+  if (mimeType === "text/plain" && extension === "md") mimeType = "text/markdown";
+  if (mimeType === "text/plain" && extension === "csv") mimeType = "text/csv";
+  if (!supportedArtifacts[mimeType]) {
+    throw new TestExecutionError("支持 PNG、JPEG、WebP、PDF、TXT、MD、JSON、CSV、MP4、WebM 或 MOV 文件。");
+  }
+  return { file, mimeType };
 }
 
 function validateFileSignature(bytes: Uint8Array, mimeType: string) {
+  const textMime = ["text/plain", "text/markdown", "application/json", "text/csv"].includes(mimeType);
   const matches = mimeType === "image/png"
     ? startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     : mimeType === "image/jpeg"
@@ -177,27 +197,31 @@ function validateFileSignature(bytes: Uint8Array, mimeType: string) {
         ? ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 12) === "WEBP"
         : mimeType === "application/pdf"
           ? ascii(bytes, 0, 5) === "%PDF-"
-          : isValidUtf8Text(bytes);
+          : mimeType === "video/webm"
+            ? startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])
+            : mimeType === "video/mp4" || mimeType === "video/quicktime"
+              ? ascii(bytes, 4, 8) === "ftyp"
+              : textMime && isValidUtf8Text(bytes);
   if (!matches) throw new TestExecutionError("文件内容与声明的文件类型不一致。");
 }
 
-function startsWith(bytes: Uint8Array, signature: number[]) {
-  return signature.every((value, index) => bytes[index] === value);
+function missingEvidenceTypes(expected: ExpectedOutputType[], artifacts: TestArtifact[]) {
+  const has = (kind: TestArtifact["kind"]) => artifacts.some((artifact) => artifact.kind === kind);
+  return expected.filter((type) => {
+    if (type === "text") return !has("text");
+    if (type === "image") return !has("image");
+    if (type === "document") return !has("pdf");
+    if (type === "video") return !has("video");
+    if (type === "code") return !(has("text") || has("archive"));
+    return artifacts.length === 0;
+  }).map((type) => ({ text: "文本", image: "图片", document: "PDF 文档", video: "视频", code: "代码/项目文件", mixed: "原始结果" })[type]);
 }
 
-function ascii(bytes: Uint8Array, start: number, end: number) {
-  return String.fromCharCode(...bytes.slice(start, end));
-}
-
+function startsWith(bytes: Uint8Array, signature: number[]) { return signature.every((value, index) => bytes[index] === value); }
+function ascii(bytes: Uint8Array, start: number, end: number) { return String.fromCharCode(...bytes.slice(start, end)); }
 function isValidUtf8Text(bytes: Uint8Array) {
-  try {
-    const value = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return !value.includes("\u0000");
-  } catch {
-    return false;
-  }
+  try { return !new TextDecoder("utf-8", { fatal: true }).decode(bytes).includes("\u0000"); } catch { return false; }
 }
-
 function toUserFacingError(error: unknown) {
   if (error instanceof z.ZodError) return "测试执行元数据无效，请检查后重试。";
   if (error instanceof RepositoryError) return "测试结果保存失败，请重试；失败记录不会伪装成已上传。";
