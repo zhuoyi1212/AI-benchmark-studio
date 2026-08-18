@@ -10,6 +10,7 @@ import {
 } from "@/lib/ai/schemas/report.schemas";
 import { generatedResultAnalysisSchema, resultAnalysisInputSchema } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
+import { getProjectMode } from "@/lib/project-mode";
 import { reportRepository } from "@/lib/repositories/report.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { resultAnalysisRepository } from "@/lib/repositories/result-analysis.repository";
@@ -101,19 +102,25 @@ export async function generateReport(projectId: string): Promise<string> {
     if (persisted.status !== "pending") throw new RepositoryError("report.requirePending", { message: "Report is not pending" });
 
     const input = await createReportInput(source);
+    const singleMode = getProjectMode(input.experiment.products) === "single";
     const result = await aiTaskService.generateReport({
       schema: generatedReportResponseSchema,
       schemaName: "BenchmarkReport",
       messages: [
         {
           role: "system",
-          content: "你是 AI 产品深度测评报告编辑。只组织输入中已经锁定的 Final Score、排名、冠军、Final Result Analysis、Protocol、真实 Research 与证据；不得重新判分，不得改变排名、冠军、Judge Evidence 或限制，不得创造实验中不存在的事实。正文需包含清晰 TL;DR、方法、选品原因、逐 Case 复盘与最终建议。用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
+          content: singleMode
+            ? "你是 AI 产品深度体验报告编辑。只组织输入中这一款产品已经锁定的 Final Score、Final Result Analysis、Protocol、真实 Research 与证据；不得重新判分，不得创造实验中不存在的事实。不要引入竞品、排名、冠军或胜负叙事。正文要像真实体验文章：清晰 TL;DR、为什么体验这个产品、产品是什么、怎么测试、逐 Case 实际体验、最惊喜的地方、最明显的问题、适合什么人、不适合什么人、最终体验结论与测试限制。whyTheseProducts 字段在单品模式中请写成“为什么体验这个产品”。用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。"
+            : "你是 AI 产品深度测评报告编辑。只组织输入中已经锁定的 Final Score、排名、冠军、Final Result Analysis、Protocol、真实 Research 与证据；不得重新判分，不得改变排名、冠军、Judge Evidence 或限制，不得创造实验中不存在的事实。正文需包含清晰 TL;DR、方法、选品原因、逐 Case 复盘与最终建议。用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
         },
         {
           role: "user",
           content: JSON.stringify({
+            reportMode: singleMode ? "single_product_experience" : "comparison_benchmark",
             reportSource: input,
-            immutableFields: "lockedRanking 的 score/order、analysis 的 winnerReason/products/limitations 与 experiment 中的 evidence 均只读。输出 Schema 不包含这些字段，请只生成表达性内容。",
+            immutableFields: singleMode
+              ? "experience score、analysis 的产品结论/limitations 与 experiment 中的 evidence 均只读。不要把单产品数组解释成排名。"
+              : "lockedRanking 的 score/order、analysis 的 winnerReason/products/limitations 与 experiment 中的 evidence 均只读。输出 Schema 不包含这些字段，请只生成表达性内容。",
             coverage: "caseReviews 必须且只能覆盖全部 TestCase；每个 Case 的 productAnalyses 必须且只能覆盖全部产品。",
           }),
         },
