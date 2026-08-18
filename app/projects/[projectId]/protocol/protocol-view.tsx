@@ -2,13 +2,22 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GenerateProtocolAction, LockProtocolAction } from "@/app/projects/[projectId]/protocol/protocol-actions";
-import type { TestProtocol } from "@/lib/types/protocol";
+import type { ExpectedOutputType, TestProtocol } from "@/lib/types/protocol";
+
+const outputLabels: Record<ExpectedOutputType, string> = {
+  text: "文本",
+  image: "图片",
+  document: "文档",
+  video: "视频",
+  code: "代码/项目",
+  mixed: "混合输出",
+};
 
 export function ProtocolView({ protocol, productCount, canRegenerate }: { protocol: TestProtocol; productCount: number; canRegenerate: boolean }) {
   const [selectedRubricId, setSelectedRubricId] = useState(protocol.rubric[0]?.id ?? "");
@@ -33,7 +42,7 @@ export function ProtocolView({ protocol, productCount, canRegenerate }: { protoc
           <section>
             <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4 text-blue-600" /><h2 className="section-title">Test Cases</h2></div><span className="text-xs text-muted-foreground">{protocol.testCases.length} Cases × {productCount} Products = {totalTests} 项测试</span></div>
             <div className="space-y-3">
-              {protocol.testCases.map((testCase, index) => <Card key={testCase.id} className="px-5 shadow-none"><Accordion type="single" collapsible><AccordionItem value={testCase.id}><AccordionTrigger><div className="flex items-center gap-4"><span className="font-mono text-[11px] text-blue-600">CASE {String(index + 1).padStart(2, "0")}</span><span className="text-left text-[15px] font-semibold">{testCase.title}</span></div></AccordionTrigger><AccordionContent><div className="grid gap-5 border-t pt-5 lg:grid-cols-2"><Detail title="测试目的" text={testCase.objective} /><Detail title="输入材料" text={testCase.inputDescription ?? "Prompt 已包含完成任务所需信息，无额外输入材料。"} /><div className="lg:col-span-2"><div className="eyebrow mb-2">Prompt</div><div className="whitespace-pre-wrap rounded-md border bg-slate-50 p-4 font-mono text-xs leading-6 text-slate-700">{testCase.prompt}</div></div><div><div className="eyebrow mb-2">观察重点</div><div className="flex flex-wrap gap-2">{testCase.observationFocus.map((item) => <Badge key={item} variant="neutral">{item}</Badge>)}</div></div><div><div className="eyebrow mb-2">执行规则</div><ul className="space-y-1 text-xs leading-5 text-slate-600">{testCase.executionRules?.map((rule) => <li key={rule}>· {rule}</li>)}</ul></div></div></AccordionContent></AccordionItem></Accordion></Card>)}
+              {protocol.testCases.map((testCase, index) => <Card key={testCase.id} className="px-5 shadow-none"><Accordion type="single" collapsible><AccordionItem value={testCase.id}><AccordionTrigger><div className="flex items-center gap-4"><span className="font-mono text-[11px] text-blue-600">CASE {String(index + 1).padStart(2, "0")}</span><span className="text-left text-[15px] font-semibold">{testCase.title}</span></div></AccordionTrigger><AccordionContent><div className="grid gap-5 border-t pt-5 lg:grid-cols-2"><Detail title="测试目的" text={testCase.objective} /><Detail title="输入材料" text={testCase.inputDescription ?? "Prompt 已包含完成任务所需信息，无额外输入材料。"} /><div><div className="eyebrow mb-2">预期输出</div><div className="flex flex-wrap gap-2">{testCase.expectedOutputTypes.map((type) => <Badge key={type} variant="neutral">{outputLabels[type]}</Badge>)}</div></div><div><div className="eyebrow mb-2">需要保留的证据</div><ul className="space-y-1 text-xs leading-5 text-slate-600">{testCase.evidenceRequirements.map((item) => <li key={item}>· {item}</li>)}</ul></div><div className="lg:col-span-2"><div className="eyebrow mb-2">Prompt</div><div className="whitespace-pre-wrap rounded-md border bg-slate-50 p-4 font-mono text-xs leading-6 text-slate-700">{testCase.prompt}</div></div><div><div className="eyebrow mb-2">观察重点</div><div className="flex flex-wrap gap-2">{testCase.observationFocus.map((item) => <Badge key={item} variant="neutral">{item}</Badge>)}</div></div><div><div className="eyebrow mb-2">执行规则</div><ul className="space-y-1 text-xs leading-5 text-slate-600">{testCase.executionRules?.map((rule) => <li key={rule}>· {rule}</li>)}</ul></div></div></AccordionContent></AccordionItem></Accordion></Card>)}
             </div>
           </section>
         </div>
@@ -58,10 +67,5 @@ export function ProtocolView({ protocol, productCount, canRegenerate }: { protoc
   );
 }
 
-function TargetIcon() {
-  return <span className="grid h-5 w-5 place-items-center rounded-full bg-blue-50 text-blue-600"><span className="h-2 w-2 rounded-full border-2 border-blue-600" /></span>;
-}
-
-function Detail({ title, text }: { title: string; text: string }) {
-  return <div><div className="eyebrow mb-2">{title}</div><p className="whitespace-pre-wrap text-xs leading-6 text-slate-600">{text}</p></div>;
-}
+function TargetIcon() { return <span className="grid h-5 w-5 place-items-center rounded-full bg-blue-50 text-blue-600"><span className="h-2 w-2 rounded-full border-2 border-blue-600" /></span>; }
+function Detail({ title, text }: { title: string; text: string }) { return <div><div className="eyebrow mb-2">{title}</div><p className="whitespace-pre-wrap text-xs leading-6 text-slate-600">{text}</p></div>; }
