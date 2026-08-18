@@ -21,7 +21,7 @@ const executionMetadataSchema = z.object({
 });
 
 type SupportedArtifact = {
-  kind: "image" | "pdf" | "text" | "video" | "archive";
+  kind: "image" | "pdf" | "text" | "video";
   mimeType: string;
   extension: string;
 };
@@ -212,9 +212,9 @@ function missingEvidenceTypes(expected: ExpectedOutputType[], artifacts: TestArt
     if (type === "image") return !has("image");
     if (type === "document") return !has("pdf");
     if (type === "video") return !has("video");
-    if (type === "code") return !(has("text") || has("archive"));
+    if (type === "code") return !has("text");
     return artifacts.length === 0;
-  }).map((type) => ({ text: "文本", image: "图片", document: "PDF 文档", video: "视频", code: "代码/项目文件", mixed: "原始结果" })[type]);
+  }).map((type) => ({ text: "文本", image: "图片", document: "PDF 文档", video: "视频", code: "代码文本", mixed: "原始结果" })[type]);
 }
 
 function startsWith(bytes: Uint8Array, signature: number[]) { return signature.every((value, index) => bytes[index] === value); }
