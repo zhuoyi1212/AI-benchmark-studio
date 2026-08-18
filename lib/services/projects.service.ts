@@ -75,6 +75,10 @@ export async function createProject(record: CreateProjectRecord): Promise<string
   });
 }
 
+export async function softDeleteProject(projectId: string): Promise<boolean> {
+  return projectsRepository.softDelete(projectId);
+}
+
 function calculateProgress(runs: ProjectProgressRow[]) {
   const total = runs.length;
   const completed = runs.filter((run) => completedStatuses.has(run.status)).length;
