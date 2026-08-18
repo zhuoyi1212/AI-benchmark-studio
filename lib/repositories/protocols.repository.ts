@@ -42,7 +42,7 @@ export const protocolsRepository = {
       .eq("protocol_id", protocolId)
       .order("position", { ascending: true });
     if (error) throwRepositoryError("protocols.listTestCases", error);
-    return data as ProtocolTestCaseRow[];
+    return data as unknown as ProtocolTestCaseRow[];
   },
 
   async listRubric(protocolId: string): Promise<RubricDimensionRow[]> {
