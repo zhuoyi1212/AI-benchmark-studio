@@ -9,10 +9,13 @@ import {
 } from "@/lib/ai/schemas/protocol.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
 import { RepositoryError } from "@/lib/repositories/repository-error";
-import { protocolsRepository } from "@/lib/repositories/protocols.repository";
+import {
+  protocolsRepository,
+  type ProtocolTestCaseRow,
+} from "@/lib/repositories/protocols.repository";
 import { createInputSignature } from "@/lib/signatures";
 import { getResearchWorkspace, type ResearchWorkspace } from "@/lib/services/research.service";
-import type { ProtocolRow, RubricDimensionRow, TestCaseRow } from "@/lib/types/database";
+import type { ProtocolRow, RubricDimensionRow } from "@/lib/types/database";
 import type { RubricDimension, TestCase, TestProtocol, TestRule } from "@/lib/types/protocol";
 
 const storedRuleSchema = z.array(z.object({ id: z.enum(mandatoryProtocolRuleIds), text: z.string().trim().min(1) })).length(mandatoryProtocolRuleIds.length);
@@ -146,7 +149,9 @@ async function readProtocol(row: ProtocolRow): Promise<TestProtocol> {
   };
 }
 
-function mapTestCase(row: TestCaseRow): TestCase {
+function mapTestCase(row: ProtocolTestCaseRow): TestCase {
+  const expectedOutputParse = storedExpectedOutputTypesSchema.safeParse(row.expected_output_types);
+  const evidenceParse = storedTextListSchema.safeParse(row.evidence_requirements);
   return {
     id: row.id,
     title: row.title,
@@ -154,8 +159,8 @@ function mapTestCase(row: TestCaseRow): TestCase {
     prompt: row.prompt,
     inputDescription: row.input_description ?? undefined,
     inputArtifacts: storedInputArtifactsSchema.parse(row.input_artifacts).map((artifact, index) => ({ id: `${row.id}-input-${index + 1}`, name: artifact.name, type: artifact.type })),
-    expectedOutputTypes: storedExpectedOutputTypesSchema.parse(row.expected_output_types),
-    evidenceRequirements: storedTextListSchema.parse(row.evidence_requirements),
+    expectedOutputTypes: expectedOutputParse.success ? expectedOutputParse.data : ["mixed"],
+    evidenceRequirements: evidenceParse.success ? evidenceParse.data : ["上传该测试项未经后期编辑的原始输出"],
     observationFocus: storedTextListSchema.parse(row.observation_focus),
     executionRules: storedTextListSchema.parse(row.execution_rules),
   };
