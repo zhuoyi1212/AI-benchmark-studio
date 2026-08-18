@@ -54,6 +54,19 @@ export const projectsRepository = {
     return data;
   },
 
+  async softDelete(projectId: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    const { data, error } = await getSupabaseServerClient()
+      .from("projects")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", projectId)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
+    if (error) throwRepositoryError("projects.softDelete", error);
+    return Boolean(data);
+  },
+
   async listProductRows(projectIds: string[]): Promise<ProjectProductListRow[]> {
     if (projectIds.length === 0) return [];
     const { data, error } = await getSupabaseServerClient()
