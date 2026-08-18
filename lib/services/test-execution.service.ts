@@ -86,7 +86,7 @@ export async function uploadTestArtifact(input: {
   if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
 
   const file = normalizeAndValidateFile(input.file);
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bytes = new Uint8Array(await file.file.arrayBuffer());
   validateFileSignature(bytes, file.mimeType);
   const artifactType = supportedArtifacts[file.mimeType]!;
   const artifactId = randomUUID();
