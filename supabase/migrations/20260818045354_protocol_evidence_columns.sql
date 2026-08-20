@@ -1,12 +1,3 @@
--- Extend benchmark evidence to text variants and video while preserving raw artifacts.
-
-alter table public.test_artifacts
-  drop constraint if exists test_artifacts_kind_check;
-
-alter table public.test_artifacts
-  add constraint test_artifacts_kind_check
-  check (kind in ('image', 'pdf', 'text', 'video'));
-
 alter table public.test_cases
   add column if not exists expected_output_types jsonb not null default '[]'::jsonb
     check (jsonb_typeof(expected_output_types) = 'array'),

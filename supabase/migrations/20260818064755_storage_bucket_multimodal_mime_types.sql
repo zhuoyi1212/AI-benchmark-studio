@@ -1,5 +1,3 @@
--- Keep the private benchmark artifact bucket aligned with the multimodal upload types.
-
 update storage.buckets
 set allowed_mime_types = array[
   'image/png',

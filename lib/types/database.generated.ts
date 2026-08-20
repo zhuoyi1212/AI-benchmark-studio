@@ -1334,8 +1334,8 @@ export type Database = {
         Row: {
           created_at: string
           evidence_requirements: Json
-          expected_output_types: Json
           execution_rules: Json
+          expected_output_types: Json
           id: string
           input_artifacts: Json
           input_description: string | null
@@ -1350,8 +1350,8 @@ export type Database = {
         Insert: {
           created_at?: string
           evidence_requirements?: Json
-          expected_output_types?: Json
           execution_rules?: Json
+          expected_output_types?: Json
           id?: string
           input_artifacts?: Json
           input_description?: string | null
@@ -1366,8 +1366,8 @@ export type Database = {
         Update: {
           created_at?: string
           evidence_requirements?: Json
-          expected_output_types?: Json
           execution_rules?: Json
+          expected_output_types?: Json
           id?: string
           input_artifacts?: Json
           input_description?: string | null
@@ -1676,6 +1676,14 @@ export type Database = {
       record_test_artifact: {
         Args: { p_artifact: Json; p_run_metadata: Json; p_test_run_id: string }
         Returns: string
+      }
+      remove_draft_test_case: {
+        Args: {
+          p_project_id: string
+          p_protocol_id: string
+          p_test_case_id: string
+        }
+        Returns: undefined
       }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }

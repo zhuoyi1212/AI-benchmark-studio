@@ -1,5 +1,3 @@
--- Persist evidence-aware TestCase metadata without weakening the existing M5 validation contract.
-
 create or replace function public.create_protocol_draft(
   p_project_id uuid,
   p_research_run_id uuid,

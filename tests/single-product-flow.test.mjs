@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [mode, research, protocol, judge, results, report, publish, migration, databaseTypes] = await Promise.all([
+const [mode, research, protocol, judge, results, report, publish, migration, triggerMigration, databaseTypes] = await Promise.all([
   read("lib/project-mode.ts"),
   read("lib/services/research.service.ts"),
   read("lib/services/protocols.service.ts"),
@@ -12,7 +12,8 @@ const [mode, research, protocol, judge, results, report, publish, migration, dat
   read("lib/services/result-analysis.service.ts"),
   read("lib/services/report.service.ts"),
   read("lib/services/publish.service.ts"),
-  read("supabase/migrations/202608180005_single_product_experience_flow.sql"),
+  read("supabase/migrations/20260820085700_single_product_experience_flow.sql"),
+  read("supabase/migrations/20260820090155_single_product_protocol_trigger_gate.sql"),
   read("lib/types/database.ts"),
 ]);
 
@@ -26,6 +27,8 @@ test("single research can generate a 1-3 case experience protocol without weaken
   assert.match(protocol, /testCaseCount >= 1 && testCaseCount <= 3/);
   assert.match(protocol, /testCaseCount >= 2 && testCaseCount <= 4/);
   assert.match(migration, /comparability->>'status' in \('comparable', 'partially_comparable'\)[\s\S]*count\(\*\).*project_products.*= 1/);
+  assert.match(triggerMigration, /create or replace function private\.validate_protocol_lock/);
+  assert.match(triggerMigration, /comparability->>'status' in \('comparable', 'partially_comparable'\)[\s\S]*count\(\*\).*project_products.*= 1/);
 });
 
 test("evidence requirements remain linked through Judge and ResultAnalysis", () => {

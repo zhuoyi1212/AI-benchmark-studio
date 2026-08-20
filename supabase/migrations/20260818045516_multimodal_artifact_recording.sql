@@ -1,6 +1,3 @@
--- Keep the existing Test Execution lineage/metadata safeguards while extending
--- record_test_artifact to Markdown/JSON/CSV and raw video evidence.
-
 create or replace function public.record_test_artifact(
   p_test_run_id uuid,
   p_artifact jsonb,
