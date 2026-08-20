@@ -16,6 +16,7 @@ export function ProjectForm() {
   const [products, setProducts] = useState<DraftProduct[]>([{ key: 1, name: "", website: "" }]);
   const [nextKey, setNextKey] = useState(2);
   const [intent, setIntent] = useState("");
+  const singleMode = products.length === 1;
 
   const updateProduct = (key: number, field: "name" | "website", value: string) => {
     setProducts((current) => current.map((product) => product.key === key ? { ...product, [field]: value } : product));
@@ -29,13 +30,21 @@ export function ProjectForm() {
   return (
     <form action={formAction}>
       <div className="space-y-7">
+        <div className="rounded-lg border bg-slate-50 p-4">
+          <div className="text-xs font-semibold text-slate-900">{singleMode ? "单品体验" : "横向对比"}</div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {singleMode
+              ? "当前将深入体验这一款产品，生成体验任务、评分结论与深度体验报告。"
+              : "当前将使用统一任务对多款产品进行标准化横向比较。"}
+          </p>
+        </div>
         <label className="block">
           <span className="mb-2 block text-sm font-medium">测评名称</span>
-          <Input name="name" maxLength={120} required placeholder="例如：AI 产品横向测评" />
+          <Input name="name" maxLength={120} required placeholder={singleMode ? "例如：深度体验某款 AI 产品" : "例如：AI 产品横向测评"} />
         </label>
         <div>
           <div className="mb-2 flex items-end justify-between">
-            <div><span className="block text-sm font-medium">测评产品</span><span className="mt-1 block text-xs text-muted-foreground">添加 1–3 个产品</span></div>
+            <div><span className="block text-sm font-medium">测评产品</span><span className="mt-1 block text-xs text-muted-foreground">1 个产品为单品体验，2–3 个产品为横向对比</span></div>
             <span className="text-xs tabular-nums text-muted-foreground">{products.length} / 3</span>
           </div>
           <div className="space-y-2.5">
@@ -90,7 +99,7 @@ export function ProjectForm() {
             required
             onChange={(event) => setIntent(event.target.value)}
             rows={5}
-            placeholder="描述你的核心问题、目标用户和使用场景…"
+            placeholder={singleMode ? "描述你想重点体验的能力、真实使用场景和最关心的问题…" : "描述你的核心问题、目标用户和希望比较的使用场景…"}
           />
           <span className="mt-1.5 block text-right text-[11px] text-muted-foreground">{intent.length} 字</span>
         </label>

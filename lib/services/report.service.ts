@@ -122,6 +122,7 @@ export async function generateReport(projectId: string): Promise<string> {
         {
           role: "user",
           content: JSON.stringify({
+            reportMode: source.projectMode === "single" ? "single_product_experience" : "comparison_benchmark",
             reportSource: input,
             projectMode: source.projectMode,
             immutableFields: source.projectMode === "single" ? "唯一产品的 score、analysis 与 experiment evidence 均只读；不要把数组顺序表达成排名。" : "lockedRanking 的 score/order、analysis 的 winnerReason/products/limitations 与 experiment 中的 evidence 均只读。输出 Schema 不包含这些字段，请只生成表达性内容。",

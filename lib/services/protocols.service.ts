@@ -53,6 +53,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       id: research.project.id,
       name: research.project.name,
       intent: research.project.intent,
+      mode: projectMode,
       products: research.project.products.map(({ id, name, officialUrl }) => ({ id, name, officialUrl })),
     },
     researchRun: {
@@ -111,6 +112,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
               evidenceMustSupportEverySelectedRubricDimension: true,
               scoringStandardMustDefine: ["excellent", "good", "acceptable", "poor"],
               positionsMustBeContiguousFromOne: true,
+              singleProductFocus: projectMode === "single" ? ["核心能力", "真实用户场景", "官方卖点验证", "明显优缺点"] : undefined,
             },
           }),
         },

@@ -112,12 +112,14 @@ export async function generateFinalResultAnalysis(projectId: string): Promise<st
         },
         {
           role: "user",
-          content: JSON.stringify({
+          content: JSON.stringify(projectMode === "single" ? {
+            experienceScore: ranking[0],
+            experiment: input,
+            required: "解释综合体验结论、各 Case 与维度表现、产品亮点、问题、适合与不适合人群、关键发现和测试限制。不要生成排名、冠军或横向比较结论。products 必须且只能覆盖唯一产品。",
+          } : {
             lockedRanking: ranking,
             experiment: input,
-            required: projectMode === "single"
-              ? "解释综合体验结论、各 Case 与维度表现、产品亮点、问题、适合与不适合人群、关键发现和测试限制。不要生成排名或冠军叙事。products 必须且只能覆盖唯一产品。"
-              : "解释 winner、每款产品优势/劣势/适合与不适合人群、跨产品洞察、反直觉发现和测试限制。products 必须且只能覆盖 lockedRanking 中的 productId。",
+            required: "解释 winner、每款产品优势/劣势/适合与不适合人群、跨产品洞察、反直觉发现和测试限制。products 必须且只能覆盖 lockedRanking 中的 productId。",
           }),
         },
       ],
