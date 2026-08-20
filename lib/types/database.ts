@@ -137,6 +137,8 @@ export type TestCaseRow = {
   prompt: string;
   input_description: string | null;
   input_artifacts: Json;
+  expected_output_types: Json;
+  evidence_requirements: Json;
   observation_focus: Json;
   execution_rules: Json;
   created_at: string;
@@ -173,7 +175,7 @@ export type TestRunRow = {
 export type TestArtifactRow = {
   id: string;
   test_run_id: string;
-  kind: "image" | "pdf" | "text";
+  kind: "image" | "pdf" | "text" | "video";
   bucket_id: "benchmark-artifacts";
   storage_path: string;
   file_name: string;

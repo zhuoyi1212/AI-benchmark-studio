@@ -1333,6 +1333,8 @@ export type Database = {
       test_cases: {
         Row: {
           created_at: string
+          evidence_requirements: Json
+          expected_output_types: Json
           execution_rules: Json
           id: string
           input_artifacts: Json
@@ -1347,6 +1349,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          evidence_requirements?: Json
+          expected_output_types?: Json
           execution_rules?: Json
           id?: string
           input_artifacts?: Json
@@ -1361,6 +1365,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          evidence_requirements?: Json
+          expected_output_types?: Json
           execution_rules?: Json
           id?: string
           input_artifacts?: Json

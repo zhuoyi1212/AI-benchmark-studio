@@ -8,10 +8,11 @@ import { aiTaskService } from "@/lib/ai/task-service";
 import type { AIMessageContent, JudgeArtifactDescriptor } from "@/lib/ai/types";
 import { judgeRepository, type JudgeCaseInputRow } from "@/lib/repositories/judge.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
-import { protocolsRepository } from "@/lib/repositories/protocols.repository";
+import { protocolsRepository, type ProtocolTestCaseRow } from "@/lib/repositories/protocols.repository";
 import { createInputSignature } from "@/lib/signatures";
 import { BlindReviewError, getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
-import type { JudgeCaseRunRow, JudgeRunRow, JudgeScoreRow, RubricDimensionRow, TestCaseRow } from "@/lib/types/database";
+import type { JudgeCaseRunRow, JudgeRunRow, JudgeScoreRow, RubricDimensionRow } from "@/lib/types/database";
+import type { ExpectedOutputType } from "@/lib/types/protocol";
 
 const storedTextListSchema = z.array(z.string().trim().min(1));
 const storedRulesSchema = z.array(z.object({ id: z.string(), text: z.string().trim().min(1) }));
@@ -22,6 +23,7 @@ const storedScoringStandardSchema = z.object({
   poor: z.string().trim().min(1),
 });
 const storedEvidenceSchema = z.array(z.string().trim().min(1));
+const storedExpectedOutputTypesSchema = z.array(z.enum(["text", "image", "document", "video", "code", "mixed"])).min(1);
 const maxTextArtifactCharacters = 500_000;
 
 type JudgeTestCase = {
@@ -31,6 +33,8 @@ type JudgeTestCase = {
   objective: string;
   prompt: string;
   inputDescription: string | null;
+  expectedOutputTypes: ExpectedOutputType[];
+  evidenceRequirements: string[];
   observationFocus: string[];
   executionRules: string[];
 };
@@ -317,7 +321,7 @@ function assertExactScoreMatrix(
   }
 }
 
-function mapTestCase(row: TestCaseRow): JudgeTestCase {
+function mapTestCase(row: ProtocolTestCaseRow): JudgeTestCase {
   return {
     id: row.id,
     position: row.position,
@@ -325,6 +329,8 @@ function mapTestCase(row: TestCaseRow): JudgeTestCase {
     objective: row.objective,
     prompt: row.prompt,
     inputDescription: row.input_description,
+    expectedOutputTypes: storedExpectedOutputTypesSchema.parse(row.expected_output_types),
+    evidenceRequirements: storedTextListSchema.parse(row.evidence_requirements),
     observationFocus: storedTextListSchema.parse(row.observation_focus),
     executionRules: storedTextListSchema.parse(row.execution_rules),
   };

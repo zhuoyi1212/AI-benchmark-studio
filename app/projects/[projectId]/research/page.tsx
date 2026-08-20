@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ResearchAction } from "@/app/projects/[projectId]/research/research-action";
+import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import type { ComparabilityResult, ProductResearch, ResearchSource } from "@/lib/types/research";
 
@@ -37,6 +38,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
   if (!workspace) notFound();
 
   const { project, latestRun, completedResult, runCount } = workspace;
+  const projectMode = getProjectMode(project.products);
   const running = latestRun?.status === "pending" || latestRun?.status === "running";
   const latestFailed = latestRun?.status === "failed";
 
@@ -46,7 +48,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
       <PageHeader
         eyebrow={`项目 / ${project.name}`}
         title="产品调研"
-        description={completedResult ? `ResearchRun v${completedResult.version} · 基于真实检索来源形成的结构化调研。` : "基于官网、文档、价格页与官方动态收集可追溯事实，再判断产品是否适合横向测试。"}
+        description={completedResult ? `ResearchRun v${completedResult.version} · 基于真实检索来源形成的结构化调研。` : projectMode === "single" ? "基于官方来源建立产品事实，再提炼值得真实体验验证的核心能力。" : "基于官网、文档、价格页与官方动态收集可追溯事实，再判断产品是否适合横向测试。"}
         action={!completedResult && !running ? <ResearchAction projectId={project.id} retry={latestFailed} /> : undefined}
       />
 
@@ -56,20 +58,20 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
 
       {completedResult ? (
         <>
-          <ComparabilityCard comparability={completedResult.comparability} />
+          <ComparabilityCard comparability={completedResult.comparability} mode={projectMode} />
           <section>
             <div className="mb-4 flex items-center justify-between"><h2 className="section-title">产品概览</h2><span className="text-xs text-muted-foreground">{completedResult.products.length} 个产品</span></div>
             <div className="grid gap-4 xl:grid-cols-3">{completedResult.products.map((product) => <ProductResearchCard key={product.productId} product={product} />)}</div>
           </section>
           <section className="mt-8 rounded-lg border bg-white p-5">
-            <h2 className="section-title">共同测试能力</h2>
-            <p className="mt-1 text-xs text-muted-foreground">下列能力来自已保存的 ProductResearch，可使用共同任务进行比较。</p>
-            {completedResult.comparability.commonCapabilities.length > 0 ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">{completedResult.comparability.commonCapabilities.map((ability, index) => <div key={ability} className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-3 text-sm font-medium"><span className="grid h-5 w-5 place-items-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">{index + 1}</span>{ability}</div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">没有识别到足以支持标准化横向测试的共同能力。</p>}
+            <h2 className="section-title">{projectMode === "single" ? "核心体验能力" : "共同测试能力"}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{projectMode === "single" ? "下列能力来自已保存的 ProductResearch，将用于设计可留证的真实体验任务。" : "下列能力来自已保存的 ProductResearch，可使用共同任务进行比较。"}</p>
+            {completedResult.comparability.commonCapabilities.length > 0 ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">{completedResult.comparability.commonCapabilities.map((ability, index) => <div key={ability} className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-3 text-sm font-medium"><span className="grid h-5 w-5 place-items-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">{index + 1}</span>{ability}</div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">{projectMode === "single" ? "暂未识别到明确的核心体验能力。" : "没有识别到足以支持标准化横向测试的共同能力。"}</p>}
             {completedResult.comparability.warnings?.length ? <ul className="mt-5 space-y-1.5 border-t pt-4 text-xs leading-5 text-amber-800">{completedResult.comparability.warnings.map((warning) => <li key={warning}>· {warning}</li>)}</ul> : null}
           </section>
           <div className="sticky bottom-5 z-20 mt-8 flex items-center justify-between rounded-lg border bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="text-xs text-muted-foreground">调研完成于 {formatDateTime(completedResult.generatedAt)}</div>
-            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry />{completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成测评方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
+            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry />{projectMode === "comparison" && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成{projectMode === "single" ? "体验" : "测评"}方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
           </div>
         </>
       ) : !running ? (
@@ -82,9 +84,10 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
   );
 }
 
-function ComparabilityCard({ comparability }: { comparability: ComparabilityResult }) {
-  const positive = comparability.status === "comparable";
-  return <Card className={`mb-8 overflow-hidden shadow-none ${positive ? "border-emerald-200 bg-emerald-50/50" : "border-amber-200 bg-amber-50/50"}`}><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white ring-1 ${positive ? "text-emerald-600 ring-emerald-200" : "text-amber-700 ring-amber-200"}`}><CheckCircle2 className="h-5 w-5" /></span><div className="flex-1"><div className="flex items-center gap-2"><h2 className="section-title">可比性判断</h2><Badge variant={positive ? "success" : "warning"}>{comparabilityLabels[comparability.status]}</Badge></div><p className="mt-2 text-sm leading-6 text-slate-700">{comparability.reason}</p></div>{comparability.score !== undefined && <div className={`min-w-40 border-t pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0 ${positive ? "border-emerald-200" : "border-amber-200"}`}><div className="text-[11px] text-muted-foreground">可比性置信度</div><div className={`mt-1 text-2xl font-semibold ${positive ? "text-emerald-700" : "text-amber-800"}`}>{Math.round(comparability.score * 100)}%</div></div>}</div></Card>;
+function ComparabilityCard({ comparability, mode }: { comparability: ComparabilityResult; mode: ProjectMode }) {
+  const positive = mode === "single" || comparability.status === "comparable";
+  const label = mode === "single" ? "体验范围已识别" : comparabilityLabels[comparability.status];
+  return <Card className={`mb-8 overflow-hidden shadow-none ${positive ? "border-emerald-200 bg-emerald-50/50" : "border-amber-200 bg-amber-50/50"}`}><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white ring-1 ${positive ? "text-emerald-600 ring-emerald-200" : "text-amber-700 ring-amber-200"}`}><CheckCircle2 className="h-5 w-5" /></span><div className="flex-1"><div className="flex items-center gap-2"><h2 className="section-title">{mode === "single" ? "体验范围判断" : "可比性判断"}</h2><Badge variant={positive ? "success" : "warning"}>{label}</Badge></div><p className="mt-2 text-sm leading-6 text-slate-700">{comparability.reason}</p></div>{comparability.score !== undefined && <div className={`min-w-40 border-t pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0 ${positive ? "border-emerald-200" : "border-amber-200"}`}><div className="text-[11px] text-muted-foreground">{mode === "single" ? "分析置信度" : "可比性置信度"}</div><div className={`mt-1 text-2xl font-semibold ${positive ? "text-emerald-700" : "text-amber-800"}`}>{Math.round(comparability.score * 100)}%</div></div>}</div></Card>;
 }
 
 function ProductResearchCard({ product }: { product: ProductResearch }) {

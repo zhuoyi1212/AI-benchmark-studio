@@ -31,18 +31,19 @@ export default async function BlindReviewPage({ params }: ReviewPageProps) {
     return <HumanReviewPanel workspace={reviewWorkspace} />;
   }
   const run = workspace.latestRun;
+  const singleProduct = workspace.samples.length === 1;
   const completedCases = run?.caseRuns.filter((caseRun) => caseRun.status === "completed").length ?? 0;
   const progress = workspace.testCases.length === 0 ? 0 : completedCases / workspace.testCases.length * 100;
 
   return (
     <div className="page-shell">
       <Link href={`/projects/${projectId}/test`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回测试执行</Link>
-      <PageHeader eyebrow={`Blind Review / Protocol v${workspace.protocolVersion}`} title="产品身份已隐藏" description="AI Judge 只接收匿名 Sample、锁定的测试方案与原始 Artifact，不接收产品身份映射。" action={<Badge variant="success"><EyeOff className="h-3 w-3" />Blind 状态生效</Badge>} />
+      <PageHeader eyebrow={`Blind Review / Protocol v${workspace.protocolVersion}`} title="产品身份已隐藏" description={singleProduct ? "AI Judge 在匿名状态下评价这次真实体验的原始 Artifact，不接收产品身份。" : "AI Judge 只接收匿名 Sample、锁定的测试方案与原始 Artifact，不接收产品身份映射。"} action={<Badge variant="success"><EyeOff className="h-3 w-3" />Blind 状态生效</Badge>} />
 
       <div className="mb-7 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" /><div><p className="text-sm font-semibold text-blue-950">身份映射仅保存在服务端</p><p className="mt-1 text-xs leading-5 text-blue-800/70">页面、Server Action 返回值与 Judge 输入均不包含 Product ID、产品名称或 Sample-to-Product Mapping。</p></div></div>
 
       <section>
-        <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><EyeOff className="h-4 w-4 text-blue-700" /><h2 className="section-title">Blind Samples</h2></div><span className="text-xs text-muted-foreground">{workspace.samples.length} 个匿名样本</span></div>
+        <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><EyeOff className="h-4 w-4 text-blue-700" /><h2 className="section-title">{singleProduct ? "匿名体验样本" : "Blind Samples"}</h2></div><span className="text-xs text-muted-foreground">{workspace.samples.length} 个匿名样本</span></div>
         <div className="grid gap-4 md:grid-cols-3">{workspace.samples.map((sample, index) => <Card key={sample.sampleId} className="p-5 shadow-none"><div className="flex items-start justify-between"><span className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold">{String.fromCharCode(65 + index)}</span><Badge variant="neutral"><LockKeyhole className="h-3 w-3" />身份已封存</Badge></div><h3 className="mt-5 text-lg font-semibold">{sample.label}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">该匿名标识贯穿 AI Judge、人工复核与锁定阶段。</p></Card>)}</div>
       </section>
 

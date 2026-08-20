@@ -29,7 +29,7 @@ test("persists selected or custom angle and validated publish config", () => {
   assert.match(migration, /Selected ContentIdea does not belong/); assert.match(editor, /自定义内容角度/);
 });
 test("only recommends and persists real image TestArtifacts", () => {
-  assert.match(service, /mime_type\.startsWith\("image\/"\)/); assert.match(service, /orderedRealScreenshotReferences/);
+  assert.match(service, /mimeType\.startsWith\("image\/"\)/); assert.match(service, /orderedRealScreenshotReferences/);
   assert.match(migration, /publish_pack_artifacts/); assert.match(migration, /\(recommendation->>'artifactId'\)::uuid/);
   assert.match(editor, /测试截图库/); assert.match(editor, /下载全部图片/); assert.match(editor, /复制帖子内容/);
   assert.doesNotMatch(service + editor, /AI 生图|mock:\/\//);

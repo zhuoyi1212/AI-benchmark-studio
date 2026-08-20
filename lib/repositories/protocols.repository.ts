@@ -10,10 +10,7 @@ const protocolColumns = "id, project_id, research_run_id, version, title, goal, 
 const testCaseColumns = "id, protocol_id, position, title, objective, prompt, input_description, input_artifacts, expected_output_types, evidence_requirements, observation_focus, execution_rules, created_at, updated_at";
 const rubricColumns = "id, protocol_id, position, name, weight, description, scoring_standard, created_at, updated_at";
 
-export type ProtocolTestCaseRow = TestCaseRow & {
-  expected_output_types: Json;
-  evidence_requirements: Json;
-};
+export type ProtocolTestCaseRow = TestCaseRow;
 
 export type CreateProtocolRecord = {
   projectId: string;
@@ -42,7 +39,7 @@ export const protocolsRepository = {
       .eq("protocol_id", protocolId)
       .order("position", { ascending: true });
     if (error) throwRepositoryError("protocols.listTestCases", error);
-    return data as unknown as ProtocolTestCaseRow[];
+    return data;
   },
 
   async listRubric(protocolId: string): Promise<RubricDimensionRow[]> {

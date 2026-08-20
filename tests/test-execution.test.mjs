@@ -26,7 +26,7 @@ test("derives an exact idempotent Product x TestCase matrix from the latest lock
   assert.match(repository, /\.rpc\("ensure_test_run_matrix"/);
 });
 
-test("uploads only validated raw image, PDF, or text evidence to private Storage", () => {
+test("uploads only validated raw multimodal evidence to private Storage", () => {
   assert.match(schema, /'benchmark-artifacts'[\s\S]*false,[\s\S]*52428800/);
   assert.match(repository, /\.storage[\s\S]*\.upload\(/);
   assert.match(repository, /createSignedUrl\(path, 3600\)/);
@@ -59,7 +59,7 @@ test("real Test Execution route validates actions and never imports demo data", 
   assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/protocol`\)/);
   assert.match(actions, /instanceof File/);
   assert.match(actions, /TestExecutionError/);
-  assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain/);
+  assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain,text\/markdown,application\/json,text\/csv,video\/mp4,video\/webm,video\/quicktime/);
   assert.doesNotMatch(page + actions + actionComponent + service + repository, /@\/lib\/mock|mockTestRuns|\/projects\/demo/);
 });
 

@@ -27,10 +27,10 @@
 | `research_runs` | 每次 AI Research 运行 | `(project_id, version)` 唯一；保留 input/model/prompt/error |
 | `product_research` | 某次 Research 的逐产品结论 | 必须同时属于该 Project 和 ResearchRun |
 | `protocols` | Protocol 版本与锁定状态 | `(project_id, version)` 唯一；引用具体 ResearchRun |
-| `test_cases` | Protocol 的动态 Test Cases | 顺序唯一；locked 后不可变 |
+| `test_cases` | Protocol 的动态 Test Cases | 顺序唯一；保存 expected output 与 evidence requirements；locked 后不可变 |
 | `rubric_dimensions` | Protocol 的动态 Rubric | 权重 `> 0, <= 100`；锁定时总和必须为 100 |
 | `test_runs` | `Protocol × TestCase × Product` | 三元组唯一；只能为 locked Protocol 创建 |
-| `test_artifacts` | 原始证据 metadata | Storage path 唯一；image/PDF/text；写入后不可变 |
+| `test_artifacts` | 原始证据 metadata | Storage path 唯一；image/PDF/text/video；写入后不可变 |
 | `blind_samples` | 客户端可见的 Sample label | 每个 Protocol label 唯一 |
 | `blind_mappings` | Sample → Product 的真实映射 | server-only；每个 Protocol 的 Product 只映射一次 |
 | `judge_runs` | 一次 Protocol 级 Blind Judge 批次 | 绑定 locked Protocol、完整 Artifact 集与批次输入签名 |
@@ -101,7 +101,8 @@ erDiagram
 ### Protocol
 
 - Protocol 必须引用具体 `research_run_id`。
-- 只有 completed 且可比性为 comparable/partially comparable 的 ResearchRun 才能创建 Protocol。
+- 多产品项目只有 completed 且可比性为 comparable/partially comparable 的 ResearchRun 才能创建 Protocol。
+- 单产品项目保留 Comparability 兼容字段，但不以其 status 阻塞体验 Protocol；Protocol 生成 1–3 个可留证体验 Case。
 - 新版本先以 `draft` 创建；数据库拒绝直接插入 locked Protocol。
 - Lock 时数据库检查：至少 1 个 TestCase、至少 1 个 Rubric、Rubric 总权重恰好 100。
 - locked 后 Protocol、TestCase、Rubric 的 UPDATE/DELETE/INSERT 均被 trigger 阻止；修改方案必须创建新 version。
@@ -180,7 +181,7 @@ projects/{projectId}/runs/{testRunId}/{artifactId}.{ext}
 限制：
 
 - 单文件上限 50 MB。
-- MIME：PNG、JPEG、WebP、PDF、纯文本。
+- MIME：PNG、JPEG、WebP、PDF、TXT、Markdown、JSON、CSV、MP4、WebM、QuickTime。
 - bucket 不公开，M1 不给 `anon` / `authenticated` 创建 `storage.objects` policy。
 - M6 由可信服务端校验 Project 与 Blind 状态后签发短期 URL。
 - Postgres 只保存 path、filename、MIME、size、preview path、hash、metadata，不保存永久公网 URL。
@@ -218,7 +219,7 @@ Auth 在后续接入。`projects.owner_id` 可为空是为了允许第一阶段�
 - 常用状态联合类型
 - `ReviewFinalScoreRow` 视图类型
 
-`lib/types/database.generated.ts` 由已应用 migrations 的远端 Catalog 生成，`lib/types/database.ts` 在其上叠加业务状态联合类型；迁移是最终数据库权威来源。官方建议将 migrations 纳入版本控制，并从 Schema 生成 TypeScript 类型：[Local development with schema migrations](https://supabase.com/docs/guides/local-development/overview)。
+`lib/types/database.generated.ts` 由已应用 migrations 的本地或远端 Catalog 生成，`lib/types/database.ts` 在其上叠加业务状态联合类型；迁移是最终数据库权威来源。官方建议将 migrations 纳入版本控制，并从 Schema 生成 TypeScript 类型：[Local development with schema migrations](https://supabase.com/docs/guides/local-development/overview)。
 
 ## 验证边界
 

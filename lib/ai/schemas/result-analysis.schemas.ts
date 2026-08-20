@@ -23,6 +23,8 @@ export const resultAnalysisInputSchema = z.object({
       title: z.string().min(1),
       objective: z.string().min(1),
       prompt: z.string().min(1),
+      expectedOutputTypes: z.array(z.enum(["text", "image", "document", "video", "code", "mixed"])).default([]),
+      evidenceRequirements: z.array(z.string().min(1)).default([]),
       observationFocus: z.array(z.unknown()),
     })).min(1),
     rubric: z.array(z.object({

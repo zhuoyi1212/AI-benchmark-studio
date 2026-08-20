@@ -19,10 +19,10 @@ export const mockProtocol: TestProtocol = {
     { id: "complete-upload", text: "测试结果完整上传" },
   ],
   testCases: [
-    { id: "01", title: "商业汇报生成", objective: "评估从简短业务背景生成完整商业汇报的综合能力。", prompt: "为一家计划进入东南亚市场的中国 SaaS 公司生成一份 10 页商业汇报，包含市场机会、竞争格局、进入策略与执行路线图。受众为公司管理层。", inputDescription: "公司背景、目标市场、产品核心优势（统一 Markdown 文档）", observationFocus: ["叙事完整性", "商业逻辑", "页面层级", "视觉专业度"] },
-    { id: "02", title: "长文转 PPT", objective: "评估对长文本的理解、压缩和结构化表达能力。", prompt: "将提供的 3,000 字行业研究报告转为 8 页演示文稿，保留关键结论、数据与风险提示，避免大段文字。", inputDescription: "《2026 企业 AI 应用趋势》研究摘要", observationFocus: ["关键信息保留", "内容压缩", "逻辑结构", "可读性"] },
-    { id: "03", title: "数据分析 PPT", objective: "评估将结构化数据转化为洞察和图表的能力。", prompt: "根据提供的季度营收数据生成 6 页经营分析汇报，识别增长驱动、异常变化并给出下一季度建议。", inputDescription: "12 个月营收、客户与渠道数据表", observationFocus: ["数据准确性", "图表选择", "洞察质量", "建议可执行性"] },
-    { id: "04", title: "极限约束测试", objective: "评估在严格格式、篇幅与品牌约束下的指令遵循能力。", prompt: "生成 5 页产品发布演示。每页不超过 35 个汉字，仅使用黑、白、蓝三色；必须包含时间轴、对比表和结尾行动号召。", inputDescription: "产品发布说明与品牌规范", observationFocus: ["约束遵循", "信息取舍", "版式稳定性", "异常处理"] },
+    { id: "01", title: "商业汇报生成", objective: "评估从简短业务背景生成完整商业汇报的综合能力。", prompt: "为一家计划进入东南亚市场的中国 SaaS 公司生成一份 10 页商业汇报，包含市场机会、竞争格局、进入策略与执行路线图。受众为公司管理层。", inputDescription: "公司背景、目标市场、产品核心优势（统一 Markdown 文档）", expectedOutputTypes: ["document"], evidenceRequirements: ["上传未经编辑的完整演示文稿或逐页截图"], observationFocus: ["叙事完整性", "商业逻辑", "页面层级", "视觉专业度"] },
+    { id: "02", title: "长文转 PPT", objective: "评估对长文本的理解、压缩和结构化表达能力。", prompt: "将提供的 3,000 字行业研究报告转为 8 页演示文稿，保留关键结论、数据与风险提示，避免大段文字。", inputDescription: "《2026 企业 AI 应用趋势》研究摘要", expectedOutputTypes: ["document"], evidenceRequirements: ["上传未经编辑的完整演示文稿或逐页截图"], observationFocus: ["关键信息保留", "内容压缩", "逻辑结构", "可读性"] },
+    { id: "03", title: "数据分析 PPT", objective: "评估将结构化数据转化为洞察和图表的能力。", prompt: "根据提供的季度营收数据生成 6 页经营分析汇报，识别增长驱动、异常变化并给出下一季度建议。", inputDescription: "12 个月营收、客户与渠道数据表", expectedOutputTypes: ["document"], evidenceRequirements: ["上传未经编辑的完整演示文稿或逐页截图"], observationFocus: ["数据准确性", "图表选择", "洞察质量", "建议可执行性"] },
+    { id: "04", title: "极限约束测试", objective: "评估在严格格式、篇幅与品牌约束下的指令遵循能力。", prompt: "生成 5 页产品发布演示。每页不超过 35 个汉字，仅使用黑、白、蓝三色；必须包含时间轴、对比表和结尾行动号召。", inputDescription: "产品发布说明与品牌规范", expectedOutputTypes: ["document"], evidenceRequirements: ["上传未经编辑的完整演示文稿或逐页截图"], observationFocus: ["约束遵循", "信息取舍", "版式稳定性", "异常处理"] },
   ],
   rubric: [
     { id: "completeness", name: "内容完整性", weight: 20, scoringStandard: { excellent: "核心任务覆盖完整，无关键模块缺失；重要结论有充分上下文。", good: "覆盖主要任务，仅有少量次要信息缺失。", poor: "存在影响任务完成的关键缺失。" } },

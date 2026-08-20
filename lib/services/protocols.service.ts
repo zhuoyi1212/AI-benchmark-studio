@@ -14,6 +14,7 @@ import {
   type ProtocolTestCaseRow,
 } from "@/lib/repositories/protocols.repository";
 import { createInputSignature } from "@/lib/signatures";
+import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getResearchWorkspace, type ResearchWorkspace } from "@/lib/services/research.service";
 import type { ProtocolRow, RubricDimensionRow } from "@/lib/types/database";
 import type { RubricDimension, TestCase, TestProtocol, TestRule } from "@/lib/types/protocol";
@@ -42,7 +43,10 @@ export async function generateProtocol(projectId: string): Promise<string> {
   const research = await getResearchWorkspace(projectId);
   const result = research?.completedResult;
   if (!research || !result) throw new ProtocolExecutionError("请先完成产品调研，再生成测评方案。");
-  if (result.comparability.status === "not_comparable") throw new ProtocolExecutionError("当前产品不适合标准化横向测试，不能生成 Protocol。");
+  const projectMode = getProjectMode(research.project.products);
+  if (projectMode === "comparison" && result.comparability.status === "not_comparable") {
+    throw new ProtocolExecutionError("当前产品不适合标准化横向测试，不能生成 Protocol。");
+  }
 
   const inputSnapshot = {
     project: {
@@ -68,6 +72,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       comparability: result.comparability,
     },
     invariants: {
+      projectMode,
       testMode: "standardized",
       mandatoryRuleIds: mandatoryProtocolRuleIds,
       rubricWeightTotal: 100,
@@ -83,17 +88,22 @@ export async function generateProtocol(projectId: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: "你是严谨但高效的 AI 产品实验设计师。只基于给定 Project Intent、已保存 ProductResearch 与 Comparability 设计公平、可执行、可留证的标准化横向测试。默认只生成 2–4 个高价值 TestCase，优先区分度最高的任务，不为覆盖完整而拆出细碎 Case。每个 TestCase 必须声明 expectedOutputTypes 与 evidenceRequirements。Rubric 必须根据任务动态选择 3–5 个最重要维度；不能仅根据文件格式机械套模板，也不能加入当前证据无法验证的维度。只有 Prompt 明确要求的时长、分辨率、音频等规格才可成为评分项。Protocol 中不得出现任何被测产品名称或品牌，以保证后续 Blind Review。不要搜索互联网，不要引用尚未存在的测试结果。输出简体中文。",
+          content: projectMode === "single"
+            ? "你是严谨但高效的 AI 产品体验实验设计师。只基于 Project Intent 与已保存 ProductResearch，设计 1–3 个最值得真实体验、可执行、可留证的 TestCase，用来验证产品核心能力、真实使用场景、官方卖点、明显优点与限制。Rubric 评价这个产品在体验任务中的实际表现，不得写成相对其他产品的比较。每个 TestCase 必须声明 expectedOutputTypes 与 evidenceRequirements。Protocol 中不得出现被测产品名称或品牌，以保持后续评分 Blind。不要搜索互联网，不要引用尚未存在的结果。输出简体中文。"
+            : "你是严谨但高效的 AI 产品实验设计师。只基于给定 Project Intent、已保存 ProductResearch 与 Comparability 设计公平、可执行、可留证的标准化横向测试。默认只生成 2–4 个高价值 TestCase，优先区分度最高的任务，不为覆盖完整而拆出细碎 Case。每个 TestCase 必须声明 expectedOutputTypes 与 evidenceRequirements。Rubric 必须根据任务动态选择 3–5 个最重要维度；不能仅根据文件格式机械套模板，也不能加入当前证据无法验证的维度。只有 Prompt 明确要求的时长、分辨率、音频等规格才可成为评分项。Protocol 中不得出现任何被测产品名称或品牌，以保证后续 Blind Review。不要搜索互联网，不要引用尚未存在的测试结果。输出简体中文。",
         },
         {
           role: "user",
           content: JSON.stringify({
             ...inputSnapshot,
             requirements: {
-              preferredTestCaseCount: "2-4; simple benchmarks may use 2 and must not pad the count",
+              preferredTestCaseCount: projectMode === "single"
+                ? "1-3 experience cases; use only the cases needed to verify the most important claims"
+                : "2-4; simple benchmarks may use 2 and must not pad the count",
               preferredRubricDimensionCount: "3-5 dynamic dimensions",
               preserveMandatoryRuleIdsExactlyOnce: true,
-              samePromptAndInputForEveryProductWithinEachCase: true,
+              samePromptAndInputForEveryProductWithinEachCase: projectMode === "comparison",
+              evaluateActualExperienceInsteadOfRelativePerformance: projectMode === "single",
               selfContainedPromptWhenNoInputArtifactWasSupplied: true,
               doNotInventUnavailableFiles: true,
               expectedOutputTypesMustUse: expectedOutputTypes,
@@ -107,6 +117,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       ],
       maxTokens: 10000,
     });
+    assertProtocolFitsMode(generated.data.testCases.length, projectMode);
     return await protocolsRepository.createDraft({
       projectId,
       researchRunId: result.researchRunId,
@@ -119,6 +130,13 @@ export async function generateProtocol(projectId: string): Promise<string> {
     if (error instanceof ProtocolExecutionError) throw error;
     throw new ProtocolExecutionError(toUserFacingError(error));
   }
+}
+
+function assertProtocolFitsMode(testCaseCount: number, mode: ProjectMode) {
+  const valid = mode === "single"
+    ? testCaseCount >= 1 && testCaseCount <= 3
+    : testCaseCount >= 2 && testCaseCount <= 4;
+  if (!valid) throw new AIValidationError("protocol", `${mode}ProjectTestCaseCount`);
 }
 
 export async function lockProtocol(projectId: string, protocolId: string): Promise<void> {

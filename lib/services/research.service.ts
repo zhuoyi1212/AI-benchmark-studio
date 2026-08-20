@@ -12,6 +12,7 @@ import type { AIUsage, AITaskRoute, ResearchSource as AIRetrievedSource } from "
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { researchRepository, type ProductResearchWrite } from "@/lib/repositories/research.repository";
 import { createInputSignature } from "@/lib/signatures";
+import { getProjectMode } from "@/lib/project-mode";
 import { getProjectSummary, type ProjectProductSummary, type ProjectSummary } from "@/lib/services/projects.service";
 import type { Json, ProductResearchRow, ResearchRunRow } from "@/lib/types/database";
 import type { ComparabilityResult, ProductResearch, ResearchResponse, ResearchSource } from "@/lib/types/research";
@@ -75,6 +76,7 @@ export async function executeProductResearch(projectId: string): Promise<string>
     products: project.products.map(({ id, name, officialUrl }) => ({ id, name, officialUrl })),
   } satisfies Json;
   const inputSignature = createInputSignature(inputSnapshot);
+  const projectMode = getProjectMode(project.products);
   let researchRunId: string | null = null;
 
   try {
@@ -92,17 +94,22 @@ export async function executeProductResearch(projectId: string): Promise<string>
       messages: [
         {
           role: "system",
-          content: "你是 AI 产品横向测评的实验设计分析师。只基于提供的已保存 ProductResearch 判断可比性，不搜索、不补充外部事实。输出简体中文。",
+          content: projectMode === "single"
+            ? "你是 AI 产品体验研究的实验设计分析师。只基于已保存 ProductResearch 提炼这一个产品可被真实体验验证的核心能力、边界与风险，不搜索、不补充外部事实。Comparability 仅作为兼容元数据，不决定单产品流程是否继续。输出简体中文。"
+            : "你是 AI 产品横向测评的实验设计分析师。只基于提供的已保存 ProductResearch 判断可比性，不搜索、不补充外部事实。输出简体中文。",
         },
         {
           role: "user",
           content: JSON.stringify({
             projectIntent: project.intent,
+            projectMode,
             productResearch: persistedResearch.map(toComparabilityInput),
             requirements: {
               statuses: ["comparable", "partially_comparable", "not_comparable"],
-              identifyCommonCapabilities: true,
-              identifyUnfairComparisonRisks: true,
+              identifyCommonCapabilities: projectMode === "comparison",
+              identifyTestableCoreCapabilities: projectMode === "single",
+              identifyUnfairComparisonRisks: projectMode === "comparison",
+              comparabilityDoesNotGateSingleProductExperience: projectMode === "single",
             },
           }),
         },

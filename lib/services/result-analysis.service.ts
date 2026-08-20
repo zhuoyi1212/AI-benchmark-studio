@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   generatedResultAnalysisSchema,
@@ -26,12 +27,14 @@ export type FinalProductScore = {
 
 export type ResultsWorkspace = {
   projectId: string;
+  projectMode: ProjectMode;
   protocolVersion: number;
   reviewSessionId: string;
   finalScoreSignature: string;
   rubric: HumanReviewWorkspace["rubric"];
   reviewSummary: HumanReviewWorkspace["summary"];
   productScores: FinalProductScore[];
+  caseScores: Array<{ testCaseId: string; title: string; products: Array<{ productId: string; score: number }> }>;
   latestAnalysis: {
     id: string;
     attempt: number;
@@ -58,14 +61,17 @@ export async function getResultsWorkspace(projectId: string): Promise<ResultsWor
   const finalScoreSignature = createFinalScoreSignature(review);
   const analyses = await resultAnalysisRepository.listByReview(review.reviewSessionId);
   const latest = analyses[0] ?? null;
+  const productScores = calculateProductScores(review);
   return {
     projectId,
+    projectMode: getProjectMode(productScores),
     protocolVersion: review.protocolVersion,
     reviewSessionId: review.reviewSessionId,
     finalScoreSignature,
     rubric: review.rubric,
     reviewSummary: review.summary,
-    productScores: calculateProductScores(review),
+    productScores,
+    caseScores: calculateReviewCaseScores(review),
     latestAnalysis: latest ? {
       id: latest.id,
       attempt: latest.attempt,
@@ -93,20 +99,25 @@ export async function generateFinalResultAnalysis(projectId: string): Promise<st
 
     const input = resultAnalysisInputSchema.parse(persisted.input_snapshot);
     const ranking = calculateInputRanking(input);
+    const projectMode = getProjectMode(input.products);
     const result = await aiTaskService.analyzeFinalResults({
       schema: generatedResultAnalysisSchema,
       schemaName: "FinalResultAnalysis",
       messages: [
         {
           role: "system",
-          content: "你是 AI 产品测评的最终分析师。只基于已揭晓身份的锁定 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata 解释结果。不得改变任何分数、排名、冠军或证据，不得创造实验中不存在的数据。结论需区分综合得分与具体用户适配；用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
+          content: projectMode === "single"
+            ? "你是 AI 产品真实体验的最终分析师。只基于已揭晓身份的锁定 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata，分析这个产品的综合体验、各场景表现、亮点、问题、适合与不适合人群、关键发现和限制。不得使用排名、冠军或相对竞品措辞，不得改变分数或证据，不得创造实验中不存在的数据。winnerReason 字段仅作为兼容字段，填写一句话总体体验结论；crossProductInsights 字段仅作为兼容字段，填写产品关键发现。输出简体中文。"
+            : "你是 AI 产品测评的最终分析师。只基于已揭晓身份的锁定 Final Score、Rubric、TestCase、Judge Evidence、人工复核与 Artifact metadata 解释结果。不得改变任何分数、排名、冠军或证据，不得创造实验中不存在的数据。结论需区分综合得分与具体用户适配；用户可见文案不得输出 UUID、数据库字段名或内部 ID。输出简体中文。",
         },
         {
           role: "user",
           content: JSON.stringify({
             lockedRanking: ranking,
             experiment: input,
-            required: "解释 winner、每款产品优势/劣势/适合与不适合人群、跨产品洞察、反直觉发现和测试限制。products 必须且只能覆盖 lockedRanking 中的 productId。",
+            required: projectMode === "single"
+              ? "解释综合体验结论、各 Case 与维度表现、产品亮点、问题、适合与不适合人群、关键发现和测试限制。不要生成排名或冠军叙事。products 必须且只能覆盖唯一产品。"
+              : "解释 winner、每款产品优势/劣势/适合与不适合人群、跨产品洞察、反直觉发现和测试限制。products 必须且只能覆盖 lockedRanking 中的 productId。",
           }),
         },
       ],
@@ -146,6 +157,22 @@ function calculateProductScores(review: HumanReviewWorkspace): FinalProductScore
       adjustedCount: review.scores.filter((score) => score.blindSampleId === mapping.sampleId && score.humanOverride).length,
     };
   }).sort((left, right) => right.finalScore - left.finalScore || left.productId.localeCompare(right.productId));
+}
+
+function calculateReviewCaseScores(review: HumanReviewWorkspace) {
+  return review.testCases.map((testCase) => ({
+    testCaseId: testCase.id,
+    title: testCase.title,
+    products: review.revealedMappings!.map((mapping) => ({
+      productId: mapping.productId,
+      score: roundOne(review.rubric.reduce((total, dimension) => {
+        const scores = review.scores.filter((score) => score.blindSampleId === mapping.sampleId
+          && score.testCaseId === testCase.id
+          && score.rubricDimensionId === dimension.id);
+        return total + average(scores.map((score) => score.finalScore)) * dimension.weight / 100;
+      }, 0)),
+    })).sort((left, right) => right.score - left.score || left.productId.localeCompare(right.productId)),
+  }));
 }
 
 export function calculateInputRanking(input: ResultAnalysisInput) {
