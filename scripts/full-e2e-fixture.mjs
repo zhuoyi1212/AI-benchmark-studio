@@ -6,7 +6,7 @@ if (mode !== "archive" || !projectId) throw new Error("Usage: node scripts/full-
 const env = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
 const client = createClient(env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 const { data: project, error: readError } = await client.from("projects").select("name,deleted_at").eq("id", projectId).single();
-if (readError || !project.name.startsWith("[E2E Fixture] M14 ")) throw new Error("Refusing to archive a non-M14 fixture project");
+if (readError || !project.name.startsWith("[E2E] ")) throw new Error("Refusing to archive a non-E2E Project");
 if (!project.deleted_at) {
   const { error } = await client.from("projects").update({ deleted_at: new Date().toISOString() }).eq("id", projectId);
   if (error) throw new Error(`Fixture archive failed (${error.code})`);

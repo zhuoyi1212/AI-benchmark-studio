@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { AIProviderError } from "@/lib/ai/errors";
 import { normalizeCompletionResponse } from "@/lib/ai/providers/completion-response";
+import { resolveProviderRequest } from "@/lib/ai/providers/endpoints";
 import { postProviderJson } from "@/lib/ai/providers/http";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import type { ProviderCompletionRequest, ProviderOCRRequest, ProviderWebSearchRequest } from "@/lib/ai/types";
@@ -35,7 +36,8 @@ export class ZhipuProvider implements AIProvider {
   constructor(private readonly apiKey: string) {}
 
   async generateStructured(request: ProviderCompletionRequest) {
-    const { data, latencyMs } = await postProviderJson(this.name, `${zhipuBaseUrl}/chat/completions`, this.apiKey, {
+    const providerRequest = resolveProviderRequest(this.name, "/chat/completions", `${zhipuBaseUrl}/chat/completions`, this.apiKey);
+    const { data, latencyMs } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       model: request.model,
       messages: request.messages,
       response_format: { type: "json_object" },
@@ -49,7 +51,8 @@ export class ZhipuProvider implements AIProvider {
   }
 
   async searchWeb(request: ProviderWebSearchRequest) {
-    const { data } = await postProviderJson(this.name, `${zhipuBaseUrl}/web_search`, this.apiKey, {
+    const providerRequest = resolveProviderRequest(this.name, "/web_search", `${zhipuBaseUrl}/web_search`, this.apiKey);
+    const { data } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       search_query: request.query,
       search_engine: request.engine,
       count: request.count ?? 10,
@@ -68,7 +71,8 @@ export class ZhipuProvider implements AIProvider {
   }
 
   async parseDocument(request: ProviderOCRRequest) {
-    const { data, latencyMs } = await postProviderJson(this.name, `${zhipuBaseUrl}/layout_parsing`, this.apiKey, {
+    const providerRequest = resolveProviderRequest(this.name, "/layout_parsing", `${zhipuBaseUrl}/layout_parsing`, this.apiKey);
+    const { data, latencyMs } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       model: request.model,
       file: request.fileUrl,
     }, "raw");

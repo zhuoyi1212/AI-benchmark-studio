@@ -8,6 +8,7 @@ const [
   researchPage, researchService, testPage, testService, blindService, judgePage, judgeService,
   reviewMigration, reviewService, resultsPage, resultService, resultMigration, reportService,
   testMigration, blindMigration, initialSchema, publishService, publishMigration,
+  e2eRunner, e2eRoute, providerEndpoints, legacyVerifier,
 ] = await Promise.all([
   read("app/projects/[projectId]/research/page.tsx"),
   read("lib/services/research.service.ts"),
@@ -27,6 +28,10 @@ const [
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
   read("lib/services/publish.service.ts"),
   read("supabase/migrations/202608170015_publish_pack_lifecycle.sql"),
+  read("scripts/run-self-contained-e2e.mjs"),
+  read("app/api/_e2e/full-flow/route.ts"),
+  read("lib/ai/providers/endpoints.ts"),
+  read("scripts/verify-full-e2e.mjs"),
 ]);
 
 test("Research failure is persisted and exposed as an explicit retry state", () => {
@@ -90,4 +95,24 @@ test("Report and Publish cannot complete without real Protocol Artifact evidence
   assert.match(initialSchema, /Report evidence must reference a TestArtifact from its analyzed Protocol/);
   assert.match(publishService, /imageArtifacts\.length === 0/);
   assert.match(publishMigration, /ready PublishPack must retain at least one screenshot Artifact/);
+});
+
+test("full route E2E owns a unique temporary Project lifecycle instead of a fixed database Fixture", () => {
+  assert.match(e2eRunner, /randomUUID/);
+  assert.match(e2eRoute, /\[E2E\] Single Product Flow \$\{runId\}/);
+  assert.match(e2eRoute, /softDeleteProject/);
+  assert.match(e2eRunner, /project\.deleted_at && project\.name\.includes\(runId\)/);
+  assert.doesNotMatch(`${e2eRunner}\n${e2eRoute}\n${legacyVerifier}`, /\[E2E Fixture\] M14 Complete Flow/);
+});
+
+test("full route E2E uses real services and mocks only the local external AI boundary", () => {
+  for (const operation of [
+    "createProject", "executeProductResearch", "generateProtocol", "uploadTestArtifact",
+    "runBlindJudge", "lockHumanReview", "revealHumanReview", "generateFinalResultAnalysis",
+    "generateReport", "discoverContentIdeas", "generateCommunityPost",
+  ]) assert.match(e2eRoute, new RegExp(operation));
+  assert.match(providerEndpoints, /E2E_TEST_MODE !== "1"/);
+  assert.match(providerEndpoints, /process\.env\.NODE_ENV === "production"/);
+  assert.match(providerEndpoints, /apiKey: e2eCredential/);
+  assert.match(providerEndpoints, /localhost|127\.0\.0\.1/);
 });

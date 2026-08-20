@@ -1,6 +1,7 @@
 import "server-only";
 
 import { normalizeCompletionResponse } from "@/lib/ai/providers/completion-response";
+import { resolveProviderRequest } from "@/lib/ai/providers/endpoints";
 import { postProviderJson } from "@/lib/ai/providers/http";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import type { ProviderCompletionRequest } from "@/lib/ai/types";
@@ -14,7 +15,8 @@ export class DeepSeekProvider implements AIProvider {
 
   async generateStructured(request: ProviderCompletionRequest) {
     const highReasoning = request.reasoning === "high";
-    const { data, latencyMs } = await postProviderJson(this.name, deepSeekChatEndpoint, this.apiKey, {
+    const providerRequest = resolveProviderRequest(this.name, "/chat/completions", deepSeekChatEndpoint, this.apiKey);
+    const { data, latencyMs } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       model: request.model,
       messages: request.messages,
       response_format: { type: "json_object" },

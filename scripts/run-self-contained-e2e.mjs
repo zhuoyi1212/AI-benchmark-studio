@@ -1,0 +1,156 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
+import { readFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
+import { startE2EProviderMock } from "./e2e-provider-mock.mjs";
+
+const localEnvironment = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
+const supabaseUrl = localEnvironment.SUPABASE_URL || localEnvironment.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseSecretKey = localEnvironment.SUPABASE_SECRET_KEY;
+if (!supabaseUrl || !supabaseSecretKey) throw new Error("Full E2E requires Supabase server credentials in .env.local");
+
+const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+const token = randomUUID();
+const providerMock = await startE2EProviderMock();
+const appPort = await findAvailablePort();
+const appOrigin = `http://127.0.0.1:${appPort}`;
+const logs = [];
+let appProcess;
+
+try {
+  appProcess = spawn(process.execPath, [
+    "node_modules/next/dist/bin/next",
+    "dev",
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    String(appPort),
+  ], {
+    cwd: new URL("..", import.meta.url),
+    env: {
+      ...process.env,
+      AI_E2E_PROVIDER_BASE_URL: providerMock.baseUrl,
+      E2E_TEST_MODE: "1",
+      E2E_TEST_TOKEN: token,
+      ZAI_API_KEY: "e2e-provider-key-not-a-secret",
+      DEEPSEEK_API_KEY: "e2e-provider-key-not-a-secret",
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  collectLogs(appProcess.stdout, logs);
+  collectLogs(appProcess.stderr, logs);
+  await waitForServer(appOrigin, appProcess, logs);
+
+  const response = await fetch(`${appOrigin}/api/e2e-test/full-flow`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-e2e-token": token },
+    body: JSON.stringify({ runId }),
+    signal: AbortSignal.timeout(300_000),
+  });
+  const result = await response.json();
+  assert.equal(response.ok, true, `Full route E2E failed: ${JSON.stringify(result)}`);
+  assert.equal(result.ok, true);
+  assert.equal(result.single.comparabilityStatus, "not_comparable");
+  assert.equal(result.single.resultMode, "single");
+  assert.equal(result.single.reportMode, "single");
+  assert.equal(result.single.publishMode, "single");
+  assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
+  assert.ok(result.single.testCases.every((item) => item.expectedOutputTypes.includes("image") && item.evidenceRequirements.length > 0));
+  assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
+  assert.equal(result.comparison.productCount, 2);
+  assert.equal(result.comparison.comparabilityStatus, "comparable");
+  assert.equal(result.comparison.testCaseCount, 2);
+  assert.equal(result.notComparable.productCount, 2);
+  assert.equal(result.notComparable.comparabilityStatus, "not_comparable");
+  assert.equal(result.notComparable.protocolBlocked, true);
+  assert.equal(result.cleanup.complete, true);
+
+  const providerStats = providerMock.stats();
+  for (const task of ["research_search", "ProductResearch", "ComparabilityResult", "TestProtocol", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "ContentIdeas", "CommunityPost"]) {
+    assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
+  }
+  assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
+
+  const supabase = createClient(supabaseUrl, supabaseSecretKey, { auth: { persistSession: false } });
+  const projectIds = result.cleanup.projects.map((item) => item.projectId);
+  const { data: archivedProjects, error: cleanupError } = await supabase.from("projects")
+    .select("id,name,deleted_at")
+    .in("id", projectIds);
+  if (cleanupError) throw new Error(`Fixture cleanup verification failed (${cleanupError.code})`);
+  assert.equal(archivedProjects.length, projectIds.length);
+  assert.ok(archivedProjects.every((project) => project.deleted_at && project.name.includes(runId)));
+
+  console.log(`Run: ${runId}`);
+  console.log(`Single flow: ${result.single.testRunCount} TestRun(s), ${result.single.artifactIds.length} Artifact(s), ${result.single.judgeScoreCount} JudgeScore(s)`);
+  console.log(`Single routes: ${result.single.routeChecks.join(" → ")}`);
+  console.log(`Comparison regression: comparable Protocol with ${result.comparison.testCaseCount} TestCases`);
+  console.log("Not-comparable regression: Protocol correctly blocked");
+  console.log(`Provider boundary: ${providerStats.total} mocked external request(s), ${providerStats.multimodalJudgeRequests} multimodal Judge request(s)`);
+  console.log(`Cleanup: ${archivedProjects.length}/${projectIds.length} temporary Projects soft-deleted`);
+  console.log("Create → Research → Protocol → TestRun/Artifact → Judge → Human Review → Results → Report → Publish: verified");
+} catch (error) {
+  const recentLogs = logs.join("").split("\n").slice(-80).join("\n");
+  if (recentLogs) console.error(`\nNext.js E2E logs:\n${recentLogs}`);
+  throw error;
+} finally {
+  if (appProcess) await stopProcess(appProcess);
+  await providerMock.close();
+}
+
+async function waitForServer(origin, child, output) {
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`Next.js E2E server exited early (${child.exitCode}): ${output.join("").slice(-4000)}`);
+    try {
+      const response = await fetch(`${origin}/projects`, { signal: AbortSignal.timeout(2_000) });
+      if (response.ok) return;
+    } catch {
+      // Development server is still compiling.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`Next.js E2E server did not become ready: ${output.join("").slice(-4000)}`);
+}
+
+async function findAvailablePort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Could not reserve an E2E application port");
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return address.port;
+}
+
+async function stopProcess(child) {
+  if (child.exitCode !== null) return;
+  child.kill("SIGTERM");
+  const exited = await Promise.race([
+    new Promise((resolve) => child.once("exit", () => resolve(true))),
+    new Promise((resolve) => setTimeout(() => resolve(false), 8_000)),
+  ]);
+  if (!exited && child.exitCode === null) child.kill("SIGKILL");
+}
+
+function collectLogs(stream, output) {
+  stream.setEncoding("utf8");
+  stream.on("data", (chunk) => {
+    output.push(chunk);
+    if (output.length > 400) output.splice(0, output.length - 400);
+  });
+}
+
+function parseEnv(text) {
+  return Object.fromEntries(text.split(/\r?\n/).flatMap((line) => {
+    const value = line.trim();
+    if (!value || value.startsWith("#")) return [];
+    const index = value.indexOf("=");
+    if (index < 1) return [];
+    return [[value.slice(0, index).trim(), value.slice(index + 1).trim().replace(/^(['"])(.*)\1$/, "$2")]];
+  }));
+}

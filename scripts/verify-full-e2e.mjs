@@ -4,18 +4,16 @@ import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 
 const projectIdArgument = process.argv[2];
+if (!projectIdArgument) throw new Error("Usage: node scripts/verify-full-e2e.mjs <temporary-e2e-project-id>");
 const env = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
 const client = createClient(env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 
-let projectQuery = client.from("projects")
+const projectQuery = client.from("projects")
   .select("id,name,status,deleted_at,project_products(product_id,products(name))");
-projectQuery = projectIdArgument
-  ? projectQuery.eq("id", projectIdArgument)
-  : projectQuery.eq("name", "[E2E Fixture] M14 Complete Flow").is("deleted_at", null);
-const { data: projectRows, error: projectError } = await projectQuery.order("created_at", { ascending: false }).limit(2);
-if (projectError || projectRows.length !== 1) throw new Error(`Expected exactly one active M14 complete-flow fixture (${projectError?.code ?? projectRows.length})`);
+const { data: projectRows, error: projectError } = await projectQuery.eq("id", projectIdArgument).order("created_at", { ascending: false }).limit(2);
+if (projectError || projectRows.length !== 1) throw new Error(`Expected exactly one temporary E2E Project (${projectError?.code ?? projectRows.length})`);
 const project = projectRows[0];
-if (project.deleted_at || project.name !== "[E2E Fixture] M14 Complete Flow") throw new Error("Active M14 complete-flow fixture not found");
+if (project.deleted_at || !project.name.startsWith("[E2E] ")) throw new Error("Active temporary E2E Project not found");
 const projectId = project.id;
 assert.equal(project.status, "published");
 const productIds = project.project_products.map((item) => item.product_id);

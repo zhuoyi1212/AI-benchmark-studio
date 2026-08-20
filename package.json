@@ -36,7 +36,7 @@
     "verify:result-analysis": "node scripts/verify-result-analysis.mjs",
     "verify:report": "node scripts/verify-report.mjs",
     "verify:publish": "node scripts/verify-publish.mjs",
-    "verify:full-e2e": "node scripts/verify-full-e2e.mjs",
+    "verify:full-e2e": "node scripts/run-self-contained-e2e.mjs",
     "audit:final": "node scripts/final-audit.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
