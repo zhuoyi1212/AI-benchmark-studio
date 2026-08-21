@@ -37,30 +37,30 @@ export class ZhipuProvider implements AIProvider {
 
   async generateStructured(request: ProviderCompletionRequest) {
     const providerRequest = resolveProviderRequest(this.name, "/chat/completions", `${zhipuBaseUrl}/chat/completions`, this.apiKey);
-    const { data, latencyMs } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
+    const { data, latencyMs, status } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       model: request.model,
       messages: request.messages,
       response_format: { type: "json_object" },
       max_tokens: request.maxTokens ?? 16_384,
       thinking: { type: request.reasoning === "high" ? "enabled" : "disabled" },
       stream: false,
-    });
+    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs });
 
     // Provider thinking fields are intentionally discarded by normalization.
-    return normalizeCompletionResponse(this.name, data, latencyMs);
+    return normalizeCompletionResponse(this.name, data, latencyMs, status, request);
   }
 
   async searchWeb(request: ProviderWebSearchRequest) {
     const providerRequest = resolveProviderRequest(this.name, "/web_search", `${zhipuBaseUrl}/web_search`, this.apiKey);
-    const { data } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
+    const { data, latencyMs, status } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       search_query: request.query,
       search_engine: request.engine,
       count: request.count ?? 10,
       search_domain_filter: request.domain,
       search_recency_filter: "noLimit",
-    });
+    }, { task: request.task, model: request.engine, attempt: request.attempt, timeoutMs: request.timeoutMs });
     const parsed = searchEnvelopeSchema.safeParse(data);
-    if (!parsed.success) throw new AIProviderError(this.name, "zhipu returned an invalid web search response");
+    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid web search response", { provider: this.name, model: request.engine, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_response" });
     return parsed.data.search_result.map((source) => ({
       title: source.title,
       url: source.link,
@@ -72,12 +72,12 @@ export class ZhipuProvider implements AIProvider {
 
   async parseDocument(request: ProviderOCRRequest) {
     const providerRequest = resolveProviderRequest(this.name, "/layout_parsing", `${zhipuBaseUrl}/layout_parsing`, this.apiKey);
-    const { data, latencyMs } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
+    const { data, latencyMs, status } = await postProviderJson(this.name, providerRequest.endpoint, providerRequest.apiKey, {
       model: request.model,
       file: request.fileUrl,
-    }, "raw");
+    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs, authorization: "raw" });
     const parsed = ocrEnvelopeSchema.safeParse(data);
-    if (!parsed.success) throw new AIProviderError(this.name, "zhipu returned an invalid OCR response");
+    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid OCR response", { provider: this.name, model: request.model, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_response" });
     return {
       markdown: parsed.data.md_results,
       requestId: parsed.data.request_id ?? parsed.data.id ?? null,

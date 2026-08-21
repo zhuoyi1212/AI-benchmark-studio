@@ -8,8 +8,14 @@ type RouteTemplate = {
   capability: AICapability;
   promptVersion: string;
   reasoning: AIReasoningMode;
+  timeoutMs: number;
+  maxAttempts: number;
   model: (models: ReturnType<typeof getAIModelEnvironment>) => string;
 };
+
+const standardTimeoutMs = 90_000;
+const reasoningHeavyTimeoutMs = 120_000;
+const structuredTaskMaxAttempts = 2;
 
 const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research_search: {
@@ -17,6 +23,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "web_search",
     promptVersion: "research-search.v1",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: () => "search-prime",
   },
   research: {
@@ -24,6 +32,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "research-synthesis.v1",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuTextModel,
   },
   comparability: {
@@ -31,13 +41,17 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "comparability.v1",
     reasoning: "high",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v1",
+    promptVersion: "protocol.v2",
     reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   judge_text: {
@@ -45,6 +59,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "judge.v1",
     reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   judge_multimodal: {
@@ -52,6 +68,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "multimodal",
     promptVersion: "judge.v1",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuVisionModel,
   },
   result_analysis: {
@@ -59,6 +77,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "result-analysis.v2",
     reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   report: {
@@ -66,6 +86,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "report.v2",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuTextModel,
   },
   content_discovery: {
@@ -73,6 +95,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "content-discovery.v1",
     reasoning: "high",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   community_post: {
@@ -80,6 +104,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "community-post.v1",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuTextModel,
   },
   screenshot_understanding: {
@@ -87,6 +113,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "multimodal",
     promptVersion: "screenshot-understanding.v1",
     reasoning: "high",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuVisionModel,
   },
   ocr: {
@@ -94,6 +122,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "ocr",
     promptVersion: "ocr.v1",
     reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuOcrModel,
   },
 };
@@ -101,5 +131,5 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
 export function resolveAITaskRoute(task: AITaskType): AITaskRoute {
   const template = routeTemplates[task];
   const models = getAIModelEnvironment();
-  return { task, provider: template.provider, model: template.model(models), capability: template.capability, promptVersion: template.promptVersion, reasoning: template.reasoning };
+  return { task, provider: template.provider, model: template.model(models), capability: template.capability, promptVersion: template.promptVersion, reasoning: template.reasoning, timeoutMs: template.timeoutMs, maxAttempts: template.maxAttempts };
 }

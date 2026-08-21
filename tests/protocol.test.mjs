@@ -6,11 +6,12 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, schema, repository, service, page, actions, actionComponent, researchPage] = await Promise.all([
+const [migration, schema, repository, service, aiConfig, page, actions, actionComponent, researchPage] = await Promise.all([
   read("supabase/migrations/202608170007_protocol_lifecycle.sql"),
   read("lib/ai/schemas/protocol.schemas.ts"),
   read("lib/repositories/protocols.repository.ts"),
   read("lib/services/protocols.service.ts"),
+  read("lib/ai/config.ts"),
   read("app/projects/[projectId]/protocol/page.tsx"),
   read("app/projects/[projectId]/protocol/actions.ts"),
   read("app/projects/[projectId]/protocol/protocol-actions.tsx"),
@@ -32,10 +33,51 @@ test("generates from the selected completed ResearchRun without test output", ()
   assert.match(service, /researchRunId: result\.researchRunId/);
   assert.match(service, /projectIntent|intent: research\.project\.intent/);
   assert.match(service, /comparability: result\.comparability/);
+  assert.match(service, /positioning: product\.positioning/);
+  assert.match(service, /capabilities: product\.capabilities/);
+  assert.match(service, /keyFeatures: product\.keyFeatures/);
+  assert.match(service, /officialBestPractices: product\.officialBestPractices/);
+  assert.match(service, /limitations: product\.limitations/);
+  assert.match(service, /sourceType, snippet/);
   assert.doesNotMatch(service, /testRuns|testArtifacts|judgeScores|finalScore/);
   assert.match(service, /generateProtocol/);
   assert.doesNotMatch(service, /glm-|deepseek-v|provider:\s*["']/);
   assert.match(service, /不得出现任何被测产品名称或品牌/);
+});
+
+test("models native product capabilities before designing realistic tasks", () => {
+  for (const field of ["productType", "primaryProblem", "coreCapabilities", "differentiatingCapabilities", "realisticUseCases"]) {
+    assert.match(service, new RegExp(`"${field}"`));
+  }
+  assert.match(service, /coreCapabilitiesCount: "3-8"/);
+  assert.match(service, /ordinary chatbot can basically complete the task/);
+  assert.match(service, /nativeCapabilitiesTakePriorityOverGenericLlmCapabilities/);
+  assert.match(service, /completeARealGoalRatherThanDemonstrateAnIsolatedCapability/);
+  assert.match(service, /writingTasksRemainValidForWritingMarketingCopyOrGeneralAssistantProducts/);
+  assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v2"/);
+});
+
+test("requires explainable cases and a final generic-task quality gate", () => {
+  for (const field of ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"]) {
+    assert.match(service, new RegExp(`"${field}"`));
+  }
+  for (const task of ["写文章", "写营销文案", "写邮件", "总结给定文字", "Brainstorm", "普通知识问答"]) {
+    assert.match(service, new RegExp(task));
+  }
+  assert.match(service, /finalTaskQualityReview/);
+  assert.match(service, /replaceGenericTaskWhenGenericCapabilityIsNotCorePositioning/);
+  assert.match(service, /rejectMechanicallyCreatedCasesAddedOnlyToCoverRubricDimensions/);
+});
+
+test("deepens single-product coverage while preserving comparison fairness", () => {
+  assert.match(service, /testCaseCount >= 2 && testCaseCount <= 4/);
+  assert.match(service, /testCaseCapabilityCoverageMustBeMeaningfullyDistinct/);
+  assert.match(service, /chooseOnlyCoreCapabilitiesSharedByEveryProduct/);
+  assert.match(service, /useComparabilityCommonCapabilitiesAsTheFairnessBoundary/);
+  assert.match(service, /neverScoreAProductOnAnotherProductsExclusiveCapability/);
+  assert.match(service, /preserveIdenticalPromptInputAndConditionsPerCase/);
+  assert.match(service, /projectMode === "comparison" && result\.comparability\.status === "not_comparable"/);
 });
 
 test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", () => {
@@ -56,7 +98,7 @@ test("locks only the latest version and preserves locked Protocol immutability",
   assert.match(migration, /Only the latest Protocol version can be locked/);
   assert.match(migration, /set status = 'protocol_locked'/);
   assert.match(repository, /\.rpc\("lock_protocol"/);
-  assert.match(actionComponent, /确认并锁定测评方案/);
+  assert.match(actionComponent, /确认并锁定\{experienceMode \? "体验" : "测评"\}方案/);
   assert.match(actionComponent, /需要调整时只能生成新版本/);
   assert.doesNotMatch(migration, /update public\.test_cases|update public\.rubric_dimensions|delete from public\.protocols/i);
 });

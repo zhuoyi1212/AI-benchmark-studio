@@ -80,7 +80,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   let protocolWorkspace = requireValue(await getProtocolWorkspace(projectId), "Single Protocol workspace missing");
   assert(protocolWorkspace.protocol?.id === protocolId, "Generated Protocol was not persisted");
   assert(protocolWorkspace.protocol.status === "draft", "Generated Protocol must begin as draft");
-  assert(protocolWorkspace.protocol.testCases.length >= 1 && protocolWorkspace.protocol.testCases.length <= 3, "Single Protocol must contain 1-3 TestCases");
+  assert(protocolWorkspace.protocol.testCases.length >= 2 && protocolWorkspace.protocol.testCases.length <= 4, "Single Protocol must contain 2-4 TestCases");
   assert(protocolWorkspace.protocol.testCases.every((item) => item.expectedOutputTypes.includes("image")), "Expected output types were not persisted");
   assert(protocolWorkspace.protocol.testCases.every((item) => item.evidenceRequirements.length > 0), "Evidence requirements were not persisted");
 

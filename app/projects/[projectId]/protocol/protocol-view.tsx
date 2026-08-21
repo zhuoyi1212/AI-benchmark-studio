@@ -20,6 +20,7 @@ const outputLabels: Record<ExpectedOutputType, string> = {
 };
 
 export function ProtocolView({ protocol, productCount, canRegenerate }: { protocol: TestProtocol; productCount: number; canRegenerate: boolean }) {
+  const experienceMode = productCount === 1;
   const [selectedRubricId, setSelectedRubricId] = useState(protocol.rubric[0]?.id ?? "");
   const selectedRubric = protocol.rubric.find((item) => item.id === selectedRubricId) ?? protocol.rubric[0];
   const totalWeight = useMemo(() => protocol.rubric.reduce((total, item) => total + item.weight, 0), [protocol.rubric]);
@@ -30,7 +31,7 @@ export function ProtocolView({ protocol, productCount, canRegenerate }: { protoc
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-7">
           <section>
-            <div className="mb-3 flex items-center gap-2"><TargetIcon /><h2 className="section-title">{productCount === 1 ? "体验目标" : "测评目标"}</h2></div>
+            <div className="mb-3 flex items-center gap-2"><TargetIcon /><h2 className="section-title">{experienceMode ? "体验目标" : "测评目标"}</h2></div>
             <Card className="p-5 text-sm leading-7 shadow-none">{protocol.goal}</Card>
           </section>
           <section>
@@ -40,7 +41,7 @@ export function ProtocolView({ protocol, productCount, canRegenerate }: { protoc
             </Card>
           </section>
           <section>
-            <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4 text-blue-600" /><h2 className="section-title">Test Cases</h2></div><span className="text-xs text-muted-foreground">{productCount === 1 ? `${protocol.testCases.length} 个体验任务` : `${protocol.testCases.length} Cases × ${productCount} Products = ${totalTests} 项测试`}</span></div>
+            <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4 text-blue-600" /><h2 className="section-title">{experienceMode ? "体验任务" : "Test Cases"}</h2></div><span className="text-xs text-muted-foreground">{experienceMode ? `${protocol.testCases.length} 个体验任务` : `${protocol.testCases.length} Cases × ${productCount} Products = ${totalTests} 项测试`}</span></div>
             <div className="space-y-3">
               {protocol.testCases.map((testCase, index) => <Card key={testCase.id} className="px-5 shadow-none"><Accordion type="single" collapsible><AccordionItem value={testCase.id}><AccordionTrigger><div className="flex items-center gap-4"><span className="font-mono text-[11px] text-blue-600">CASE {String(index + 1).padStart(2, "0")}</span><span className="text-left text-[15px] font-semibold">{testCase.title}</span></div></AccordionTrigger><AccordionContent><div className="grid gap-5 border-t pt-5 lg:grid-cols-2"><Detail title="测试目的" text={testCase.objective} /><Detail title="输入材料" text={testCase.inputDescription ?? "Prompt 已包含完成任务所需信息，无额外输入材料。"} /><div><div className="eyebrow mb-2">预期输出</div><div className="flex flex-wrap gap-2">{testCase.expectedOutputTypes.map((type) => <Badge key={type} variant="neutral">{outputLabels[type]}</Badge>)}</div></div><div><div className="eyebrow mb-2">需要保留的证据</div><ul className="space-y-1 text-xs leading-5 text-slate-600">{testCase.evidenceRequirements.map((item) => <li key={item}>· {item}</li>)}</ul></div><div className="lg:col-span-2"><div className="eyebrow mb-2">Prompt</div><div className="whitespace-pre-wrap rounded-md border bg-slate-50 p-4 font-mono text-xs leading-6 text-slate-700">{testCase.prompt}</div></div><div><div className="eyebrow mb-2">观察重点</div><div className="flex flex-wrap gap-2">{testCase.observationFocus.map((item) => <Badge key={item} variant="neutral">{item}</Badge>)}</div></div><div><div className="eyebrow mb-2">执行规则</div><ul className="space-y-1 text-xs leading-5 text-slate-600">{testCase.executionRules?.map((rule) => <li key={rule}>· {rule}</li>)}</ul></div></div></AccordionContent></AccordionItem></Accordion></Card>)}
             </div>
@@ -55,13 +56,13 @@ export function ProtocolView({ protocol, productCount, canRegenerate }: { protoc
             {selectedRubric && <div className="mt-4 rounded-md border bg-slate-50 p-3"><div className="text-xs font-semibold">{selectedRubric.name} · 优秀标准</div><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{selectedRubric.scoringStandard.excellent}</p></div>}
             <div className="mt-4 flex justify-between border-t pt-4 text-xs font-semibold"><span>权重合计</span><span className={totalWeight === 100 ? "text-emerald-700" : "text-amber-700"}>{totalWeight}%</span></div>
           </Card>
-          <div className={`rounded-lg border p-4 ${totalWeight === 100 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-start gap-2.5"><ShieldCheck className={`mt-0.5 h-4 w-4 ${totalWeight === 100 ? "text-emerald-600" : "text-amber-600"}`} /><div><p className="text-xs font-semibold">{totalWeight === 100 ? "公平性检查通过" : "Rubric 权重无效"}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">同一 Case 对所有产品使用相同输入与 Prompt，Rubric 权重必须合计 100%。</p></div></div></div>
+          <div className={`rounded-lg border p-4 ${totalWeight === 100 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-start gap-2.5"><ShieldCheck className={`mt-0.5 h-4 w-4 ${totalWeight === 100 ? "text-emerald-600" : "text-amber-600"}`} /><div><p className="text-xs font-semibold">{totalWeight === 100 ? experienceMode ? "体验方案检查通过" : "公平性检查通过" : "Rubric 权重无效"}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{experienceMode ? "体验任务聚焦核心能力，并保持证据完整、执行一致；Rubric 权重必须合计 100%。" : "同一 Case 对所有产品使用相同输入与 Prompt，Rubric 权重必须合计 100%。"}</p></div></div></div>
         </aside>
       </div>
 
       <div className="sticky bottom-5 z-20 mt-9 flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-white shadow-xl">
-        <div className="hidden items-center gap-3 sm:flex">{protocol.status === "locked" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}<div><p className="text-xs font-medium">{protocol.status === "locked" ? `Protocol v${protocol.version} 已锁定` : `Protocol v${protocol.version} 锁定后不可修改`}</p><p className="text-[10px] text-slate-400">{protocol.testCases.length} Cases · {protocol.rubric.length} 评分维度</p></div></div>
-        <div className="ml-auto flex items-center gap-2">{canRegenerate && <GenerateProtocolAction projectId={protocol.projectId} regenerate />}{protocol.status === "draft" && totalWeight === 100 ? <LockProtocolAction projectId={protocol.projectId} protocolId={protocol.id} testCaseCount={protocol.testCases.length} rubricCount={protocol.rubric.length} /> : protocol.status === "locked" ? <Button size="lg" className="bg-white text-slate-950 hover:bg-slate-100" asChild><Link href={`/projects/${protocol.projectId}/test`}>进入测试执行<ArrowRight className="h-4 w-4" /></Link></Button> : null}</div>
+        <div className="hidden items-center gap-3 sm:flex">{protocol.status === "locked" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}<div><p className="text-xs font-medium">{protocol.status === "locked" ? `Protocol v${protocol.version} 已锁定` : `Protocol v${protocol.version} 锁定后不可修改`}</p><p className="text-[10px] text-slate-400">{experienceMode ? `${protocol.testCases.length} 个体验任务` : `${protocol.testCases.length} Cases`} · {protocol.rubric.length} 评分维度</p></div></div>
+        <div className="ml-auto flex items-center gap-2">{canRegenerate && <GenerateProtocolAction projectId={protocol.projectId} regenerate experienceMode={experienceMode} />}{protocol.status === "draft" && totalWeight === 100 ? <LockProtocolAction projectId={protocol.projectId} protocolId={protocol.id} testCaseCount={protocol.testCases.length} rubricCount={protocol.rubric.length} experienceMode={experienceMode} /> : protocol.status === "locked" ? <Button size="lg" className="bg-white text-slate-950 hover:bg-slate-100" asChild><Link href={`/projects/${protocol.projectId}/test`}>进入测试执行<ArrowRight className="h-4 w-4" /></Link></Button> : null}</div>
       </div>
     </>
   );

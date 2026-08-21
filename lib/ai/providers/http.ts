@@ -1,16 +1,20 @@
 import "server-only";
 
-import { AIProviderError } from "@/lib/ai/errors";
+import { AIProviderError, classifyProviderStatus } from "@/lib/ai/errors";
+import type { AIProviderRequestContext } from "@/lib/ai/types";
 
-const requestTimeoutMs = 90_000;
+type ProviderHttpOptions = AIProviderRequestContext & {
+  model: string;
+  authorization?: "bearer" | "raw";
+};
 
 export async function postProviderJson(
   provider: string,
   url: string,
   apiKey: string,
   body: Record<string, unknown>,
-  authorization: "bearer" | "raw" = "bearer",
-): Promise<{ data: unknown; latencyMs: number }> {
+  options: ProviderHttpOptions,
+): Promise<{ data: unknown; latencyMs: number; status: number }> {
   const startedAt = performance.now();
   let response: Response;
 
@@ -18,25 +22,62 @@ export async function postProviderJson(
     response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: authorization === "bearer" ? `Bearer ${apiKey}` : apiKey,
+        Authorization: options.authorization === "raw" ? apiKey : `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: AbortSignal.timeout(options.timeoutMs),
       cache: "no-store",
     });
-  } catch {
-    throw new AIProviderError(provider, `${provider} request failed before receiving a response`);
+  } catch (error) {
+    const latencyMs = Math.round(performance.now() - startedAt);
+    const category = isTimeoutError(error) ? "timeout" : "network";
+    throw new AIProviderError(`${provider} request failed before receiving a response`, {
+      provider,
+      model: options.model,
+      task: options.task,
+      attempt: options.attempt,
+      latencyMs,
+      timeoutMs: options.timeoutMs,
+      category,
+    });
   }
 
   const latencyMs = Math.round(performance.now() - startedAt);
   if (!response.ok) {
-    throw new AIProviderError(provider, `${provider} request failed with status ${response.status}`, response.status);
+    throw new AIProviderError(`${provider} request failed with status ${response.status}`, {
+      provider,
+      model: options.model,
+      task: options.task,
+      status: response.status,
+      attempt: options.attempt,
+      latencyMs,
+      timeoutMs: options.timeoutMs,
+      category: classifyProviderStatus(response.status),
+    });
   }
 
   try {
-    return { data: await response.json(), latencyMs };
+    return { data: await response.json(), latencyMs, status: response.status };
   } catch {
-    throw new AIProviderError(provider, `${provider} returned an invalid JSON envelope`, response.status);
+    throw new AIProviderError(`${provider} returned an invalid JSON envelope`, {
+      provider,
+      model: options.model,
+      task: options.task,
+      status: response.status,
+      attempt: options.attempt,
+      latencyMs,
+      timeoutMs: options.timeoutMs,
+      category: "invalid_response",
+    });
   }
+}
+
+function isTimeoutError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "TimeoutError" || error.name === "AbortError") return true;
+  const cause = error.cause;
+  if (!cause || typeof cause !== "object") return false;
+  const code = "code" in cause ? cause.code : null;
+  return code === "ETIMEDOUT" || code === "UND_ERR_CONNECT_TIMEOUT" || code === "UND_ERR_HEADERS_TIMEOUT";
 }

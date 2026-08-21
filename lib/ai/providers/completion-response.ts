@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { AIProviderError } from "@/lib/ai/errors";
-import type { AIUsage, ProviderCompletionResponse } from "@/lib/ai/types";
+import type { AIProviderRequestContext, AIUsage, ProviderCompletionResponse } from "@/lib/ai/types";
 
 const completionEnvelopeSchema = z.object({
   id: z.string().optional(),
@@ -23,12 +23,14 @@ export function normalizeCompletionResponse(
   provider: string,
   value: unknown,
   latencyMs: number,
+  status: number,
+  context: AIProviderRequestContext & { model: string },
 ): ProviderCompletionResponse {
   const parsed = completionEnvelopeSchema.safeParse(value);
-  if (!parsed.success) throw new AIProviderError(provider, `${provider} returned an unexpected response envelope`);
+  if (!parsed.success) throwInvalidResponse(provider, `${provider} returned an unexpected response envelope`, latencyMs, status, context);
 
   const content = parsed.data.choices[0]?.message.content;
-  if (!content) throw new AIProviderError(provider, `${provider} returned an empty final response`);
+  if (!content) throwInvalidResponse(provider, `${provider} returned an empty final response`, latencyMs, status, context);
 
   const usage: AIUsage = {
     inputTokens: parsed.data.usage?.prompt_tokens ?? null,
@@ -42,4 +44,23 @@ export function normalizeCompletionResponse(
     requestId: parsed.data.request_id ?? parsed.data.id ?? null,
     usage,
   };
+}
+
+function throwInvalidResponse(
+  provider: string,
+  message: string,
+  latencyMs: number,
+  status: number,
+  context: AIProviderRequestContext & { model: string },
+): never {
+  throw new AIProviderError(message, {
+    provider,
+    model: context.model,
+    task: context.task,
+    status,
+    attempt: context.attempt,
+    latencyMs,
+    timeoutMs: context.timeoutMs,
+    category: "invalid_response",
+  });
 }

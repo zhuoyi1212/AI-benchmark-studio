@@ -37,6 +37,8 @@ export type AITaskRoute = {
   capability: AICapability;
   promptVersion: string;
   reasoning: AIReasoningMode;
+  timeoutMs: number;
+  maxAttempts: number;
 };
 
 export type AIUsage = {
@@ -46,7 +48,13 @@ export type AIUsage = {
   estimatedCost: number | null;
 };
 
-export type ProviderCompletionRequest = {
+export type AIProviderRequestContext = {
+  task: AITaskType;
+  attempt: number;
+  timeoutMs: number;
+};
+
+export type ProviderCompletionRequest = AIProviderRequestContext & {
   model: string;
   messages: AIMessage[];
   maxTokens?: number;
@@ -65,7 +73,7 @@ export type WebSearchRequest = {
   domain?: string;
 };
 
-export type ProviderWebSearchRequest = WebSearchRequest & { engine: string };
+export type ProviderWebSearchRequest = WebSearchRequest & AIProviderRequestContext & { engine: string };
 
 export type ResearchSource = {
   title: string;
@@ -79,7 +87,7 @@ export type OCRRequest = {
   fileUrl: string;
 };
 
-export type ProviderOCRRequest = OCRRequest & { model: string };
+export type ProviderOCRRequest = OCRRequest & AIProviderRequestContext & { model: string };
 
 export type OCRResult = {
   markdown: string;

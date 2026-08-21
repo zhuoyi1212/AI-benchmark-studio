@@ -96,7 +96,7 @@ function buildStructuredOutput(schemaName, messages) {
   if (schemaName === "TestProtocol") {
     const input = findJsonMessage(messages, (value) => value.project?.mode);
     const single = input.project.mode === "single";
-    const caseCount = single ? 1 : 2;
+    const caseCount = 2;
     return {
       title: single ? "单产品核心能力体验方案" : "同类产品标准化横评方案",
       goal: single ? "通过真实任务和原始截图验证核心能力、使用体验与明显限制。" : "在统一输入、Prompt 与证据要求下比较同类产品表现。",
@@ -110,7 +110,7 @@ function buildStructuredOutput(schemaName, messages) {
       ],
       testCases: Array.from({ length: caseCount }, (_, index) => ({
         position: index + 1,
-        title: single ? "核心场景真实体验" : `标准化比较场景 ${index + 1}`,
+        title: single ? `核心场景真实体验 ${index + 1}` : `标准化比较场景 ${index + 1}`,
         objective: single ? "验证官方核心卖点在真实任务中的表现。" : "比较同一任务下的完成度和输出质量。",
         prompt: `请根据给定目标完成第 ${index + 1} 个标准化任务，并直接输出最终结果。`,
         inputDescription: null,
