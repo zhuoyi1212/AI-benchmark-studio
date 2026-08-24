@@ -27,6 +27,7 @@ test("classifies provider failures without exposing request secrets", () => {
   assert.match(errors, /status === 401 \|\| status === 403[\s\S]*"authentication"/);
   assert.match(errors, /return "bad_request"/);
   assert.match(http, /error\.name === "TimeoutError" \|\| error\.name === "AbortError"/);
+  assert.match(http, /response body could not be read[\s\S]*isTimeoutError\(error\) \? "timeout" : "network"/);
   assert.match(http, /UND_ERR_CONNECT_TIMEOUT/);
   assert.match(http, /category: "invalid_json_body"/);
   assert.match(http, /responseContentType/);
@@ -53,6 +54,7 @@ test("uses a bounded task-specific timeout and retry budget", () => {
   assert.match(config, /protocol:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
   assert.match(config, /judge_text:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
   assert.match(config, /result_analysis:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
+  assert.match(config, /content_discovery:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
   assert.match(router, /request\.maxAttempts \?\? route\.maxAttempts, route\.maxAttempts/);
   assert.match(router, /timeoutMs: route\.timeoutMs/);
 });
@@ -129,7 +131,7 @@ test("Protocol input omits raw Research snippets and JSON mode stays explicit", 
   assert.match(router, /Return exactly one valid JSON object/);
   assert.match(router, /Do not use Markdown or code fences/);
   assert.match(router, /Do not stop before closing the root JSON object/);
-  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v9"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v10"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
   assert.match(protocolService, /\[ProtocolPerformance\]/);
   assert.match(protocolService, /attempts: generated\.attemptPerformance/);
 });

@@ -156,7 +156,7 @@ async function researchOneProduct(
     messages: [
       {
         role: "system",
-        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实；价格、免费方案和能力必须可追溯。不要依据记忆补充。输出简体中文。sourceUrls 只能逐字引用给定 URL。",
+        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实，不得依据记忆补充。优先使用提交官网域名内的产品页、文档、帮助中心、更新日志和定价页；二手来源只能补充官方资料未覆盖的体验或背景，不能覆盖官方事实。价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写，否则 pricing 返回 null。输出简体中文。sourceUrls 只能逐字引用给定 URL，并应优先选择高质量官方来源。",
       },
       {
         role: "user",
@@ -202,11 +202,12 @@ function buildSearches(product: ProjectProductSummary) {
     ];
   }
   const scope = `site:${site}`;
+  const exactName = `"${product.name}"`;
   return [
-    { query: `${scope} "${product.name}" 产品 功能 官方文档`, count: 8 },
-    { query: `${scope} "${product.name}" 使用指南 help`, count: 8 },
-    { query: `${scope} "${product.name}" pricing 价格 免费 会员`, count: 8 },
-    { query: `${scope} "${product.name}" release notes 更新`, count: 8 },
+    { query: `${scope} ${exactName} 产品 功能 官方文档`, count: 8 },
+    { query: `${scope} ${exactName} 使用指南 release notes pricing`, count: 8 },
+    { query: `${exactName} AI 产品 官方文档 功能 使用指南`, count: 8 },
+    { query: `${exactName} pricing 价格 套餐 官方`, count: 8 },
   ];
 }
 

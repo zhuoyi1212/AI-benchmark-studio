@@ -157,7 +157,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
         {
           role: "system",
           content: projectMode === "single"
-            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时在 inputArtifacts 声明，不得虚构内容。Rubric 评价实际体验，不做横向比较。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。"
+            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时在 inputArtifacts 声明，不得虚构内容。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。"
             : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。",
         },
         {
@@ -175,7 +175,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
               },
               eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
               caseOutput: { selfContainedPrompt: true, declareRequiredRealInputsInInputArtifacts: true, doNotInventInputContents: true, expectedOutputTypes, evidenceMustSupportScoring: true },
-              rubricOutput: { dynamicForProductAndTasks: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
+              rubricOutput: { dynamicForProductAndTasks: true, everyDimensionApplicableToEveryTestCase: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
               comparison: projectMode === "comparison" ? { sharedCoreCapabilitiesOnly: true, samePromptInputAndConditions: true, excludeExclusiveCapabilities: true } : undefined,
             },
           }),

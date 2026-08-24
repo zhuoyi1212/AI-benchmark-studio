@@ -61,7 +61,7 @@ export async function postProviderJson(
   let responseBody: string;
   try {
     responseBody = await response.text();
-  } catch {
+  } catch (error) {
     throw new AIProviderError(`${provider} response body could not be read`, {
       provider,
       model: options.model,
@@ -70,7 +70,7 @@ export async function postProviderJson(
       attempt: options.attempt,
       latencyMs: Math.round(performance.now() - startedAt),
       timeoutMs: options.timeoutMs,
-      category: "network",
+      category: isTimeoutError(error) ? "timeout" : "network",
       responseContentType,
     });
   }

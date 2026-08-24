@@ -52,6 +52,18 @@ test("gives article generation direct Judge and Human Review evidence with a min
   assert.match(service, /正文至少 4 段/);
   assert.match(service, /post\.body\.trim\(\)\.length < 200/);
   assert.match(service, /publishableEvidenceArticleStructure/);
+  assert.match(service, /不得把由不适用 Rubric、输入缺失或执行环境造成的低分直接归因于产品能力/);
+  assert.match(service, /没有可验证逐字来源时，不得使用引号声称某句话是官方宣传语/);
+  assert.match(service, /二手来源中的价格或套餐不要写入正文/);
+  assert.match(service, /不得据此推断产品未调用工具、默认行为或能力不足/);
+  assert.match(service, /atLeastThreeEvidenceGroundedIdeas/);
+  assert.match(service, /evidenceGroundedPostSchema/);
+  assert.match(service, /可能通过隐式代理/);
+  assert.match(service, /本项目评分不得称为‘官方测评’/);
+  assert.match(service, /Skill 生态、协作能力或透明度是产品短板/);
+  assert.match(service, /缺少工具日志只能表述为‘本次证据未提供’，不得推断产品默认行为/);
+  assert.match(service, /不得要求或声称展示私有思维链、内部决策链/);
+  assert.match(service, /优先把“实际 Case 表现与汇总分差异”作为方法学发现/);
 });
 test("guards Publish by current completed Report and exposes explicit states", () => {
   assert.match(migration, /PublishPack requires a current completed Report/); assert.match(migration, /private\.final_score_signature/);

@@ -22,7 +22,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research_search: {
     provider: "zhipu",
     capability: "web_search",
-    promptVersion: "research-search.v2",
+    promptVersion: "research-search.v3",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -31,7 +31,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "research-synthesis.v2",
+    promptVersion: "research-synthesis.v3",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -49,7 +49,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v9",
+    promptVersion: "protocol.v10",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -95,16 +95,17 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   content_discovery: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "content-discovery.v1",
-    reasoning: "high",
-    timeoutMs: standardTimeoutMs,
+    promptVersion: "content-discovery.v2",
+    reasoning: "standard",
+    repairReasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   community_post: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "community-post.v1",
+    promptVersion: "community-post.v2",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

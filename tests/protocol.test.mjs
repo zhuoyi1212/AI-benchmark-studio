@@ -58,7 +58,7 @@ test("models native product capabilities before designing realistic tasks", () =
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v9"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v10"/);
   assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
 });
 
@@ -79,6 +79,8 @@ test("deepens single-product coverage while preserving comparison fairness", () 
   assert.match(service, /caseCount: \{ default: 3, min: 2, max: 4/);
   assert.match(service, /useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true/);
   assert.match(service, /rubricCount: \{ default: 4, min: 3, max: 5/);
+  assert.match(service, /everyDimensionApplicableToEveryTestCase: true/);
+  assert.match(service, /每个全局 Rubric 维度都必须能依据每个 TestCase/);
   assert.match(service, /sharedCoreCapabilitiesOnly: true/);
   assert.match(service, /samePromptInputAndConditions: true/);
   assert.match(service, /excludeExclusiveCapabilities: true/);

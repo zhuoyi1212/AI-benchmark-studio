@@ -40,13 +40,17 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(taskService, /Use only these retrieved sources for product facts/);
   assert.match(taskService, /allowedDomains/);
   assert.match(taskService, /isDomainOrSubdomain/);
+  assert.match(taskService, /isPreferredOfficialSource \|\| sourceMentionsProduct/);
+  assert.match(taskService, /officialSearchSourceRequired/);
   assert.match(service, /`"\$\{product\.name\}"`/);
   assert.match(taskService, /sourceMentionsProduct/);
   assert.match(taskService, /interleaveUniqueSources/);
   assert.match(taskService, /insufficientRelevantSearchSources/);
   assert.match(schema, /Positioning must contain traceable product facts/);
-  assert.match(config, /research-search\.v2/);
-  assert.match(config, /research-synthesis\.v2/);
+  assert.match(service, /价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写/);
+  assert.match(service, /二手来源只能补充官方资料未覆盖的体验或背景/);
+  assert.match(config, /research-search\.v3/);
+  assert.match(config, /research-synthesis\.v3/);
 });
 
 test("records all routed task metadata and completes only a full run", () => {

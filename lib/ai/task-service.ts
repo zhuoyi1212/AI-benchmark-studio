@@ -14,11 +14,15 @@ type ProductResearchRequest<Schema extends ZodType> = StructuredTaskRequest<Sche
 async function researchProducts<Schema extends ZodType>({ productName, searches, allowedDomains, ...request }: ProductResearchRequest<Schema>) {
   if (searches.length === 0) throw new Error("Product Research requires at least one source search");
   const searchResults = await Promise.all(searches.map((search) => runResearchSearch(search)));
-  const sourceGroups = searchResults.map((result) => result.sources.filter((source) => allowedDomains?.length
-    ? allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain))
-    : sourceMentionsProduct(source, productName)));
+  const sourceGroups = searchResults.map((result) => result.sources.filter((source) => {
+    const isPreferredOfficialSource = allowedDomains?.some((domain) => isDomainOrSubdomain(source.url, domain)) ?? false;
+    return isPreferredOfficialSource || sourceMentionsProduct(source, productName);
+  }));
   const relevantSourceCount = new Set(sourceGroups.flatMap((sources) => sources.map((source) => source.url))).size;
   if (relevantSourceCount < 3) throw new AIValidationError("research", "insufficientRelevantSearchSources");
+  if (allowedDomains?.length && !sourceGroups.flat().some((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))) {
+    throw new AIValidationError("research", "officialSearchSourceRequired");
+  }
   const sources = interleaveUniqueSources(sourceGroups)
     .slice(0, 20)
     .map((source) => ({ ...source, snippet: source.snippet.slice(0, 3000) }));
