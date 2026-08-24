@@ -32,7 +32,10 @@ test("keeps all task routing in one provider-neutral config", () => {
 });
 
 test("routes a whole TestCase by its complete artifact modality set", () => {
-  assert.match(router, /artifacts\.every\(\(artifact\) => artifact\.mimeType\.toLowerCase\(\) === "text\/plain"\)/);
+  assert.match(router, /artifacts\.every\(\(artifact\) => isTextArtifactMimeType\(artifact\.mimeType\)\)/);
+  for (const mimeType of ["text/plain", "text/markdown", "application/json", "text/csv"]) {
+    assert.match(router, new RegExp(mimeType.replace("/", "\\/")));
+  }
   assert.match(router, /artifact\.testCaseId !== testCaseId/);
   assert.doesNotMatch(router, /blindSampleId/);
 });

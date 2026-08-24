@@ -41,7 +41,7 @@ export const publishConfigSchema = z.object({
   goal: z.enum(["提供深度洞察", "分享真实体验", "帮助用户选型", "引发讨论", "分享踩坑经历", "提出反常识观点"]),
   tone: text.max(500),
   length: text.max(80),
-  imageCount: z.coerce.number().int().min(1).max(9),
+  imageCount: z.coerce.number().int().min(0).max(9),
   interactionGoal: text.max(500),
 });
 export type PublishConfig = z.infer<typeof publishConfigSchema>;
@@ -82,7 +82,7 @@ export const communityPostContentSchema = z.object({
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({
-  screenshotRecommendations: z.array(screenshotRecommendationSchema).min(1).max(9),
+  screenshotRecommendations: z.array(screenshotRecommendationSchema).max(9),
 }).superRefine((value, context) => {
   const publicCopy = [value.title, value.body, value.interactionQuestion, ...value.tags].join(" ");
   if (internalIdentifierPattern.test(publicCopy)) {

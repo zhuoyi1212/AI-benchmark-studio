@@ -7,7 +7,7 @@ async function read(relativePath) { return readFile(new URL(`../${relativePath}`
 const [
   researchPage, researchService, testPage, testService, blindService, judgePage, judgeService,
   reviewMigration, reviewService, resultsPage, resultService, resultMigration, reportService,
-  testMigration, blindMigration, initialSchema, publishService, publishMigration,
+  testMigration, blindMigration, initialSchema, publishService, publishMigration, textOnlyPublishMigration,
   e2eRunner, e2eRoute, providerEndpoints, legacyVerifier,
 ] = await Promise.all([
   read("app/projects/[projectId]/research/page.tsx"),
@@ -28,6 +28,7 @@ const [
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
   read("lib/services/publish.service.ts"),
   read("supabase/migrations/202608170015_publish_pack_lifecycle.sql"),
+  read("supabase/migrations/20260824090000_allow_text_only_publish_packs.sql"),
   read("scripts/run-self-contained-e2e.mjs"),
   read("app/api/_e2e/full-flow/route.ts"),
   read("lib/ai/providers/endpoints.ts"),
@@ -90,11 +91,13 @@ test("stale Final Result Analysis is never reused downstream", () => {
   assert.match(initialSchema, /Result analysis final score signature is stale or invalid/);
 });
 
-test("Report and Publish cannot complete without real Protocol Artifact evidence", () => {
+test("Report requires real evidence while Publish may omit screenshots without inventing evidence", () => {
   assert.match(initialSchema, /A completed Report must retain at least one Artifact evidence link/);
   assert.match(initialSchema, /Report evidence must reference a TestArtifact from its analyzed Protocol/);
-  assert.match(publishService, /imageArtifacts\.length === 0/);
-  assert.match(publishMigration, /ready PublishPack must retain at least one screenshot Artifact/);
+  assert.match(publishService, /experiment\.products\.flatMap/);
+  assert.doesNotMatch(publishService, /没有可用的原始截图，不能生成/);
+  assert.match(textOnlyPublishMigration, /p_recommendations[\s\S]*between 0 and 9/);
+  assert.match(publishMigration, /publish_pack_artifacts/);
 });
 
 test("full route E2E owns a unique temporary Project lifecycle instead of a fixed database Fixture", () => {
@@ -102,6 +105,9 @@ test("full route E2E owns a unique temporary Project lifecycle instead of a fixe
   assert.match(e2eRoute, /\[E2E\] Single Product Flow \$\{runId\}/);
   assert.match(e2eRoute, /softDeleteProject/);
   assert.match(e2eRunner, /project\.deleted_at && project\.name\.includes\(runId\)/);
+  assert.match(e2eRoute, /uploadTestArtifactAction/);
+  assert.match(e2eRoute, /application\/octet-stream/);
+  assert.match(e2eRoute, /preserved byte-for-byte/);
   assert.doesNotMatch(`${e2eRunner}\n${e2eRoute}\n${legacyVerifier}`, /\[E2E Fixture\] M14 Complete Flow/);
 });
 

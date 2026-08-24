@@ -298,3 +298,4 @@ M13 ✅ 85cc7a4 真实项目 routes、Application Services、Repositories 与全
 M14 ✅ 5f37200 完整真实跑通 Create → Research → Protocol → Lock → TestRun/Artifact → Blind Judge → Human Review → Lock/Reveal → Results → Report → Publish；保留 Judge/Report 失败审计，修复报告 ID 文案校验冲突与 Judge 并发配额问题，9 类异常路径、105 项测试、typecheck、build、浏览器交互及真实数据链验证均通过。
 M15 ✅ 6537a7d 完成 Code、Database、Security、Product Rule 与 Mock 五项最终审查；修复社区选题/帖子暴露内部 Schema 字段名的 P1，新增可重复 Secret/Client/Provider/Mock 边界审计。远端 DB lint 零错误、16 个 migration 对齐、105 项测试、typecheck、build 与浏览器检查均通过，未发现剩余 P0/P1。
 Single Product Flow ✅ 当前分支支持 1 产品从 Research、体验 Protocol、Test/Artifact、Blind Judge、Human Review 到 Results、Report、Publish 的完整语义分流，并保留多产品横评与多模态证据链。
+Evidence-first Article Flow ✅ 支持直接粘贴并逐字保存文本证据，TXT/MD/JSON/CSV 统一走文本 Judge；Results 展示 Case 级 Judge/人工复核素材，Publish 可在无截图时基于真实证据生成文章，同时保留图片、多产品与 Blind 回归。

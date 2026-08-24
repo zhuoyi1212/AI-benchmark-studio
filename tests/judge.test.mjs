@@ -50,9 +50,13 @@ test("routes all Samples in one TestCase through one immutable JudgeCaseRun", ()
   assert.match(taskService, /selectJudgeTaskForCase\(testCaseId, artifacts\)/);
 });
 
-test("sends text-only Cases as text and image/PDF/mixed Cases as original multimodal evidence", () => {
-  assert.match(router, /artifacts\.every[\s\S]*"text\/plain"[\s\S]*"judge_text" : "judge_multimodal"/);
-  assert.match(service, /prepared\.every\(\(artifact\) => artifact\.mimeType === "text\/plain"\)/);
+test("sends all supported text formats as text and image/PDF/mixed Cases as original multimodal evidence", () => {
+  for (const mimeType of ["text/plain", "text/markdown", "application/json", "text/csv"]) {
+    assert.match(router, new RegExp(mimeType.replace("/", "\\/")));
+    assert.match(service, new RegExp(mimeType.replace("/", "\\/")));
+  }
+  assert.match(router, /artifacts\.every\(\(artifact\) => isTextArtifactMimeType\(artifact\.mimeType\)\)/);
+  assert.match(service, /prepared\.every\(\(artifact\) => isTextArtifactMimeType\(artifact\.mimeType\)\)/);
   assert.match(service, /type: "image_url"/);
   assert.match(service, /type: "file_url"/);
   assert.match(service, /createHash\("sha256"\)/);

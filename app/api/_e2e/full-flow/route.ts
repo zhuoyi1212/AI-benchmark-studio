@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { uploadTestArtifactAction } from "@/app/projects/[projectId]/test/actions";
 import { getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
@@ -21,9 +22,10 @@ const onePixelPng = Buffer.from(
 export async function POST(request: Request) {
   if (!isAuthorized(request)) return new Response(null, { status: 404 });
 
-  const body = await request.json().catch(() => null) as { runId?: unknown; protocolOnly?: unknown } | null;
+  const body = await request.json().catch(() => null) as { runId?: unknown; protocolOnly?: unknown; textOnlyEvidence?: unknown } | null;
   const runId = typeof body?.runId === "string" ? body.runId : "";
   const protocolOnly = body?.protocolOnly === true;
+  const textOnlyEvidence = body?.textOnlyEvidence === true;
   if (!/^[a-z0-9-]{8,80}$/.test(runId)) {
     return Response.json({ ok: false, error: "Invalid E2E run ID" }, { status: 400 });
   }
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
 
   try {
     stage = "single-product-flow";
-    const single = await runSingleProductFlow(request, runId, projectIds, protocolOnly);
+    const single = await runSingleProductFlow(request, runId, projectIds, protocolOnly, textOnlyEvidence);
     stage = "comparison-regression";
     const comparison = await runComparisonRegression(runId, projectIds);
     stage = "not-comparable-gate";
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
   return Response.json({ ...result, cleanup: { complete: cleanupComplete, projects: cleanup } }, { status });
 }
 
-async function runSingleProductFlow(request: Request, runId: string, projectIds: string[], protocolOnly: boolean) {
+async function runSingleProductFlow(request: Request, runId: string, projectIds: string[], protocolOnly: boolean, textOnlyEvidence: boolean) {
   const projectId = await createProject({
     name: `[E2E] Single Product Flow ${runId}`,
     intent: "验证单产品体验从真实研究、证据评分到社区内容的完整数据链。",
@@ -82,7 +84,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(protocolWorkspace.protocol?.id === protocolId, "Generated Protocol was not persisted");
   assert(protocolWorkspace.protocol.status === "draft", "Generated Protocol must begin as draft");
   assert(protocolWorkspace.protocol.testCases.length >= 2 && protocolWorkspace.protocol.testCases.length <= 4, "Single Protocol must contain 2-4 TestCases");
-  assert(protocolWorkspace.protocol.testCases.every((item) => item.expectedOutputTypes.includes("image")), "Expected output types were not persisted");
+  assert(protocolWorkspace.protocol.testCases.every((item) => item.expectedOutputTypes.includes(textOnlyEvidence ? "text" : "image")), "Expected output types were not persisted");
   assert(protocolWorkspace.protocol.testCases.every((item) => item.evidenceRequirements.length > 0), "Evidence requirements were not persisted");
 
   await lockProtocol(projectId, protocolId);
@@ -102,15 +104,42 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
 
   let testWorkspace = requireValue(await getTestExecutionWorkspace(projectId), "Single Test Execution workspace missing");
   assert(testWorkspace.testRuns.length === protocolWorkspace.protocol.testCases.length, "Single TestRun matrix must be 1 Product x N TestCases");
-  for (const run of testWorkspace.testRuns) {
+  const expectedTextByRun = new Map<string, string>();
+  for (const [index, run] of testWorkspace.testRuns.entries()) {
+    const rawText = `  # Raw Test Result\n\nRun ${run.id} completed the requested task with traceable output.\n  `;
+    if (textOnlyEvidence && index === 0) {
+      const formData = new FormData();
+      formData.set("projectId", projectId);
+      formData.set("testRunId", run.id);
+      formData.set("rawText", rawText);
+      formData.set("generationTimeSeconds", "7");
+      formData.set("retryCount", "0");
+      formData.set("notes", `Self-contained E2E pasted raw Artifact ${runId}`);
+      const state = await uploadTestArtifactAction({ ok: false, message: null }, formData);
+      assert(state.ok, `Direct pasted text upload failed: ${state.message}`);
+      expectedTextByRun.set(run.id, rawText);
+      continue;
+    }
+    const artifact = textOnlyEvidence
+      ? new File([rawText], `e2e-${run.id}.md`, { type: "application/octet-stream" })
+      : new File([onePixelPng], `e2e-${run.id}.png`, { type: "image/png" });
     await uploadTestArtifact({
       projectId,
       testRunId: run.id,
-      file: new File([onePixelPng], `e2e-${run.id}.png`, { type: "image/png" }),
+      file: artifact,
       metadata: { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E raw Artifact ${runId}` },
     });
+    if (textOnlyEvidence) expectedTextByRun.set(run.id, rawText);
   }
   testWorkspace = requireValue(await getTestExecutionWorkspace(projectId), "Uploaded Test Execution workspace missing");
+  if (textOnlyEvidence) {
+    for (const run of testWorkspace.testRuns) {
+      assert(run.artifacts[0]?.fileType === "text/plain" || run.artifacts[0]?.fileType === "text/markdown", "Text MIME normalization failed");
+      const response = await fetch(requireValue(run.artifacts[0]?.fileUrl, "Text Artifact URL missing"));
+      assert(response.ok, "Stored text Artifact could not be read");
+      assert(await response.text() === expectedTextByRun.get(run.id), "Raw pasted/uploaded text must be preserved byte-for-byte");
+    }
+  }
   const artifactIds = testWorkspace.testRuns.flatMap((run) => run.artifacts.map((artifact) => artifact.id));
   assert(artifactIds.length === testWorkspace.testRuns.length, "Every TestRun must retain one raw Artifact");
   assert(testWorkspace.testRuns.every((run) => run.projectId === projectId && run.protocolId === protocolId), "Artifact lineage left the current Project or Protocol");
@@ -159,6 +188,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(publish.projectMode === "single" && publish.pack?.status === "ready", "Single Publish Pack did not complete");
   assert(publish.pack.post?.body.includes("真实体验"), "Single Publish copy must use experience semantics");
   assert(publish.pack.post?.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Publish must only reference current Artifacts");
+  assert(!textOnlyEvidence || publish.pack.post?.screenshotRecommendations.length === 0, "Text-only Publish must not fabricate screenshot recommendations");
 
   const routeChecks = await verifySingleRoutes(new URL(request.url).origin, projectId, report.report.content!.title, publish.pack.post!.title);
   return {
@@ -173,6 +203,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     resultMode: results.projectMode,
     reportMode: report.projectMode,
     publishMode: publish.projectMode,
+    publishScreenshotCount: publish.pack.post?.screenshotRecommendations.length ?? 0,
     routeChecks,
   };
 }
@@ -228,7 +259,7 @@ async function verifySingleRoutes(origin: string, projectId: string, reportTitle
     ["protocol", ["已锁定"], []],
     ["test", ["测试数据已确认"], []],
     ["review", ["产品身份已揭晓"], []],
-    ["results", ["产品体验结果", "综合体验得分"], ["综合冠军", "最终排名", "第一名"]],
+    ["results", ["产品体验结果", "综合体验得分", "证据化 Case 素材"], ["综合冠军", "最终排名", "第一名"]],
     ["report", ["体验报告已生成", reportTitle], ["综合冠军", "最终排名", "第一名"]],
     ["publish", ["已准备好", postTitle], ["综合冠军", "最终排名", "第一名"]],
   ] as const;

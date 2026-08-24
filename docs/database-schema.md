@@ -43,7 +43,7 @@
 | `reports` | 深度报告 | 只能绑定 completed 且非 stale 的 ResultAnalysis |
 | `report_artifacts` | 报告证据引用 | 只能引用 ResultAnalysis 同一 Protocol 的真实 Artifact |
 | `publish_packs` | 社区选题、配置与帖子 | 绑定 completed Report；保留运行元数据 |
-| `publish_pack_artifacts` | 社区截图推荐 | 只允许同 Project/Protocol 的 image TestArtifact；顺序 1–9 |
+| `publish_pack_artifacts` | 社区截图推荐 | 可选；有配图时只允许同 Project/Protocol 的 image TestArtifact，顺序 1–9 |
 
 三张 Artifact 关联表用 FK 取代不可校验的 JSON ID 列表：`judge_run_artifacts` 固化 Judge 输入，`report_artifacts` 固化报告证据，`publish_pack_artifacts` 固化社区截图。Report/Publish 引用还必须与 ResultAnalysis 属于同一 Protocol。
 

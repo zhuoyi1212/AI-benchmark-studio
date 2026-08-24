@@ -31,6 +31,9 @@ test("uploads only validated raw multimodal evidence to private Storage", () => 
   assert.match(repository, /\.storage[\s\S]*\.upload\(/);
   assert.match(repository, /createSignedUrl\(path, 3600\)/);
   assert.match(service, /validateFileSignature/);
+  assert.match(service, /maxTextArtifactBytes = 500_000/);
+  assert.match(service, /mimeTypeByExtension/);
+  for (const extension of ["txt", "md", "json", "csv", "mov"]) assert.match(service, new RegExp(`${extension}:`));
   assert.match(service, /sha256/);
   assert.match(service, /raw_test_output/);
   assert.match(service, /removeStorageObject/);
@@ -58,6 +61,10 @@ test("real Test Execution route validates actions and never imports demo data", 
   assert.match(page, /getTestExecutionWorkspace/);
   assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/protocol`\)/);
   assert.match(actions, /instanceof File/);
+  assert.match(actions, /pasted-raw-output\.txt/);
+  assert.match(actions, /rawText\.trim\(\)\.length > 0[\s\S]*new File\(\[rawText\]/);
+  assert.match(actionComponent, /直接粘贴文本/);
+  assert.match(actionComponent, /name="rawText"/);
   assert.match(actions, /TestExecutionError/);
   assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain,text\/markdown,application\/json,text\/csv,video\/mp4,video\/webm,video\/quicktime/);
   assert.doesNotMatch(page + actions + actionComponent + service + repository, /@\/lib\/mock|mockTestRuns|\/projects\/demo/);

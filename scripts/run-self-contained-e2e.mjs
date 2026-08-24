@@ -13,6 +13,7 @@ if (!supabaseUrl || !supabaseSecretKey) throw new Error("Full E2E requires Supab
 
 const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 const protocolOnly = process.env.E2E_PROTOCOL_ONLY === "1";
+const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 const token = randomUUID();
 const providerMock = await startE2EProviderMock();
 const appPort = await findAvailablePort();
@@ -49,14 +50,14 @@ try {
   const response = await fetch(`${appOrigin}/api/e2e-test/full-flow`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-e2e-token": token },
-    body: JSON.stringify({ runId, protocolOnly }),
+    body: JSON.stringify({ runId, protocolOnly, textOnlyEvidence }),
     signal: AbortSignal.timeout(300_000),
   });
   const result = await response.json();
   assert.equal(response.ok, true, `Full route E2E failed: ${JSON.stringify(result)}`);
   assert.equal(result.ok, true);
   assert.equal(result.single.comparabilityStatus, "not_comparable");
-  assert.ok(result.single.testCases.every((item) => item.expectedOutputTypes.includes("image") && item.evidenceRequirements.length > 0));
+  assert.ok(result.single.testCases.every((item) => item.expectedOutputTypes.includes(textOnlyEvidence ? "text" : "image") && item.evidenceRequirements.length > 0));
   if (protocolOnly) {
     assert.equal(result.single.protocolOnly, true);
     assert.ok(result.single.testCases.length >= 2 && result.single.testCases.length <= 4);
@@ -67,6 +68,7 @@ try {
     assert.equal(result.single.publishMode, "single");
     assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
     assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
+    if (textOnlyEvidence) assert.equal(result.single.publishScreenshotCount, 0);
   }
   assert.equal(result.comparison.productCount, 2);
   assert.equal(result.comparison.comparabilityStatus, "comparable");
@@ -83,7 +85,10 @@ try {
   for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
-  if (!protocolOnly) assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
+  if (!protocolOnly) {
+    if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
+    else assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
+  }
   assertProtocolScenario(providerStats.protocolAttempts);
 
   const supabase = createClient(supabaseUrl, supabaseSecretKey, { auth: { persistSession: false } });

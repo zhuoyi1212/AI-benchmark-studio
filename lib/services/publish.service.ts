@@ -57,7 +57,8 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
   }));
   const ideas = latest ? parseIdeas(latest.content_ideas) : [];
   const selectedIdea = latest?.selected_idea ? selectedContentIdeaSchema.parse(latest.selected_idea) : null;
-  const config = latest && hasKeys(latest.config) ? publishConfigSchema.parse(latest.config) : defaultPublishConfig;
+  const storedConfig = latest && hasKeys(latest.config) ? publishConfigSchema.parse(latest.config) : defaultPublishConfig;
+  const config = withAvailableImageCount(storedConfig, source.screenshots.length);
   const storedPost = latest?.community_post ? storedPostSchema(latest.community_post) : null;
   const post = storedPost ? communityPostOutputSchema.parse({
     ...storedPost,
@@ -116,17 +117,29 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
   if (!pack || pack.status !== "draft") throw new PublishExecutionError("请先完成社区选题发现。");
   const ideas = parseIdeas(pack.content_ideas);
   const selectedIdea = selectIdea(ideas, input.ideaId, input.customAngle);
-  const config = publishConfigSchema.parse(input.config);
   const imageArtifacts = source.screenshots;
-  if (imageArtifacts.length === 0) throw new PublishExecutionError("当前测试没有可用的原始截图，不能生成社区发布包。");
-  const postInput = { projectMode: source.projectMode, selectedIdea, config, research: source.report.research, report: source.report.report!.content, ranking: source.report.ranking, analysis: source.report.analysis, protocol: source.report.protocol, caseScores: source.report.caseScores, imageArtifacts };
+  const config = withAvailableImageCount(publishConfigSchema.parse(input.config), imageArtifacts.length);
+  const postInput = {
+    projectMode: source.projectMode,
+    selectedIdea,
+    config,
+    research: source.report.research,
+    report: source.report.report!.content,
+    ranking: source.report.ranking,
+    analysis: source.report.analysis,
+    protocol: source.report.protocol,
+    caseScores: source.report.caseScores,
+    humanReview: source.report.review,
+    judgeEvidence: buildJudgeEvidence(source),
+    imageArtifacts,
+  };
   const inputSignature = createInputSignature(postInput);
   try {
     const result = await aiTaskService.generateCommunityPost({
       schema: communityPostOutputSchema,
       schemaName: "CommunityPost",
       messages: [
-        { role: "system", content: source.projectMode === "single" ? "你是中文社区内容编辑。围绕用户选定观点写一篇‘我真实体验了这个 AI 产品之后发现……’的独立帖子，必须基于 Research、Protocol、Judge Evidence、Human Review、Report 与真实截图，不是报告摘要，不使用排名、冠军或虚构竞品比较。结构包含 Hook、体验动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。artifactId 只能从 imageArtifacts 中选择，不得创造体验或数据。" : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子，不是报告摘要，不使用夸张营销表达。结构包含 Hook、测试动机、关键发现、具体 Case 证据、原因、用户意义、个人判断与真实讨论问题。截图只作为证据，artifactId 只能从 imageArtifacts 中选择；同一 Case 的多产品对比应连续排列。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
+        { role: "system", content: source.projectMode === "single" ? "你是中文社区内容编辑。围绕用户选定观点写一篇‘我真实体验了这个 AI 产品之后发现……’的独立帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要、排名或虚构竞品比较。正文至少 4 段，依次形成 Hook、体验动机与方法、具体 Case 证据和关键发现、问题或意外、适合/不适合人群、个人判断与真实讨论问题。有 imageArtifacts 时可选择真实截图，artifactId 只能从中选择；没有图片时 screenshotRecommendations 必须返回空数组，正文仍需引用 Judge Evidence 和 Report 中的可核查发现。不得创造体验或数据。" : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要或夸张营销文案。正文至少 4 段，覆盖 Hook、测试动机与方法、具体 Case 证据、关键差异或意外、用户意义、个人判断与真实讨论问题。有 imageArtifacts 时，artifactId 只能从中选择，并且同一 Case 的多产品对比应连续排列；没有图片时 screenshotRecommendations 必须返回空数组。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,
@@ -155,7 +168,22 @@ async function getPublishSource(projectId: string) {
 }
 
 function buildDiscoveryInput(source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
-  return { projectMode: source.projectMode, project: { name: source.report.projectName, intent: source.report.projectIntent }, research: source.report.research, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: source.experiment.products.map((product) => ({ productId: product.productId, scores: product.scores.map((score) => ({ testCaseId: score.testCaseId, dimensionId: score.rubricDimensionId, finalScore: score.finalScore, reason: score.reason, evidence: score.evidence, humanReviewAdjustment: score.humanOverrideReason })) })), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
+  return { projectMode: source.projectMode, project: { name: source.report.projectName, intent: source.report.projectIntent }, research: source.report.research, protocol: source.report.protocol, ranking: source.report.ranking, caseScores: source.report.caseScores, finalAnalysis: source.report.analysis, report: source.report.report!.content, judgeEvidence: buildJudgeEvidence(source), imageArtifacts: source.screenshots.map(({ artifactId, productId, testCaseId, fileName, caption }) => ({ artifactId, productId, testCaseId, fileName, caption })) };
+}
+
+function buildJudgeEvidence(source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
+  return source.experiment.products.map((product) => ({
+    productId: product.productId,
+    productName: product.productName,
+    scores: product.scores.map((score) => ({
+      testCaseId: score.testCaseId,
+      dimensionId: score.rubricDimensionId,
+      finalScore: score.finalScore,
+      reason: score.reason,
+      evidence: score.evidence,
+      humanReviewAdjustment: score.humanOverrideReason,
+    })),
+  }));
 }
 
 function assertIdeas(ideas: ContentIdea[], source: NonNullable<Awaited<ReturnType<typeof getPublishSource>>>) {
@@ -178,6 +206,9 @@ function normalizeIdeas(ideas: ContentIdea[]): ContentIdea[] {
 function assertPost(post: CommunityPostOutput, artifactIds: string[], imageCount: number) {
   const allowed = new Set(artifactIds);
   const refs = post.screenshotRecommendations;
+  if (post.body.trim().length < 200 || post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length < 4) {
+    throw new AIValidationError("community_post", "publishableEvidenceArticleStructure");
+  }
   if (refs.length > imageCount || new Set(refs.map((item) => item.artifactId)).size !== refs.length || refs.some((item) => !allowed.has(item.artifactId)) || refs.some((item, index) => item.order !== index + 1)) throw new AIValidationError("community_post", "orderedRealScreenshotReferences");
 }
 
@@ -192,6 +223,10 @@ function normalizeScreenshotRecommendations(post: CommunityPostOutput, idea: Sel
     valid.push({ artifactId, reason: `支持“${idea.title}”这一观点的原始测试截图。`, supportsClaim: idea.insight, supportsParagraph: null, order: valid.length + 1 });
   }
   return { ...post, screenshotRecommendations: valid.slice(0, imageCount).map((item, index) => ({ ...item, order: index + 1 })) };
+}
+
+function withAvailableImageCount(config: PublishConfig, availableImageCount: number): PublishConfig {
+  return { ...config, imageCount: Math.min(config.imageCount, availableImageCount) };
 }
 
 function selectIdea(ideas: ContentIdea[], ideaId: string, customAngle?: string): SelectedContentIdea {

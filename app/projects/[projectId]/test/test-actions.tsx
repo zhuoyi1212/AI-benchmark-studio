@@ -34,18 +34,20 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
       <DialogTrigger asChild><Button variant="outline" size="sm">{run.artifacts.length > 0 ? <FilePlus2 className="h-3.5 w-3.5" /> : <UploadCloud className="h-3.5 w-3.5" />}{run.artifacts.length > 0 ? "添加原始文件" : "上传测试结果"}</Button></DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogTitle>{productName} · 上传原始测试结果</DialogTitle>
-        <DialogDescription>保存未经后期编辑的原始输出。支持图片、PDF、TXT/MD/JSON/CSV 与 MP4/WebM/MOV；单文件不超过 50 MB。</DialogDescription>
+        <DialogDescription>保存未经后期编辑的原始输出。可直接粘贴文本，或上传图片、PDF、TXT/MD/JSON/CSV 与 MP4/WebM/MOV。</DialogDescription>
         <form action={formAction} className="mt-5 space-y-4">
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="testRunId" value={run.id} />
-          <Field label="结果文件"><Input name="artifact" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/json,text/csv,video/mp4,video/webm,video/quicktime,.md,.json,.csv,.mov" required /></Field>
+          <Field label="结果文件（与下方文本至少填写一种）"><Input name="artifact" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/json,text/csv,video/mp4,video/webm,video/quicktime,.md,.json,.csv,.mov" /></Field>
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground"><span className="h-px flex-1 bg-slate-200" /><span>或直接粘贴</span><span className="h-px flex-1 bg-slate-200" /></div>
+          <Field label="原始文本结果"><Textarea name="rawText" maxLength={500000} rows={8} placeholder="粘贴产品的完整原始文本、代码、终端输出或执行记录；无需先另存为 TXT。" /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="生成耗时（秒）"><Input name="generationTimeSeconds" type="number" min={0} max={86400} defaultValue={run.generationTimeSeconds ?? ""} placeholder="可选" /></Field>
             <Field label="重试次数"><Input name="retryCount" type="number" min={0} max={20} defaultValue={run.retryCount ?? 0} required /></Field>
           </div>
           <label className="flex items-start gap-2.5 rounded-md border bg-slate-50 p-3 text-xs leading-5 text-slate-700"><input name="manuallyEdited" type="checkbox" defaultChecked={run.manuallyEdited} className="mt-1" /><span><span className="font-medium">结果经过人工编辑</span><br /><span className="text-muted-foreground">标准化测试通常应保持未勾选；如有编辑，请如实记录。</span></span></label>
           <Field label="执行备注"><Textarea name="notes" maxLength={2000} defaultValue={run.notes ?? ""} placeholder="可选：记录导出格式、异常或执行环境" /></Field>
-          <p className="text-[11px] leading-5 text-muted-foreground">视频请上传产品直接生成的原始文件；不要先剪辑、压缩或二次导出后再作为原始证据。</p>
+          <p className="text-[11px] leading-5 text-muted-foreground">图片、PDF 和视频单文件不超过 50 MB；文本不超过 500 KB。视频请上传产品直接生成的原始文件，不要先剪辑或二次导出。</p>
           {state.message && !state.ok && <p role="alert" className="text-xs leading-5 text-red-600">{state.message}</p>}
           <div className="flex justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose><Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在上传...</> : <><UploadCloud className="h-4 w-4" />保存原始结果</>}</Button></div>
         </form>

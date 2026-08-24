@@ -25,6 +25,7 @@ const storedScoringStandardSchema = z.object({
 const storedEvidenceSchema = z.array(z.string().trim().min(1));
 const storedExpectedOutputTypesSchema = z.array(z.enum(["text", "image", "document", "video", "code", "mixed"])).min(1);
 const maxTextArtifactCharacters = 500_000;
+const textArtifactMimeTypes = new Set(["text/plain", "text/markdown", "application/json", "text/csv"]);
 
 type JudgeTestCase = {
   id: string;
@@ -244,7 +245,7 @@ async function buildJudgeContent(
       evidenceMustReferenceArtifactId: true,
     },
   };
-  if (prepared.every((artifact) => artifact.mimeType === "text/plain")) {
+  if (prepared.every((artifact) => isTextArtifactMimeType(artifact.mimeType))) {
     return JSON.stringify({
       ...instruction,
       rawArtifacts: prepared.map((artifact) => ({
@@ -269,7 +270,7 @@ async function buildJudgeContent(
       type: "text",
       text: `Blind Sample: ${artifact.sampleLabel}; Artifact ID: ${artifact.artifactId}; MIME: ${artifact.mimeType}; Size: ${artifact.sizeBytes} bytes; SHA-256: ${artifact.sha256}; Integrity verified by server.`,
     });
-    if (artifact.mimeType === "text/plain") {
+    if (isTextArtifactMimeType(artifact.mimeType)) {
       content.push({ type: "text", text: artifact.text! });
     } else if (artifact.mimeType.startsWith("image/")) {
       content.push({ type: "image_url", image_url: { url: artifact.url! } });
@@ -282,7 +283,7 @@ async function buildJudgeContent(
 
 async function prepareArtifact(input: JudgeCaseInputRow) {
   const url = await judgeRepository.createSignedArtifactUrl(input.storage_path);
-  if (input.mime_type !== "text/plain") {
+  if (!isTextArtifactMimeType(input.mime_type)) {
     return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url, text: null };
   }
   const response = await fetch(url);
@@ -299,6 +300,10 @@ async function prepareArtifact(input: JudgeCaseInputRow) {
   }
   if (text.length > maxTextArtifactCharacters) throw new JudgeExecutionError("单个文本 Artifact 超出当前 Judge 处理上限。");
   return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url: null, text };
+}
+
+function isTextArtifactMimeType(mimeType: string) {
+  return textArtifactMimeTypes.has(mimeType.toLowerCase());
 }
 
 function assertCompleteSampleInputs(inputs: JudgeCaseInputRow[], samples: Array<{ sampleId: string; label: string }>) {

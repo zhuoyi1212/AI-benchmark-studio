@@ -35,6 +35,21 @@ export type ResultsWorkspace = {
   reviewSummary: HumanReviewWorkspace["summary"];
   productScores: FinalProductScore[];
   caseScores: Array<{ testCaseId: string; title: string; products: Array<{ productId: string; score: number }> }>;
+  caseEvidence: Array<{
+    testCaseId: string;
+    title: string;
+    products: Array<{
+      productId: string;
+      productName: string;
+      findings: Array<{
+        dimensionName: string;
+        finalScore: number;
+        reason: string;
+        evidence: string[];
+        humanAdjustment: string | null;
+      }>;
+    }>;
+  }>;
   latestAnalysis: {
     id: string;
     attempt: number;
@@ -72,6 +87,7 @@ export async function getResultsWorkspace(projectId: string): Promise<ResultsWor
     reviewSummary: review.summary,
     productScores,
     caseScores: calculateReviewCaseScores(review),
+    caseEvidence: buildCaseEvidence(review),
     latestAnalysis: latest ? {
       id: latest.id,
       attempt: latest.attempt,
@@ -84,6 +100,37 @@ export async function getResultsWorkspace(projectId: string): Promise<ResultsWor
       output: latest.output ? generatedResultAnalysisSchema.parse(latest.output) : null,
     } : null,
   };
+}
+
+function buildCaseEvidence(review: HumanReviewWorkspace): ResultsWorkspace["caseEvidence"] {
+  return review.testCases.map((testCase) => ({
+    testCaseId: testCase.id,
+    title: testCase.title,
+    products: review.revealedMappings!.map((mapping) => ({
+      productId: mapping.productId,
+      productName: mapping.productName,
+      findings: review.rubric.map((dimension) => {
+        const score = review.scores.find((item) => item.testCaseId === testCase.id
+          && item.blindSampleId === mapping.sampleId
+          && item.rubricDimensionId === dimension.id);
+        if (!score) throw new ResultAnalysisError("Results Case 证据矩阵不完整。");
+        return {
+          dimensionName: dimension.name,
+          finalScore: score.finalScore,
+          reason: sanitizePublicEvidence(score.reason),
+          evidence: score.evidence.map(sanitizePublicEvidence),
+          humanAdjustment: score.humanOverride ? sanitizePublicEvidence(score.humanOverride.reason) : null,
+        };
+      }),
+    })),
+  }));
+}
+
+function sanitizePublicEvidence(value: string) {
+  return value
+    .replace(/\bArtifact\s+[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, "原始证据")
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi, "原始证据")
+    .replace(/\b(?:blindSampleId|TestRun|artifactId|productId|testCaseId|rubricDimensionId)\b/gi, "证据标识");
 }
 
 export async function generateFinalResultAnalysis(projectId: string): Promise<string> {

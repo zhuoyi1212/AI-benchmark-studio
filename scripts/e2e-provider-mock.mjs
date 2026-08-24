@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
 const expectedAuthorization = "Bearer e2e-local-provider-boundary";
+const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 
 export async function startE2EProviderMock() {
   const requests = [];
@@ -117,7 +118,7 @@ function buildStructuredOutput(schemaName, messages) {
     const caseCount = 2;
     const protocol = {
       title: single ? "单产品核心能力体验方案" : "同类产品标准化横评方案",
-      goal: single ? "通过真实任务和原始截图验证核心能力、使用体验与明显限制。" : "在统一输入、Prompt 与证据要求下比较同类产品表现。",
+      goal: single ? `通过真实任务和原始${textOnlyEvidence ? "文本证据" : "截图"}验证核心能力、使用体验与明显限制。` : "在统一输入、Prompt 与证据要求下比较同类产品表现。",
       testMode: "standardized",
       rules: [
         { id: "same-input", text: "使用相同原始输入" },
@@ -133,8 +134,8 @@ function buildStructuredOutput(schemaName, messages) {
         prompt: `请根据给定目标完成第 ${index + 1} 个标准化任务，并直接输出最终结果。`,
         inputDescription: null,
         inputArtifacts: [],
-        expectedOutputTypes: ["image"],
-        evidenceRequirements: ["上传未经裁剪或后期编辑的完整原始截图"],
+        expectedOutputTypes: [textOnlyEvidence ? "text" : "image"],
+        evidenceRequirements: [textOnlyEvidence ? "上传未经编辑的完整原始文本结果" : "上传未经裁剪或后期编辑的完整原始截图"],
         observationFocus: ["任务完成度", "信息结构", "视觉可读性"],
         executionRules: ["使用默认设置", "仅生成一次", "不人工美化"],
       })),
@@ -166,8 +167,8 @@ function buildStructuredOutput(schemaName, messages) {
           blindSampleId: sample.sampleId,
           rubricDimensionId: dimension.id,
           aiScore: Number((8.4 - sampleIndex * 0.3 - dimensionIndex * 0.2).toFixed(1)),
-          reason: "原始截图完整呈现任务结果，核心要求清晰可核查。",
-          evidence: [`Artifact ${artifactId} 展示了完整输出和可验证的视觉结构。`],
+          reason: "原始证据完整呈现任务结果，核心要求清晰可核查。",
+          evidence: [`Artifact ${artifactId} 展示了完整输出和可验证的结果结构。`],
           confidence: 0.91,
         };
       })),
@@ -205,10 +206,10 @@ function buildStructuredOutput(schemaName, messages) {
       tldr: single ? "核心体验任务完成稳定，但结论仅适用于当前 Protocol。" : "共同任务揭示了产品在完成度与证据质量上的差异。",
       tldrDetail: "所有判断都绑定当前 Final Score 和原始测试证据。",
       whyTheseProducts: single ? "选择这款产品是为了验证其官方核心能力是否能在真实场景成立。" : "选择这些产品是因为它们具有共同任务和可比输出。",
-      methodologySummary: "先锁定 Protocol，再执行统一任务并上传未经编辑的原始截图，随后完成 Blind Judge 与人工复核。",
+      methodologySummary: `先锁定 Protocol，再执行统一任务并上传未经编辑的原始${textOnlyEvidence ? "文本结果" : "截图"}，随后完成 Blind Judge 与人工复核。`,
       caseReviews: report.experiment.protocol.testCases.map((testCase) => ({
         testCaseId: testCase.id,
-        findings: "原始截图支持对任务完成度和输出结构的判断。",
+        findings: `原始${textOnlyEvidence ? "文本证据" : "截图"}支持对任务完成度和输出结构的判断。`,
         productAnalyses: report.experiment.products.map((product) => ({ productId: product.productId, analysis: "结果完整呈现核心内容，同时保留可进一步验证的限制。" })),
       })),
       finalRecommendation: single ? "建议先用自己的真实任务验证工作流匹配度，再决定是否长期使用。" : "建议结合具体场景和维度表现选择产品。",
@@ -223,10 +224,10 @@ function buildStructuredOutput(schemaName, messages) {
         type: "真实体验",
         angle: "从一次生成质量与长期使用价值的差别切入。",
         insight: "看起来完成任务只是第一步，能否稳定进入日常工作流更重要。",
-        whyInteresting: "这个判断同时有原始截图和评分证据支持，也给真实用户留下讨论空间。",
-        supportingEvidence: ["统一任务下的原始截图完整保留了实际输出"],
+        whyInteresting: "这个判断同时有原始测试结果和评分证据支持，也给真实用户留下讨论空间。",
+        supportingEvidence: ["统一任务下的原始证据完整保留了实际输出"],
         relatedTestCaseIds: [input.protocol.testCases[0].id],
-        relatedArtifactIds: [input.imageArtifacts[0].artifactId],
+        relatedArtifactIds: input.imageArtifacts[0] ? [input.imageArtifacts[0].artifactId] : [],
         informationValue: 0.9,
         discussionPotential: 0.86,
         confidence: 0.92,
@@ -238,16 +239,16 @@ function buildStructuredOutput(schemaName, messages) {
     const input = findJsonMessage(messages, (value) => value.selectedIdea && value.imageArtifacts);
     return {
       title: input.projectMode === "single" ? "我真实体验了这款 AI 产品之后，更在意它能否进入长期工作流" : "测完两款 AI 产品，我更在意综合分之外的工作流差异",
-      body: "我用统一任务真实体验了这款 AI 产品，并保留了未经编辑的原始截图。\n\n最重要的发现是：它可以完成核心任务，但首次生成质量和长期工作流效率并不是同一个概念。具体截图能看到内容结构完整，评分证据也支持这个判断；与此同时，当前测试只覆盖一次默认生成，不能代表所有复杂场景。\n\n我的判断是，选择工具之前最好先用自己的真实任务验证，而不是只看功能列表。",
+      body: "我用统一任务真实体验了这款 AI 产品，并保留了未经编辑的原始证据。真正想确认的不是功能列表有多长，而是它在现实任务里能不能稳定交付。\n\n测试时，我先锁定任务和评分标准，再按默认工作流执行两个核心场景。每个结果都保留原始文件，后续评分只依据这些证据，没有拿产品宣传补齐未观察到的表现。\n\n最重要的发现是：它可以完成核心任务，但首次生成质量和长期工作流效率并不是同一个概念。具体证据能看到结果结构完整，评分理由也支持这个判断；与此同时，当前测试只覆盖一次默认生成，不能代表所有复杂场景。\n\n它更适合愿意先用真实任务验证工作流的人，不适合只根据功能列表直接做长期采购决定。暴露出来的问题同样重要：当前样本还不足以证明复杂任务下的稳定性。\n\n我的判断是，选择工具之前最好先用自己的真实任务验证，而不是只看官方介绍。你实际使用 AI 产品时，更看重第一次生成质量，还是长期编辑效率？",
       tags: ["AI产品体验", "真实测试", "工作流"],
       interactionQuestion: "你实际使用 AI 产品时，更看重第一次生成质量，还是长期编辑效率？",
-      screenshotRecommendations: [{
+      screenshotRecommendations: input.imageArtifacts[0] ? [{
         artifactId: input.imageArtifacts[0].artifactId,
         reason: "支持正文中关于核心任务完成度与视觉结构的判断。",
         supportsClaim: "首次生成质量和长期工作流价值需要分开判断。",
         supportsParagraph: 2,
         order: 1,
-      }],
+      }] : [],
     };
   }
   throw new Error(`Unsupported structured schema: ${schemaName}`);
@@ -271,6 +272,14 @@ function extractSources(messages) {
 function extractArtifactIds(messages) {
   const result = new Map();
   for (const text of textParts(messages)) {
+    try {
+      const value = JSON.parse(text);
+      for (const artifact of value.rawArtifacts ?? []) {
+        if (artifact.sampleLabel && artifact.artifactId) result.set(artifact.sampleLabel, artifact.artifactId);
+      }
+    } catch {
+      // Multimodal messages use human-readable Artifact headers instead.
+    }
     const match = text.match(/Blind Sample: ([^;]+); Artifact ID: ([0-9a-f-]{36});/i);
     if (match) result.set(match[1], match[2]);
   }

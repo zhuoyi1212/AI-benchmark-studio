@@ -13,6 +13,21 @@ import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/
 import type { ExpectedOutputType } from "@/lib/types/protocol";
 
 const maxArtifactBytes = 50 * 1024 * 1024;
+const maxTextArtifactBytes = 500_000;
+const mimeTypeByExtension: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  md: "text/markdown",
+  json: "application/json",
+  csv: "text/csv",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+};
 const executionMetadataSchema = z.object({
   generationTimeSeconds: z.number().int().min(0).max(86400).nullable(),
   retryCount: z.number().int().min(0).max(20),
@@ -178,11 +193,17 @@ function normalizeAndValidateFile(file: File) {
 
   let mimeType = file.type.toLowerCase();
   const extension = fileName.split(".").pop()?.toLowerCase();
-  if ((!mimeType || mimeType === "application/octet-stream") && extension === "md") mimeType = "text/markdown";
-  if (mimeType === "text/plain" && extension === "md") mimeType = "text/markdown";
-  if (mimeType === "text/plain" && extension === "csv") mimeType = "text/csv";
+  const inferredMimeType = extension ? mimeTypeByExtension[extension] : undefined;
+  if ((!mimeType || mimeType === "application/octet-stream") && inferredMimeType) mimeType = inferredMimeType;
+  const shouldUseMoreSpecificTextType = inferredMimeType?.startsWith("text/") || inferredMimeType === "application/json";
+  if (mimeType === "text/plain" && inferredMimeType && shouldUseMoreSpecificTextType) {
+    mimeType = inferredMimeType;
+  }
   if (!supportedArtifacts[mimeType]) {
     throw new TestExecutionError("支持 PNG、JPEG、WebP、PDF、TXT、MD、JSON、CSV、MP4、WebM 或 MOV 文件。");
+  }
+  if (supportedArtifacts[mimeType].kind === "text" && file.size > maxTextArtifactBytes) {
+    throw new TestExecutionError("文本结果不能超过 500 KB；请只保留完成任务和评分所需的原始内容。");
   }
   return { file, mimeType };
 }

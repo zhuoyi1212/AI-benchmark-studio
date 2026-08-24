@@ -64,6 +64,10 @@ test("dynamic Results route is revealed-only and has explicit generate/retry sta
   assert.match(page, /ResultAnalysisAction/);
   assert.match(page, /上次分析未完成/);
   assert.match(page, /评分来源 · AI Judge \+ 人工复核/);
+  assert.match(service, /buildCaseEvidence/);
+  assert.match(service, /sanitizePublicEvidence/);
+  assert.match(page, /证据化 Case 素材/);
+  assert.match(page, /item\.keyFindings/);
   assert.doesNotMatch(service + repository + page + actions, /@\/lib\/mock|mockFinalResultAnalysis|\/projects\/demo/);
 });
 

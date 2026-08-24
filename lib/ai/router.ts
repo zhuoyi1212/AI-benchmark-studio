@@ -281,7 +281,11 @@ export function selectJudgeTaskForCase(testCaseId: string, artifacts: JudgeArtif
   if (artifacts.some((artifact) => artifact.testCaseId !== testCaseId)) {
     throw new AIValidationError("judge", "singleTestCaseArtifactSet");
   }
-  return artifacts.every((artifact) => artifact.mimeType.toLowerCase() === "text/plain") ? "judge_text" : "judge_multimodal";
+  return artifacts.every((artifact) => isTextArtifactMimeType(artifact.mimeType)) ? "judge_text" : "judge_multimodal";
+}
+
+function isTextArtifactMimeType(mimeType: string) {
+  return ["text/plain", "text/markdown", "application/json", "text/csv"].includes(mimeType.toLowerCase());
 }
 
 function createProvider(providerName: "zhipu" | "deepseek"): AIProvider {

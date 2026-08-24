@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), "utf8"); }
-const [migration, lineageMigration, schema, repository, service, page, editor, actions] = await Promise.all([
+const [migration, lineageMigration, textOnlyMigration, schema, repository, service, page, editor, actions] = await Promise.all([
   read("supabase/migrations/202608170015_publish_pack_lifecycle.sql"),
-  read("supabase/migrations/202608170016_publish_pack_discovery_lineage.sql"), read("lib/ai/schemas/publish.schemas.ts"),
+  read("supabase/migrations/202608170016_publish_pack_discovery_lineage.sql"),
+  read("supabase/migrations/20260824090000_allow_text_only_publish_packs.sql"), read("lib/ai/schemas/publish.schemas.ts"),
   read("lib/repositories/publish.repository.ts"), read("lib/services/publish.service.ts"),
   read("app/projects/[projectId]/publish/page.tsx"), read("app/projects/[projectId]/publish/publish-editor.tsx"), read("app/projects/[projectId]/publish/actions.ts"),
 ]);
@@ -25,7 +26,7 @@ test("keeps dynamic ContentIdeas and real rediscovery", () => {
   assert.doesNotMatch(service + page + editor + actions, /createMockContentIdeas|mockCommunityPost|@\/lib\/mock/);
 });
 test("persists selected or custom angle and validated publish config", () => {
-  assert.match(schema, /id: z\.literal\("custom"\)/); assert.match(schema, /imageCount: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(9\)/);
+  assert.match(schema, /id: z\.literal\("custom"\)/); assert.match(schema, /imageCount: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.max\(9\)/);
   assert.match(migration, /Selected ContentIdea does not belong/); assert.match(editor, /自定义内容角度/);
 });
 test("only recommends and persists real image TestArtifacts", () => {
@@ -33,6 +34,24 @@ test("only recommends and persists real image TestArtifacts", () => {
   assert.match(migration, /publish_pack_artifacts/); assert.match(migration, /\(recommendation->>'artifactId'\)::uuid/);
   assert.match(editor, /测试截图库/); assert.match(editor, /下载全部图片/); assert.match(editor, /复制帖子内容/);
   assert.doesNotMatch(service + editor, /AI 生图|mock:\/\//);
+});
+test("allows evidence-backed text-only posts without fabricated screenshots", () => {
+  assert.match(schema, /screenshotRecommendations: z\.array\(screenshotRecommendationSchema\)\.max\(9\)/);
+  assert.match(service, /withAvailableImageCount/);
+  assert.doesNotMatch(service, /没有可用的原始截图，不能生成/);
+  assert.match(service, /没有图片时 screenshotRecommendations 必须返回空数组/);
+  assert.match(textOnlyMigration, /imageCount'\)::integer not between 0 and 9/);
+  assert.match(textOnlyMigration, /jsonb_array_length\(p_recommendations\) not between 0 and 9/);
+  assert.doesNotMatch(textOnlyMigration, /must retain at least one screenshot/);
+  assert.match(editor, /没有截图证据，文章仍会使用 Judge 与 Report 中的真实文本证据/);
+  assert.match(editor, /readOnly=\{maxImages === 0\}/);
+});
+test("gives article generation direct Judge and Human Review evidence with a minimum publishable structure", () => {
+  assert.match(service, /judgeEvidence: buildJudgeEvidence\(source\)/);
+  assert.match(service, /humanReview: source\.report\.review/);
+  assert.match(service, /正文至少 4 段/);
+  assert.match(service, /post\.body\.trim\(\)\.length < 200/);
+  assert.match(service, /publishableEvidenceArticleStructure/);
 });
 test("guards Publish by current completed Report and exposes explicit states", () => {
   assert.match(migration, /PublishPack requires a current completed Report/); assert.match(migration, /private\.final_score_signature/);

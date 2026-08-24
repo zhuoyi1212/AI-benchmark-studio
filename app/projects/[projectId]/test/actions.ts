@@ -21,9 +21,16 @@ export async function uploadTestArtifactAction(
 ): Promise<TestExecutionActionState> {
   const projectId = idSchema.safeParse(formData.get("projectId"));
   const testRunId = idSchema.safeParse(formData.get("testRunId"));
-  const file = formData.get("artifact");
+  const uploadedFile = formData.get("artifact");
+  const rawTextEntry = formData.get("rawText");
+  const rawText = typeof rawTextEntry === "string" ? rawTextEntry : "";
   if (!projectId.success || !testRunId.success) return { ok: false, message: "测试项标识无效。" };
-  if (!(file instanceof File)) return { ok: false, message: "请选择测试结果文件。" };
+  const file = uploadedFile instanceof File && uploadedFile.size > 0
+    ? uploadedFile
+    : rawText.trim().length > 0
+      ? new File([rawText], "pasted-raw-output.txt", { type: "text/plain" })
+      : null;
+  if (!file) return { ok: false, message: "请选择结果文件，或直接粘贴原始文本结果。" };
 
   try {
     await uploadTestArtifact({
