@@ -123,10 +123,13 @@ test("regenerate remains readable and single-product copy avoids comparison sema
 test("Protocol input omits raw Research snippets and JSON mode stays explicit", () => {
   assert.match(protocolService, /sources: product\.sources\.map\(\(\{ url, sourceType \}\) => \(\{ url, sourceType \}\)\)/);
   assert.doesNotMatch(protocolService, /sources: product\.sources\.map\(\(\{[^}]*snippet/);
+  const generationContext = protocolService.slice(protocolService.indexOf("const generationContext ="), protocolService.indexOf("try {", protocolService.indexOf("const generationContext =")));
+  assert.doesNotMatch(generationContext, /productId|researchRunId|sources|sourceType|snippet/);
+  assert.match(generationContext, /projectMode === "comparison" \? \{ comparability: result\.comparability \} : \{\}/);
   assert.match(router, /Return exactly one valid JSON object/);
   assert.match(router, /Do not use Markdown or code fences/);
   assert.match(router, /Do not stop before closing the root JSON object/);
-  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v8"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v9"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
   assert.match(protocolService, /\[ProtocolPerformance\]/);
   assert.match(protocolService, /attempts: generated\.attemptPerformance/);
 });

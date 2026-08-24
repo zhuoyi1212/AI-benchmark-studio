@@ -51,14 +51,14 @@ test("models native product capabilities before designing realistic tasks", () =
     assert.match(service, new RegExp(`"${field}"`));
   }
   assert.match(service, /coreCapabilitiesCount: "3-8"/);
-  assert.match(service, /普通聊天框也能基本完成且不是产品核心定位/);
-  assert.match(service, /优先测试原生交互与差异化工作流/);
-  assert.match(service, /真实用户目标/);
+  assert.match(service, /任何普通聊天机器人都能基本完成的泛化任务/);
+  assert.match(service, /defaultCasesUsingNativeOrDifferentiatingWorkflow: 2/);
+  assert.match(service, /真实用户可能提出并希望产品端到端完成的任务/);
   assert.match(service, /写作产品才以写作改写为核心/);
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v8"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v9"/);
   assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
 });
 
@@ -69,7 +69,7 @@ test("requires explainable cases and a final generic-task quality gate", () => {
   for (const task of ["写文章", "写营销文案", "写邮件", "总结给定文字", "Brainstorm", "普通知识问答"]) {
     assert.match(service, new RegExp(task));
   }
-  assert.match(service, /taskQualityChecks,/);
+  assert.match(service, /checks: taskQualityChecks/);
   assert.match(service, /deprioritizeUnlessCoreToProduct/);
   assert.match(service, /eachCaseInternallyAnswers/);
 });

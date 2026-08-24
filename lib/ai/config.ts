@@ -49,7 +49,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v8",
+    promptVersion: "protocol.v9",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,

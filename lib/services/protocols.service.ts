@@ -120,6 +120,26 @@ export async function generateProtocol(projectId: string): Promise<string> {
     },
   };
   const inputSignature = createInputSignature(inputSnapshot);
+  const generationContext = {
+    project: {
+      name: research.project.name,
+      intent: research.project.intent,
+      mode: projectMode,
+      products: research.project.products.map(({ name, officialUrl }) => ({ name, officialUrl })),
+    },
+    research: {
+      products: result.products.map((product) => ({
+        name: product.name,
+        positioning: product.positioning,
+        targetUsers: product.targetUsers,
+        capabilities: product.capabilities,
+        keyFeatures: product.keyFeatures,
+        officialBestPractices: product.officialBestPractices,
+        limitations: product.limitations,
+      })),
+      ...(projectMode === "comparison" ? { comparability: result.comparability } : {}),
+    },
+  };
 
   try {
     const generationStartedAt = performance.now();
@@ -137,24 +157,21 @@ export async function generateProtocol(projectId: string): Promise<string> {
         {
           role: "system",
           content: projectMode === "single"
-            ? "基于给定 Project 名称、Intent 与结构化 ProductResearch 设计简体中文单产品体验方案。先在内部依次完成 productType → primaryProblem → coreCapabilities → differentiatingCapabilities → realisticUseCases 建模，不输出分析过程。Research 若混有母品牌通用能力与具体产品功能，以 Project 名称、官方 URL 路径及最具差异化的产品形态为准；不要因资料顺带提到通用对话或写作就把它们当成核心能力。将产品类型映射到原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、来源引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。优先测试原生交互与差异化工作流，默认 3 个 Case 中至少 2 个必须依赖这些能力。每个任务是端到端真实用户目标，不是演示、介绍或解释某项能力；不得索取私有思维链，只评估可观察的操作、证据和结果。如果任务复制到普通聊天框也能基本完成且不是产品核心定位，必须替换。需要仓库、文件或其他输入时，在 inputArtifacts 中声明真实测试素材，不要虚构其内容。2 个 Case 足够时不凑数，仅有重要且未覆盖的第 4 类能力时生成 4 个。Rubric 默认 4 个维度，简单方案可用 3 个，确有必要才用 5 个。Rubric 评价实际体验，不做跨产品比较。整个输出使用“被测产品/工具”等盲测中性称呼，不得出现任何产品名称或品牌；不要搜索互联网或引用尚未产生的结果。"
-            : "基于给定 Project Intent、结构化 ProductResearch 与 Comparability 设计简体中文横向测评方案。先在内部逐个完成 productType → primaryProblem → coreCapabilities → differentiatingCapabilities → realisticUseCases 建模，再只选择所有产品共同且核心的能力。每个 Case 必须给所有产品相同 Prompt、输入和条件，不评分任何产品独占能力，也不能为表面公平退化成无意义的通用写作或问答。任务必须是真实用户目标、可执行、可留证、可评分且彼此不重复。默认 3 个 Case、4 个 Rubric；足够时可分别降至 2 个和 3 个，确有必要才升至 4 个和 5 个。不得出现产品名称或品牌；不要搜索互联网或引用尚未产生的结果。",
+            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时在 inputArtifacts 声明，不得虚构内容。Rubric 评价实际体验，不做横向比较。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。"
+            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。",
         },
         {
           role: "user",
           content: JSON.stringify({
-            ...inputSnapshot,
+            ...generationContext,
             requirements: {
               caseCount: { default: 3, min: 2, max: 4, useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true, fourthOnlyForDistinctUncoveredCapability: true },
               rubricCount: { default: 4, min: 3, max: 5 },
               capabilityModeling: { sequence: capabilityModelingSequence, coreCapabilitiesCount: "3-8", inferTypeFromResearch: true },
-              taskQualityChecks,
-              deprioritizeUnlessCoreToProduct: genericTasksToDeprioritize,
-              capabilityPriority: {
-                resolveMixedResearchByProjectFocus: true,
+              qualityGate: {
+                checks: taskQualityChecks,
+                deprioritizeUnlessCoreToProduct: genericTasksToDeprioritize,
                 defaultCasesUsingNativeOrDifferentiatingWorkflow: 2,
-                incidentalGenericCapabilityIsNotCorePositioning: true,
-                useObservableWorkflowEvidenceOnly: true,
               },
               eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
               caseOutput: { selfContainedPrompt: true, declareRequiredRealInputsInInputArtifacts: true, doNotInventInputContents: true, expectedOutputTypes, evidenceMustSupportScoring: true },
