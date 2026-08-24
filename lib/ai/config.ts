@@ -8,6 +8,7 @@ type RouteTemplate = {
   capability: AICapability;
   promptVersion: string;
   reasoning: AIReasoningMode;
+  repairReasoning?: AIReasoningMode;
   timeoutMs: number;
   maxAttempts: number;
   model: (models: ReturnType<typeof getAIModelEnvironment>) => string;
@@ -21,7 +22,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research_search: {
     provider: "zhipu",
     capability: "web_search",
-    promptVersion: "research-search.v1",
+    promptVersion: "research-search.v2",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -30,7 +31,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "research-synthesis.v1",
+    promptVersion: "research-synthesis.v2",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -48,8 +49,9 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v2",
-    reasoning: "high",
+    promptVersion: "protocol.v8",
+    reasoning: "standard",
+    repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
@@ -131,5 +133,5 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
 export function resolveAITaskRoute(task: AITaskType): AITaskRoute {
   const template = routeTemplates[task];
   const models = getAIModelEnvironment();
-  return { task, provider: template.provider, model: template.model(models), capability: template.capability, promptVersion: template.promptVersion, reasoning: template.reasoning, timeoutMs: template.timeoutMs, maxAttempts: template.maxAttempts };
+  return { task, provider: template.provider, model: template.model(models), capability: template.capability, promptVersion: template.promptVersion, reasoning: template.reasoning, repairReasoning: template.repairReasoning ?? template.reasoning, timeoutMs: template.timeoutMs, maxAttempts: template.maxAttempts };
 }

@@ -5,6 +5,10 @@ const expectedAuthorization = "Bearer e2e-local-provider-boundary";
 
 export async function startE2EProviderMock() {
   const requests = [];
+  const protocolScenario = process.env.E2E_PROTOCOL_RESPONSE_SCENARIO ?? "normal";
+  const supportedProtocolScenarios = new Set(["normal", "empty-then-success", "always-empty", "truncated-then-success", "invalid-json-then-success", "schema-invalid-then-success"]);
+  if (!supportedProtocolScenarios.has(protocolScenario)) throw new Error(`Unsupported E2E Protocol response scenario: ${protocolScenario}`);
+  let protocolAttempt = 0;
   const server = createServer(async (request, response) => {
     try {
       if (request.method !== "POST" || request.headers.authorization !== expectedAuthorization) {
@@ -23,6 +27,19 @@ export async function startE2EProviderMock() {
       const multimodal = schemaName === "JudgeCaseScores"
         && body.messages.some((message) => Array.isArray(message.content)
           && message.content.some((item) => item.type === "image_url"));
+      if (schemaName === "TestProtocol" || schemaName === "ProtocolContent") {
+        protocolAttempt += 1;
+        const planned = createProtocolScenarioResponse(protocolScenario, protocolAttempt, schemaName, body.messages);
+        requests.push({
+          task: schemaName,
+          multimodal,
+          attempt: protocolAttempt,
+          outcome: planned.outcome,
+          finishReason: planned.body.choices[0].finish_reason,
+          reasoning: body.thinking?.type === "enabled" ? "high" : "standard",
+        });
+        return send(response, 200, planned.body);
+      }
       requests.push({ task: schemaName, multimodal });
       return send(response, 200, createCompletionResponse(buildStructuredOutput(schemaName, body.messages)));
     } catch (error) {
@@ -43,6 +60,7 @@ export async function startE2EProviderMock() {
       total: requests.length,
       taskCounts: Object.fromEntries([...Map.groupBy(requests, (item) => item.task)].map(([task, items]) => [task, items.length])),
       multimodalJudgeRequests: requests.filter((item) => item.task === "JudgeCaseScores" && item.multimodal).length,
+      protocolAttempts: requests.filter((item) => item.task === "TestProtocol" || item.task === "ProtocolContent"),
     }),
     close: () => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
   };
@@ -93,11 +111,11 @@ function buildStructuredOutput(schemaName, messages) {
       warnings: forcedNotComparable ? ["强行比较会引入任务偏差"] : [],
     };
   }
-  if (schemaName === "TestProtocol") {
+  if (schemaName === "TestProtocol" || schemaName === "ProtocolContent") {
     const input = findJsonMessage(messages, (value) => value.project?.mode);
     const single = input.project.mode === "single";
     const caseCount = 2;
-    return {
+    const protocol = {
       title: single ? "单产品核心能力体验方案" : "同类产品标准化横评方案",
       goal: single ? "通过真实任务和原始截图验证核心能力、使用体验与明显限制。" : "在统一输入、Prompt 与证据要求下比较同类产品表现。",
       testMode: "standardized",
@@ -121,10 +139,21 @@ function buildStructuredOutput(schemaName, messages) {
         executionRules: ["使用默认设置", "仅生成一次", "不人工美化"],
       })),
       rubric: [
-        { position: 1, name: "任务完成度", weight: 60, description: "核心要求是否完整实现。", scoringStandard: standards("核心要求完整实现") },
-        { position: 2, name: "证据可验证性", weight: 40, description: "原始结果是否清晰支持判断。", scoringStandard: standards("证据清晰且可核查") },
+        { position: 1, name: "任务完成度", weight: 30, description: "核心要求是否完整实现。", scoringStandard: standards("核心要求完整实现") },
+        { position: 2, name: "原生能力运用", weight: 25, description: "是否有效使用产品的原生能力。", scoringStandard: standards("原生能力运用充分且有效") },
+        { position: 3, name: "结果质量", weight: 25, description: "最终结果是否准确、清晰且可用。", scoringStandard: standards("结果准确清晰且可以直接使用") },
+        { position: 4, name: "证据可验证性", weight: 20, description: "原始结果是否清晰支持判断。", scoringStandard: standards("证据清晰且可核查") },
       ],
     };
+    if (schemaName === "ProtocolContent") {
+      return {
+        title: protocol.title,
+        goal: protocol.goal,
+        testCases: protocol.testCases.map(({ position: _position, executionRules: _executionRules, ...testCase }) => testCase),
+        rubric: protocol.rubric.map(({ position: _position, ...dimension }) => dimension),
+      };
+    }
+    return protocol;
   }
   if (schemaName === "JudgeCaseScores") {
     const instruction = findJsonMessage(messages, (value) => value.blindSamples && value.rubricDimensions);
@@ -279,10 +308,43 @@ function getSchemaName(messages) {
 }
 
 function createCompletionResponse(value) {
+  return createCompletionResponseFromContent(JSON.stringify(value), "stop");
+}
+
+function createProtocolScenarioResponse(scenario, attempt, schemaName, messages) {
+  if ((scenario === "empty-then-success" && attempt === 1) || scenario === "always-empty") {
+    if (attempt > 1) requireRepairInstruction(messages, "Previous response was empty");
+    return { outcome: "empty_response", body: createCompletionResponseFromContent("", "stop", 110, 0) };
+  }
+  if (scenario === "empty-then-success" && attempt === 2) requireRepairInstruction(messages, "Previous response was empty");
+  if (scenario === "truncated-then-success" && attempt === 1) {
+    return { outcome: "truncated_response", body: createCompletionResponseFromContent('{"title":"truncated"', "length", 120, 10_000) };
+  }
+  if (scenario === "truncated-then-success" && attempt === 2) requireRepairInstruction(messages, "Previous response was truncated");
+  if (scenario === "invalid-json-then-success" && attempt === 1) {
+    return { outcome: "invalid_json", body: createCompletionResponseFromContent('{"title":', "stop", 115, 8) };
+  }
+  if (scenario === "invalid-json-then-success" && attempt === 2) requireRepairInstruction(messages, "Previous response was not valid JSON");
+  if (scenario === "schema-invalid-then-success" && attempt === 1) {
+    const invalid = buildStructuredOutput(schemaName, messages);
+    invalid.rubric[0].weight -= 10;
+    return { outcome: "schema_validation", body: createCompletionResponse(invalid) };
+  }
+  if (scenario === "schema-invalid-then-success" && attempt === 2) requireRepairInstruction(messages, "rubric");
+  return { outcome: "success", body: createCompletionResponse(buildStructuredOutput(schemaName, messages)) };
+}
+
+function requireRepairInstruction(messages, expected) {
+  if (!textParts(messages).some((text) => text.includes(expected))) {
+    throw new Error(`Protocol repair request did not include: ${expected}`);
+  }
+}
+
+function createCompletionResponseFromContent(content, finishReason, promptTokens = 100, completionTokens = 100) {
   return {
     id: `e2e-${randomUUID()}`,
-    choices: [{ message: { content: JSON.stringify(value) } }],
-    usage: { prompt_tokens: 100, completion_tokens: 100 },
+    choices: [{ message: { content }, finish_reason: finishReason }],
+    usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens },
   };
 }
 

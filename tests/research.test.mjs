@@ -6,7 +6,7 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, neutralMigration, repository, service, page, action, actionComponent, taskService] = await Promise.all([
+const [migration, neutralMigration, repository, service, page, action, actionComponent, taskService, schema, config] = await Promise.all([
   read("supabase/migrations/202608170005_research_run_lifecycle.sql"),
   read("supabase/migrations/202608170006_provider_neutral_research_completion.sql"),
   read("lib/repositories/research.repository.ts"),
@@ -15,6 +15,8 @@ const [migration, neutralMigration, repository, service, page, action, actionCom
   read("app/projects/[projectId]/research/actions.ts"),
   read("app/projects/[projectId]/research/research-action.tsx"),
   read("lib/ai/task-service.ts"),
+  read("lib/ai/schemas/research.schemas.ts"),
+  read("lib/ai/config.ts"),
 ]);
 
 test("versions ResearchRuns and preserves terminal history", () => {
@@ -38,6 +40,13 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(taskService, /Use only these retrieved sources for product facts/);
   assert.match(taskService, /allowedDomains/);
   assert.match(taskService, /isDomainOrSubdomain/);
+  assert.match(service, /`"\$\{product\.name\}"`/);
+  assert.match(taskService, /sourceMentionsProduct/);
+  assert.match(taskService, /interleaveUniqueSources/);
+  assert.match(taskService, /insufficientRelevantSearchSources/);
+  assert.match(schema, /Positioning must contain traceable product facts/);
+  assert.match(config, /research-search\.v2/);
+  assert.match(config, /research-synthesis\.v2/);
 });
 
 test("records all routed task metadata and completes only a full run", () => {

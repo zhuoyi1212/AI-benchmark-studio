@@ -4,8 +4,10 @@ import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   expectedOutputTypes,
+  generatedProtocolContentSchema,
   generatedProtocolSchema,
   mandatoryProtocolRuleIds,
+  type GeneratedProtocolContent,
 } from "@/lib/ai/schemas/protocol.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
 import { RepositoryError } from "@/lib/repositories/repository-error";
@@ -51,6 +53,20 @@ const genericTasksToDeprioritize = [
   "普通知识问答",
 ] as const;
 
+const standardizedProtocolRules = [
+  { id: "same-input", text: "使用相同原始输入" },
+  { id: "same-prompt", text: "使用相同 Prompt" },
+  { id: "single-generation", text: "每个 Prompt 只生成一次" },
+  { id: "no-editing", text: "不进行人工二次编辑" },
+  { id: "complete-upload", text: "完整上传原始测试结果" },
+] as const;
+
+const standardizedExecutionRules = [
+  "使用产品默认设置和默认工作流完成任务",
+  "每个 Prompt 只执行一次，不进行人工二次编辑",
+  "完整保留原始输出、工具调用或执行过程证据",
+] as const;
+
 export type ProtocolWorkspace = { research: ResearchWorkspace; protocol: TestProtocol | null; versionCount: number };
 
 export class ProtocolExecutionError extends Error {
@@ -94,107 +110,116 @@ export async function generateProtocol(projectId: string): Promise<string> {
         keyFeatures: product.keyFeatures,
         officialBestPractices: product.officialBestPractices,
         limitations: product.limitations,
-        sources: product.sources.map(({ title, url, sourceType, snippet }) => ({ title, url, sourceType, snippet })),
+        sources: product.sources.map(({ url, sourceType }) => ({ url, sourceType })),
       })),
       comparability: result.comparability,
     },
     invariants: {
       projectMode,
-      testMode: "standardized",
-      mandatoryRuleIds: mandatoryProtocolRuleIds,
       rubricWeightTotal: 100,
-      protocolMustBeLockedBeforeTesting: true,
     },
   };
   const inputSignature = createInputSignature(inputSnapshot);
 
   try {
+    const generationStartedAt = performance.now();
+    const protocolContentSchema = generatedProtocolContentSchema.superRefine((protocol, context) => {
+      const serialized = JSON.stringify(protocol).toLocaleLowerCase("zh-CN");
+      if (research.project.products.some((product) => product.name.trim().length >= 3
+        && serialized.includes(product.name.trim().toLocaleLowerCase("zh-CN")))) {
+        context.addIssue({ code: "custom", path: ["root"], message: "Protocol must use blind-neutral wording and omit every tested product name" });
+      }
+    });
     const generated = await aiTaskService.generateProtocol({
-      schema: generatedProtocolSchema,
-      schemaName: "TestProtocol",
+      schema: protocolContentSchema,
+      schemaName: "ProtocolContent",
       messages: [
         {
           role: "system",
           content: projectMode === "single"
-            ? "你是严谨但高效的 AI 产品体验实验设计师。只基于 Project Intent 与已保存 ProductResearch 工作。生成任务前必须先在内部完成产品能力建模：判断产品类型、主要解决的问题、3–8 个真正值得测试的核心能力、区别于普通聊天模型的差异化能力，以及用户现实中会为了什么目标使用这些能力；不要把这段内部分析原样输出。然后设计 2–4 个高价值、端到端、可执行、可留证的真实用户任务。任务优先测试产品原生能力；若任务复制到普通聊天机器人中也可基本完成，且该能力并非产品核心定位，必须替换为更能体现产品特点的任务。不同 TestCase 应覆盖不同的核心能力组合，不得只更换题材重复测试同一种能力。Rubric 评价实际体验，不得写成相对其他产品的比较。Protocol 不得出现被测产品名称或品牌，以保持后续评分 Blind。不要搜索互联网，不要引用尚未存在的结果。输出简体中文。"
-            : "你是严谨但高效的 AI 产品实验设计师。只基于给定 Project Intent、已保存 ProductResearch 与 Comparability 工作。生成任务前必须先在内部逐个建立产品能力模型，再从 Comparability 的共同可比能力中选择这些产品真正核心的交集。设计 2–4 个高价值、端到端、可执行、可留证的真实用户任务；同一 TestCase 必须向所有产品提供相同 Prompt、输入与执行条件。不得用某个产品独有而其他产品无法完成的能力进行横向评分，也不得为了表面公平退化成与产品定位无关的泛化写作或问答。若 Comparability 没有足够共同能力，不得强行制造测试。Rubric 根据共同任务动态选择 3–5 个可由当前证据验证的重要维度。Protocol 不得出现任何被测产品名称或品牌，以保证后续 Blind Review。不要搜索互联网，不要引用尚未存在的测试结果。输出简体中文。",
+            ? "基于给定 Project 名称、Intent 与结构化 ProductResearch 设计简体中文单产品体验方案。先在内部依次完成 productType → primaryProblem → coreCapabilities → differentiatingCapabilities → realisticUseCases 建模，不输出分析过程。Research 若混有母品牌通用能力与具体产品功能，以 Project 名称、官方 URL 路径及最具差异化的产品形态为准；不要因资料顺带提到通用对话或写作就把它们当成核心能力。将产品类型映射到原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、来源引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。优先测试原生交互与差异化工作流，默认 3 个 Case 中至少 2 个必须依赖这些能力。每个任务是端到端真实用户目标，不是演示、介绍或解释某项能力；不得索取私有思维链，只评估可观察的操作、证据和结果。如果任务复制到普通聊天框也能基本完成且不是产品核心定位，必须替换。需要仓库、文件或其他输入时，在 inputArtifacts 中声明真实测试素材，不要虚构其内容。2 个 Case 足够时不凑数，仅有重要且未覆盖的第 4 类能力时生成 4 个。Rubric 默认 4 个维度，简单方案可用 3 个，确有必要才用 5 个。Rubric 评价实际体验，不做跨产品比较。整个输出使用“被测产品/工具”等盲测中性称呼，不得出现任何产品名称或品牌；不要搜索互联网或引用尚未产生的结果。"
+            : "基于给定 Project Intent、结构化 ProductResearch 与 Comparability 设计简体中文横向测评方案。先在内部逐个完成 productType → primaryProblem → coreCapabilities → differentiatingCapabilities → realisticUseCases 建模，再只选择所有产品共同且核心的能力。每个 Case 必须给所有产品相同 Prompt、输入和条件，不评分任何产品独占能力，也不能为表面公平退化成无意义的通用写作或问答。任务必须是真实用户目标、可执行、可留证、可评分且彼此不重复。默认 3 个 Case、4 个 Rubric；足够时可分别降至 2 个和 3 个，确有必要才升至 4 个和 5 个。不得出现产品名称或品牌；不要搜索互联网或引用尚未产生的结果。",
         },
         {
           role: "user",
           content: JSON.stringify({
             ...inputSnapshot,
             requirements: {
-              preferredTestCaseCount: projectMode === "single"
-                ? "2-4 high-value experience cases; maximize distinct core-capability coverage without padding"
-                : "2-4; simple benchmarks may use 2 and must not pad the count",
-              preferredRubricDimensionCount: "3-5 dynamic dimensions",
-              preserveMandatoryRuleIdsExactlyOnce: true,
-              samePromptAndInputForEveryProductWithinEachCase: projectMode === "comparison",
-              evaluateActualExperienceInsteadOfRelativePerformance: projectMode === "single",
-              selfContainedPromptWhenNoInputArtifactWasSupplied: true,
-              doNotInventUnavailableFiles: true,
-              expectedOutputTypesMustUse: expectedOutputTypes,
-              evidenceRequirementsMustDescribeRawEvidenceNeededForReliableJudging: true,
-              evidenceMustSupportEverySelectedRubricDimension: true,
-              scoringStandardMustDefine: ["excellent", "good", "acceptable", "poor"],
-              positionsMustBeContiguousFromOne: true,
-              singleProductFocus: projectMode === "single" ? ["核心能力", "真实用户场景", "官方卖点验证", "明显优缺点"] : undefined,
-              capabilityModeling: {
-                requiredBeforeTaskDesign: true,
-                analysisSequence: capabilityModelingSequence,
-                productTypeMustBeInferredFromResearchRatherThanAClosedCategoryList: true,
-                coreCapabilitiesCount: "3-8",
-                coreCapabilitiesMustDescribeProductNativeActionsRatherThanBroadAILabels: true,
-                differentiatingCapabilitiesMustExplainWhatOrdinaryChatbotsCannotCompleteEquivalently: true,
-                realisticUseCasesMustBeGoalsRealUsersWouldDelegateToTheProduct: true,
+              caseCount: { default: 3, min: 2, max: 4, useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true, fourthOnlyForDistinctUncoveredCapability: true },
+              rubricCount: { default: 4, min: 3, max: 5 },
+              capabilityModeling: { sequence: capabilityModelingSequence, coreCapabilitiesCount: "3-8", inferTypeFromResearch: true },
+              taskQualityChecks,
+              deprioritizeUnlessCoreToProduct: genericTasksToDeprioritize,
+              capabilityPriority: {
+                resolveMixedResearchByProjectFocus: true,
+                defaultCasesUsingNativeOrDifferentiatingWorkflow: 2,
+                incidentalGenericCapabilityIsNotCorePositioning: true,
+                useObservableWorkflowEvidenceOnly: true,
               },
-              taskDesign: {
-                nativeCapabilitiesTakePriorityOverGenericLlmCapabilities: true,
-                completeARealGoalRatherThanDemonstrateAnIsolatedCapability: true,
-                genericChatbotTransferTest: "If an ordinary chatbot can basically complete the task without the product's native environment, tools, workflow, or modality, reject it unless Research shows that capability is central to the product.",
-                deprioritizeUnlessCentralToProduct: genericTasksToDeprioritize,
-                writingTasksRemainValidForWritingMarketingCopyOrGeneralAssistantProducts: true,
-                eachCaseMustInternallyDefine: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
-                mapInternalRationaleToExistingSchema: {
-                  objective: ["targetCapabilities", "whyThisTask"],
-                  evidenceRequirements: ["evidenceExpected"],
-                  observationFocusAndScoringStandard: ["successCriteria"],
-                },
-                taskPromptMustBeSelfContainedAndOperational: true,
-                testCaseCapabilityCoverageMustBeMeaningfullyDistinct: true,
-              },
-              comparisonGuardrails: projectMode === "comparison" ? {
-                chooseOnlyCoreCapabilitiesSharedByEveryProduct: true,
-                useComparabilityCommonCapabilitiesAsTheFairnessBoundary: true,
-                neverScoreAProductOnAnotherProductsExclusiveCapability: true,
-                preserveIdenticalPromptInputAndConditionsPerCase: true,
-              } : undefined,
-              finalTaskQualityReview: {
-                requiredBeforeReturningProtocol: true,
-                checks: taskQualityChecks,
-                replaceGenericTaskWhenGenericCapabilityIsNotCorePositioning: true,
-                rejectMechanicallyCreatedCasesAddedOnlyToCoverRubricDimensions: true,
-              },
+              eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
+              caseOutput: { selfContainedPrompt: true, declareRequiredRealInputsInInputArtifacts: true, doNotInventInputContents: true, expectedOutputTypes, evidenceMustSupportScoring: true },
+              rubricOutput: { dynamicForProductAndTasks: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
+              comparison: projectMode === "comparison" ? { sharedCoreCapabilitiesOnly: true, samePromptInputAndConditions: true, excludeExclusiveCapabilities: true } : undefined,
             },
           }),
         },
       ],
       maxTokens: 10000,
     });
-    assertProtocolFitsMode(generated.data.testCases.length, projectMode);
-    return await protocolsRepository.createDraft({
+    const protocol = normalizeGeneratedProtocol(generated.data);
+    assertProtocolFitsMode(protocol.testCases.length, projectMode);
+    const protocolId = await protocolsRepository.createDraft({
       projectId,
       researchRunId: result.researchRunId,
-      protocol: generated.data,
+      protocol,
       route: generated.route,
       usage: generated.usage,
       inputSignature,
     });
+    logProtocolPerformance(projectMode, generated, protocol.testCases.length, protocol.rubric.length, Math.round(performance.now() - generationStartedAt));
+    return protocolId;
   } catch (error) {
     if (error instanceof ProtocolExecutionError) throw error;
     logProtocolGenerationFailure(projectId, error);
     throw new ProtocolExecutionError(toUserFacingError(error));
   }
+}
+
+function normalizeGeneratedProtocol(content: GeneratedProtocolContent) {
+  return generatedProtocolSchema.parse({
+    ...content,
+    testMode: "standardized",
+    rules: standardizedProtocolRules,
+    testCases: content.testCases.map((testCase, index) => ({
+      ...testCase,
+      position: index + 1,
+      executionRules: standardizedExecutionRules,
+    })),
+    rubric: content.rubric.map((rubric, index) => ({ ...rubric, position: index + 1 })),
+  });
+}
+
+function logProtocolPerformance(
+  mode: ProjectMode,
+  generated: Awaited<ReturnType<typeof aiTaskService.generateProtocol>>,
+  testCaseCount: number,
+  rubricCount: number,
+  wallLatencyMs: number,
+) {
+  const finalAttempt = generated.attemptPerformance.at(-1);
+  console.info("[ProtocolPerformance]", {
+    mode,
+    model: generated.route.model,
+    reasoning: finalAttempt?.reasoning ?? generated.route.reasoning,
+    attempt: generated.attempts,
+    inputTokens: generated.usage.inputTokens,
+    outputTokens: generated.usage.outputTokens,
+    latencyMs: generated.usage.latencyMs,
+    wallLatencyMs,
+    testCaseCount,
+    rubricCount,
+    attempts: generated.attemptPerformance,
+  });
 }
 
 function assertProtocolFitsMode(testCaseCount: number, mode: ProjectMode) {
@@ -262,7 +287,10 @@ function toUserFacingError(error: unknown) {
     if (error.category === "provider_5xx") return "AI 服务暂时异常，已重试但仍未成功，请稍后重试。";
     if (error.category === "authentication") return "AI 服务配置异常，请检查服务端配置。";
     if (error.category === "bad_request") return "AI 服务拒绝了方案请求，请检查服务端模型配置或请求参数。";
-    if (error.category === "invalid_response") return "AI 服务已返回响应，但内容无法解析，请重新生成。";
+    if (error.category === "empty_response") return "AI 服务返回了空结果，请重新尝试。";
+    if (error.category === "truncated_response") return "AI 返回内容因长度限制被截断，已重试但仍未完成，请重新生成。";
+    if (error.category === "invalid_envelope") return "AI 服务返回格式异常，请重新生成。";
+    if (error.category === "invalid_json_body") return "AI 服务返回了无法解析的响应，请稍后重试。";
     return "AI 服务网络连接失败，已重试但仍未成功，请稍后重试。";
   }
   if (error instanceof RepositoryError) return "Protocol 保存或锁定失败，请刷新后重试。";
@@ -279,7 +307,13 @@ function logProtocolGenerationFailure(projectId: string, error: unknown) {
     status: error instanceof AIProviderError ? error.status : null,
     attempt: error instanceof AIProviderError ? error.attempt : null,
     latencyMs: error instanceof AIProviderError ? error.latencyMs : null,
-    errorCategory: error instanceof AIProviderError ? error.category : error instanceof AIValidationError ? "schema_validation" : error instanceof AIConfigurationError ? "configuration" : error instanceof RepositoryError ? "repository" : "unexpected",
+    finishReason: error instanceof AIProviderError ? error.finishReason : null,
+    inputTokens: error instanceof AIProviderError ? error.inputTokens : null,
+    outputTokens: error instanceof AIProviderError ? error.outputTokens : null,
+    responseContentType: error instanceof AIProviderError ? error.responseContentType : null,
+    responseBodyLength: error instanceof AIProviderError ? error.responseBodyLength : null,
+    errorCategory: error instanceof AIProviderError ? error.category : error instanceof AIValidationError ? error.category : error instanceof AIConfigurationError ? "configuration" : error instanceof RepositoryError ? "repository" : "unexpected",
+    validationIssues: error instanceof AIValidationError ? error.issues : null,
     repositoryOperation: error instanceof RepositoryError ? error.operation : null,
   });
 }

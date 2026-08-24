@@ -25,7 +25,7 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
-  assert.match(config, /protocol:[\s\S]*reasoning: "high"/);
+  assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
   assert.doesNotMatch(taskService, /glm-|deepseek-v/);
   assert.match(taskService, /Product Research requires at least one source search/);
   assert.match(taskService, /Use only these retrieved sources for product facts/);

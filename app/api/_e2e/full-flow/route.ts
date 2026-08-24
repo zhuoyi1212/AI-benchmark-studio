@@ -21,8 +21,9 @@ const onePixelPng = Buffer.from(
 export async function POST(request: Request) {
   if (!isAuthorized(request)) return new Response(null, { status: 404 });
 
-  const body = await request.json().catch(() => null) as { runId?: unknown } | null;
+  const body = await request.json().catch(() => null) as { runId?: unknown; protocolOnly?: unknown } | null;
   const runId = typeof body?.runId === "string" ? body.runId : "";
+  const protocolOnly = body?.protocolOnly === true;
   if (!/^[a-z0-9-]{8,80}$/.test(runId)) {
     return Response.json({ ok: false, error: "Invalid E2E run ID" }, { status: 400 });
   }
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 
   try {
     stage = "single-product-flow";
-    const single = await runSingleProductFlow(request, runId, projectIds);
+    const single = await runSingleProductFlow(request, runId, projectIds, protocolOnly);
     stage = "comparison-regression";
     const comparison = await runComparisonRegression(runId, projectIds);
     stage = "not-comparable-gate";
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
   return Response.json({ ...result, cleanup: { complete: cleanupComplete, projects: cleanup } }, { status });
 }
 
-async function runSingleProductFlow(request: Request, runId: string, projectIds: string[]) {
+async function runSingleProductFlow(request: Request, runId: string, projectIds: string[], protocolOnly: boolean) {
   const projectId = await createProject({
     name: `[E2E] Single Product Flow ${runId}`,
     intent: "验证单产品体验从真实研究、证据评分到社区内容的完整数据链。",
@@ -87,6 +88,17 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   await lockProtocol(projectId, protocolId);
   protocolWorkspace = requireValue(await getProtocolWorkspace(projectId), "Locked Protocol workspace missing");
   assert(protocolWorkspace.protocol?.status === "locked", "Protocol did not enter locked state");
+
+  if (protocolOnly) {
+    return {
+      projectId,
+      comparabilityStatus: research.completedResult.comparability.status,
+      protocolId,
+      protocolOnly: true,
+      testCases: protocolWorkspace.protocol.testCases.map((item) => ({ id: item.id, expectedOutputTypes: item.expectedOutputTypes, evidenceRequirements: item.evidenceRequirements })),
+      rubricCount: protocolWorkspace.protocol.rubric.length,
+    };
+  }
 
   let testWorkspace = requireValue(await getTestExecutionWorkspace(projectId), "Single Test Execution workspace missing");
   assert(testWorkspace.testRuns.length === protocolWorkspace.protocol.testCases.length, "Single TestRun matrix must be 1 Product x N TestCases");

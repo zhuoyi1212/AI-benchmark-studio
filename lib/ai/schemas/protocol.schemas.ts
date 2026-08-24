@@ -32,30 +32,45 @@ const scoringStandardSchema = z.object({
   poor: conciseText,
 });
 
+const intelligentTestCaseSchema = z.object({
+  position: z.number().int().min(1).max(12),
+  title: z.string().trim().min(1).max(200),
+  objective: detailedText,
+  prompt: detailedText,
+  inputDescription: z.string().trim().max(3000).nullable(),
+  inputArtifacts: z.array(inputArtifactSpecSchema).max(12),
+  expectedOutputTypes: z.array(z.enum(expectedOutputTypes)).min(1).max(4),
+  evidenceRequirements: textList,
+  observationFocus: textList,
+  executionRules: textList,
+});
+
+const aiTestCaseSchema = intelligentTestCaseSchema.omit({ position: true, executionRules: true });
+
+const intelligentRubricSchema = z.object({
+  position: z.number().int().min(1).max(12),
+  name: z.string().trim().min(1).max(120),
+  weight: z.number().positive().max(100),
+  description: z.string().trim().min(1).max(1000),
+  scoringStandard: scoringStandardSchema,
+});
+
+const aiRubricSchema = intelligentRubricSchema.omit({ position: true });
+
+export const generatedProtocolContentSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  goal: detailedText,
+  testCases: z.array(aiTestCaseSchema).min(2).max(4),
+  rubric: z.array(aiRubricSchema).min(3).max(5),
+}).superRefine(validateProtocolSemantics);
+
 export const generatedProtocolSchema = z.object({
   title: z.string().trim().min(1).max(200),
   goal: detailedText,
   testMode: z.literal("standardized"),
   rules: z.array(protocolRuleSchema).length(mandatoryProtocolRuleIds.length),
-  testCases: z.array(z.object({
-    position: z.number().int().min(1).max(12),
-    title: z.string().trim().min(1).max(200),
-    objective: detailedText,
-    prompt: detailedText,
-    inputDescription: z.string().trim().max(3000).nullable(),
-    inputArtifacts: z.array(inputArtifactSpecSchema).max(12),
-    expectedOutputTypes: z.array(z.enum(expectedOutputTypes)).min(1).max(4),
-    evidenceRequirements: textList,
-    observationFocus: textList,
-    executionRules: textList,
-  })).min(1).max(12),
-  rubric: z.array(z.object({
-    position: z.number().int().min(1).max(12),
-    name: z.string().trim().min(1).max(120),
-    weight: z.number().positive().max(100),
-    description: z.string().trim().min(1).max(1000),
-    scoringStandard: scoringStandardSchema,
-  })).min(2).max(12),
+  testCases: z.array(intelligentTestCaseSchema).min(2).max(4),
+  rubric: z.array(intelligentRubricSchema).min(3).max(5),
 }).superRefine((protocol, context) => {
   const ruleIds = protocol.rules.map((rule) => rule.id);
   if (new Set(ruleIds).size !== mandatoryProtocolRuleIds.length
@@ -64,13 +79,20 @@ export const generatedProtocolSchema = z.object({
   }
   validateUniquePositions(protocol.testCases, "testCases", context);
   validateUniquePositions(protocol.rubric, "rubric", context);
+  validateProtocolSemantics(protocol, context);
+});
+
+function validateProtocolSemantics(
+  protocol: { testCases: Array<{ title: string }>; rubric: Array<{ name: string; weight: number }> },
+  context: z.RefinementCtx,
+) {
   validateUniqueText(protocol.testCases.map((item) => item.title), "testCases", context);
   validateUniqueText(protocol.rubric.map((item) => item.name), "rubric", context);
   const totalWeight = protocol.rubric.reduce((total, item) => total + item.weight, 0);
   if (Math.abs(totalWeight - 100) > 0.0001) {
     context.addIssue({ code: "custom", path: ["rubric"], message: "Rubric weights must total exactly 100" });
   }
-});
+}
 
 function validateUniquePositions(
   values: Array<{ position: number }>,
@@ -92,3 +114,4 @@ function validateUniqueText(values: string[], path: "testCases" | "rubric", cont
 }
 
 export type GeneratedProtocol = z.infer<typeof generatedProtocolSchema>;
+export type GeneratedProtocolContent = z.infer<typeof generatedProtocolContentSchema>;

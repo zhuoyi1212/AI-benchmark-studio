@@ -27,7 +27,7 @@ export function GenerateProtocolAction({ projectId, regenerate = false, experien
       <Button type="submit" size={regenerate ? "default" : "lg"} variant={regenerate ? "outline" : "default"} className={regenerate ? "border-slate-300 bg-white text-slate-950 hover:bg-slate-100 hover:text-slate-950 disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70" : undefined} disabled={pending} aria-disabled={pending}>
         {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />正在生成 Protocol...</> : regenerate ? <><RefreshCw className="h-4 w-4" aria-hidden="true" />重新生成新版本</> : <><Sparkles className="h-4 w-4" aria-hidden="true" />生成{experienceMode ? "体验" : "测评"}方案</>}
       </Button>
-      {state.message && <p role="alert" className={`max-w-sm text-right text-xs leading-5 ${regenerate ? "text-red-300" : "text-red-600"}`}>{state.message}</p>}
+      {!pending && state.message && <p role="alert" className={`max-w-sm text-right text-xs leading-5 ${regenerate ? "text-red-300" : "text-red-600"}`}>{state.message}</p>}
     </form>
   );
 }

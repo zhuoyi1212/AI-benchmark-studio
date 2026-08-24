@@ -13,7 +13,10 @@ export type AIProviderErrorCategory =
   | "provider_5xx"
   | "authentication"
   | "bad_request"
-  | "invalid_response"
+  | "invalid_json_body"
+  | "invalid_envelope"
+  | "empty_response"
+  | "truncated_response"
   | "network";
 
 export type AIProviderErrorDetails = {
@@ -26,6 +29,11 @@ export type AIProviderErrorDetails = {
   timeoutMs: number;
   category: AIProviderErrorCategory;
   retryable?: boolean;
+  finishReason?: string | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  responseContentType?: string | null;
+  responseBodyLength?: number | null;
 };
 
 export class AIProviderError extends Error {
@@ -38,6 +46,11 @@ export class AIProviderError extends Error {
   readonly timeoutMs: number;
   readonly category: AIProviderErrorCategory;
   readonly retryable: boolean;
+  readonly finishReason: string | null;
+  readonly inputTokens: number | null;
+  readonly outputTokens: number | null;
+  readonly responseContentType: string | null;
+  readonly responseBodyLength: number | null;
 
   constructor(message: string, details: AIProviderErrorDetails) {
     super(message);
@@ -51,6 +64,11 @@ export class AIProviderError extends Error {
     this.timeoutMs = details.timeoutMs;
     this.category = details.category;
     this.retryable = details.retryable ?? isRetryableProviderCategory(details.category);
+    this.finishReason = details.finishReason ?? null;
+    this.inputTokens = details.inputTokens ?? null;
+    this.outputTokens = details.outputTokens ?? null;
+    this.responseContentType = details.responseContentType ?? null;
+    this.responseBodyLength = details.responseBodyLength ?? null;
   }
 }
 
@@ -63,17 +81,38 @@ export function classifyProviderStatus(status: number): AIProviderErrorCategory 
 }
 
 export function isRetryableProviderCategory(category: AIProviderErrorCategory) {
-  return category === "timeout" || category === "rate_limit" || category === "provider_5xx" || category === "network";
+  return category === "timeout"
+    || category === "rate_limit"
+    || category === "provider_5xx"
+    || category === "network"
+    || category === "empty_response"
+    || category === "truncated_response";
 }
+
+export type AIValidationErrorCategory = "invalid_json" | "schema_validation";
+
+export type AIValidationIssue = {
+  path: string;
+  code: string;
+  message: string;
+};
 
 export class AIValidationError extends Error {
   readonly task: string;
   readonly schemaName: string;
+  readonly category: AIValidationErrorCategory;
+  readonly issues: AIValidationIssue[];
 
-  constructor(task: string, schemaName: string) {
+  constructor(
+    task: string,
+    schemaName: string,
+    details: { category?: AIValidationErrorCategory; issues?: AIValidationIssue[] } = {},
+  ) {
     super(`AI response failed runtime validation for ${task}`);
     this.name = "AIValidationError";
     this.task = task;
     this.schemaName = schemaName;
+    this.category = details.category ?? "schema_validation";
+    this.issues = details.issues ?? [];
   }
 }

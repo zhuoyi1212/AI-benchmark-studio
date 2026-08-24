@@ -148,6 +148,7 @@ async function researchOneProduct(
   researchRunId: string,
 ): Promise<CompletedProductResearch> {
   const result = await aiTaskService.researchProducts({
+    productName: product.name,
     searches: buildSearches(product),
     allowedDomains: getHostname(product.officialUrl) ? [getHostname(product.officialUrl)!] : undefined,
     schema: productResearchSynthesisSchema,
@@ -191,11 +192,21 @@ async function researchOneProduct(
 
 function buildSearches(product: ProjectProductSummary) {
   const site = getHostname(product.officialUrl);
-  const scope = site ? `site:${site}` : "official";
+  if (!site) {
+    const exactName = `"${product.name}"`;
+    return [
+      { query: `${exactName} AI 公司 官方`, count: 8 },
+      { query: `${exactName} AI 助手 官网 官方文档`, count: 8 },
+      { query: `${exactName} AI 产品 功能 使用指南`, count: 8 },
+      { query: `${exactName} AI 会员 价格 官方`, count: 8 },
+    ];
+  }
+  const scope = `site:${site}`;
   return [
-    { query: `${scope} ${product.name} product overview official documentation`, count: 8 },
-    { query: `${scope} ${product.name} pricing free plan`, count: 8 },
-    { query: `${scope} ${product.name} help center release notes blog`, count: 8 },
+    { query: `${scope} "${product.name}" 产品 功能 官方文档`, count: 8 },
+    { query: `${scope} "${product.name}" 使用指南 help`, count: 8 },
+    { query: `${scope} "${product.name}" pricing 价格 免费 会员`, count: 8 },
+    { query: `${scope} "${product.name}" release notes 更新`, count: 8 },
   ];
 }
 

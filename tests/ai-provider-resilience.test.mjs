@@ -4,9 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [errors, http, router, config, protocolService, protocolRepository, protocolMigration, actions, actionComponent, view, button] = await Promise.all([
+const [errors, http, completion, router, config, protocolService, protocolRepository, protocolMigration, actions, actionComponent, view, button, providerMock] = await Promise.all([
   read("lib/ai/errors.ts"),
   read("lib/ai/providers/http.ts"),
+  read("lib/ai/providers/completion-response.ts"),
   read("lib/ai/router.ts"),
   read("lib/ai/config.ts"),
   read("lib/services/protocols.service.ts"),
@@ -16,6 +17,7 @@ const [errors, http, router, config, protocolService, protocolRepository, protoc
   read("app/projects/[projectId]/protocol/protocol-actions.tsx"),
   read("app/projects/[projectId]/protocol/protocol-view.tsx"),
   read("components/ui/button.tsx"),
+  read("scripts/e2e-provider-mock.mjs"),
 ]);
 
 test("classifies provider failures without exposing request secrets", () => {
@@ -26,9 +28,22 @@ test("classifies provider failures without exposing request secrets", () => {
   assert.match(errors, /return "bad_request"/);
   assert.match(http, /error\.name === "TimeoutError" \|\| error\.name === "AbortError"/);
   assert.match(http, /UND_ERR_CONNECT_TIMEOUT/);
-  assert.match(http, /category: "invalid_response"/);
+  assert.match(http, /category: "invalid_json_body"/);
+  assert.match(http, /responseContentType/);
+  assert.match(http, /responseBodyLength: responseBody\.length/);
   const providerLog = router.slice(router.indexOf("function logAIProviderError"), router.indexOf("function logAIValidationError"));
   assert.doesNotMatch(providerLog, /apiKey|messages|prompt|response\.content/);
+});
+
+test("normalizes completion finish reason and separates envelope, empty, and truncated responses", () => {
+  assert.match(completion, /finish_reason: z\.string\(\)\.nullable\(\)\.optional\(\)/);
+  assert.match(completion, /isTruncatedFinishReason\(finishReason\)[\s\S]*"truncated_response"/);
+  assert.match(completion, /finishReason === "length" \|\| finishReason === "max_tokens" \|\| finishReason === "max_output_tokens"/);
+  assert.match(completion, /!content\?\.trim\(\)[\s\S]*"empty_response"/);
+  assert.match(completion, /!parsed\.success[\s\S]*"invalid_envelope"/);
+  assert.match(completion, /finishReason,[\s\S]*requestId:[\s\S]*usage/);
+  assert.match(router, /\[AIStructuredTaskSuccess\][\s\S]*finishReason:[\s\S]*inputTokens:[\s\S]*outputTokens:/);
+  assert.match(providerMock, /finish_reason: finishReason/);
 });
 
 test("uses a bounded task-specific timeout and retry budget", () => {
@@ -43,13 +58,29 @@ test("uses a bounded task-specific timeout and retry budget", () => {
 });
 
 test("retries only transient provider failures with exponential backoff and jitter", () => {
-  assert.match(errors, /category === "timeout" \|\| category === "rate_limit" \|\| category === "provider_5xx" \|\| category === "network"/);
+  assert.match(errors, /category === "timeout"[\s\S]*category === "rate_limit"[\s\S]*category === "provider_5xx"[\s\S]*category === "network"[\s\S]*category === "empty_response"[\s\S]*category === "truncated_response"/);
+  assert.doesNotMatch(errors.slice(errors.indexOf("function isRetryableProviderCategory")), /category === "invalid_envelope"|category === "invalid_json_body"/);
   assert.match(router, /error\.retryable && attempt < maxAttempts/);
   assert.match(router, /800 \* \(2 \*\* Math\.max\(0, failedAttempt - 1\)\)/);
   assert.match(router, /Math\.random\(\) \* 400/);
-  assert.ok(router.indexOf("await delay(retryDelayMs)") > router.indexOf("logAIProviderError"));
-  assert.match(router, /error instanceof AIValidationError[\s\S]*break/);
+  assert.match(router, /logAIProviderError\(error, attemptReasoning, maxAttempts, retryDelayMs\);[\s\S]*await delay\(retryDelayMs\)/);
   assert.match(router, /status:[\s\S]*timeout:[\s\S]*attempt:[\s\S]*latencyMs:[\s\S]*errorCategory/);
+});
+
+test("performs one bounded JSON or schema repair retry with safe validation issues", () => {
+  assert.match(errors, /AIValidationErrorCategory = "invalid_json" \| "schema_validation"/);
+  assert.match(errors, /readonly issues: AIValidationIssue\[\]/);
+  assert.match(router, /validated\.error\.issues\.slice\(0, 8\)/);
+  assert.match(router, /category: "invalid_json"/);
+  assert.match(router, /Previous response was not valid JSON/);
+  assert.match(router, /Correct the previous output to satisfy these validation issues/);
+  assert.match(router, /Keep the protocol content unchanged where possible/);
+  assert.match(router, /role: "assistant", content: previousContent/);
+  assert.match(router, /attempt < maxAttempts/);
+  assert.match(router, /attemptReasoning = route\.repairReasoning/);
+  assert.match(providerMock, /invalid-json-then-success/);
+  assert.match(providerMock, /schema-invalid-then-success/);
+  assert.match(providerMock, /requireRepairInstruction\(messages, "rubric"\)/);
 });
 
 test("returns distinct safe Protocol messages for timeout, 429, 5xx, auth, and schema validation", () => {
@@ -58,7 +89,10 @@ test("returns distinct safe Protocol messages for timeout, 429, 5xx, auth, and s
   assert.match(protocolService, /服务暂时异常，已重试但仍未成功/);
   assert.match(protocolService, /服务配置异常，请检查服务端配置/);
   assert.match(protocolService, /AI 已返回结果，但方案结构校验失败/);
-  assert.match(protocolService, /内容无法解析/);
+  assert.match(protocolService, /AI 服务返回了空结果，请重新尝试/);
+  assert.match(protocolService, /因长度限制被截断/);
+  assert.match(protocolService, /AI 服务返回格式异常/);
+  assert.match(protocolService, /AI 服务返回了无法解析的响应/);
   assert.match(protocolService, /\[ProtocolGenerationFailure\]/);
   assert.doesNotMatch(actions, /AIProviderError|AIValidationError|apiKey|prompt/i);
 });
@@ -80,7 +114,29 @@ test("regenerate remains readable and single-product copy avoids comparison sema
   assert.match(actionComponent, /disabled=\{pending\}/);
   assert.match(actionComponent, /LoaderCircle[\s\S]*正在生成 Protocol\.\.\./);
   assert.match(actionComponent, /RefreshCw[\s\S]*重新生成新版本/);
+  assert.match(actionComponent, /!pending && state\.message/);
   assert.match(button, /outline: "border bg-white hover:bg-accent"/);
   assert.match(view, /experienceMode \? "体验方案检查通过" : "公平性检查通过"/);
   assert.match(view, /体验任务聚焦核心能力，并保持证据完整、执行一致/);
+});
+
+test("Protocol input omits raw Research snippets and JSON mode stays explicit", () => {
+  assert.match(protocolService, /sources: product\.sources\.map\(\(\{ url, sourceType \}\) => \(\{ url, sourceType \}\)\)/);
+  assert.doesNotMatch(protocolService, /sources: product\.sources\.map\(\(\{[^}]*snippet/);
+  assert.match(router, /Return exactly one valid JSON object/);
+  assert.match(router, /Do not use Markdown or code fences/);
+  assert.match(router, /Do not stop before closing the root JSON object/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v8"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
+  assert.match(protocolService, /\[ProtocolPerformance\]/);
+  assert.match(protocolService, /attempts: generated\.attemptPerformance/);
+});
+
+test("E2E provider plans cover success, empty, truncated, invalid JSON, and schema repair", () => {
+  for (const scenario of ["normal", "empty-then-success", "always-empty", "truncated-then-success", "invalid-json-then-success", "schema-invalid-then-success"]) {
+    assert.match(providerMock, new RegExp(scenario));
+  }
+  assert.match(providerMock, /empty_response[\s\S]*finishReason/);
+  assert.match(providerMock, /truncated_response[\s\S]*"length"/);
+  assert.match(providerMock, /Previous response was empty/);
+  assert.match(providerMock, /Previous response was truncated/);
 });

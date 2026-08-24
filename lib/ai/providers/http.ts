@@ -43,7 +43,7 @@ export async function postProviderJson(
     });
   }
 
-  const latencyMs = Math.round(performance.now() - startedAt);
+  const headersLatencyMs = Math.round(performance.now() - startedAt);
   if (!response.ok) {
     throw new AIProviderError(`${provider} request failed with status ${response.status}`, {
       provider,
@@ -51,16 +51,34 @@ export async function postProviderJson(
       task: options.task,
       status: response.status,
       attempt: options.attempt,
-      latencyMs,
+      latencyMs: headersLatencyMs,
       timeoutMs: options.timeoutMs,
       category: classifyProviderStatus(response.status),
     });
   }
 
+  const responseContentType = response.headers.get("content-type");
+  let responseBody: string;
   try {
-    return { data: await response.json(), latencyMs, status: response.status };
+    responseBody = await response.text();
   } catch {
-    throw new AIProviderError(`${provider} returned an invalid JSON envelope`, {
+    throw new AIProviderError(`${provider} response body could not be read`, {
+      provider,
+      model: options.model,
+      task: options.task,
+      status: response.status,
+      attempt: options.attempt,
+      latencyMs: Math.round(performance.now() - startedAt),
+      timeoutMs: options.timeoutMs,
+      category: "network",
+      responseContentType,
+    });
+  }
+  const latencyMs = Math.round(performance.now() - startedAt);
+  try {
+    return { data: JSON.parse(responseBody), latencyMs, status: response.status };
+  } catch {
+    throw new AIProviderError(`${provider} returned a non-JSON HTTP response body`, {
       provider,
       model: options.model,
       task: options.task,
@@ -68,7 +86,9 @@ export async function postProviderJson(
       attempt: options.attempt,
       latencyMs,
       timeoutMs: options.timeoutMs,
-      category: "invalid_response",
+      category: "invalid_json_body",
+      responseContentType,
+      responseBodyLength: responseBody.length,
     });
   }
 }

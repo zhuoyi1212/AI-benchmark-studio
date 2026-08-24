@@ -37,8 +37,19 @@ export type AITaskRoute = {
   capability: AICapability;
   promptVersion: string;
   reasoning: AIReasoningMode;
+  repairReasoning: AIReasoningMode;
   timeoutMs: number;
   maxAttempts: number;
+};
+
+export type AIAttemptPerformance = {
+  attempt: number;
+  reasoning: AIReasoningMode;
+  outcome: string;
+  finishReason: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  latencyMs: number;
 };
 
 export type AIUsage = {
@@ -63,6 +74,7 @@ export type ProviderCompletionRequest = AIProviderRequestContext & {
 
 export type ProviderCompletionResponse = {
   content: string;
+  finishReason: string | null;
   requestId: string | null;
   usage: AIUsage;
 };
@@ -110,6 +122,7 @@ export type StructuredTaskResult<Output> = {
   requestId: string | null;
   usage: AIUsage;
   attempts: number;
+  attemptPerformance: AIAttemptPerformance[];
 };
 
 export type JudgeArtifactDescriptor = {

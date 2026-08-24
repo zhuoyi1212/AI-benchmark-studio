@@ -3,22 +3,24 @@ import "server-only";
 import type { ZodType } from "zod";
 import { AIValidationError } from "@/lib/ai/errors";
 import { runOCR, runResearchSearch, runStructuredAITask, selectJudgeTaskForCase } from "@/lib/ai/router";
-import type { JudgeArtifactDescriptor, OCRRequest, StructuredTaskRequest, WebSearchRequest } from "@/lib/ai/types";
+import type { JudgeArtifactDescriptor, OCRRequest, ResearchSource, StructuredTaskRequest, WebSearchRequest } from "@/lib/ai/types";
 
 type ProductResearchRequest<Schema extends ZodType> = StructuredTaskRequest<Schema> & {
+  productName: string;
   searches: WebSearchRequest[];
   allowedDomains?: string[];
 };
 
-async function researchProducts<Schema extends ZodType>({ searches, allowedDomains, ...request }: ProductResearchRequest<Schema>) {
+async function researchProducts<Schema extends ZodType>({ productName, searches, allowedDomains, ...request }: ProductResearchRequest<Schema>) {
   if (searches.length === 0) throw new Error("Product Research requires at least one source search");
   const searchResults = await Promise.all(searches.map((search) => runResearchSearch(search)));
-  const retrievedSources = [...new Map(
-    searchResults.flatMap((result) => result.sources).map((source) => [source.url, source]),
-  ).values()];
-  const sources = retrievedSources
-    .filter((source) => !allowedDomains?.length || allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))
-    .slice(0, 18)
+  const sourceGroups = searchResults.map((result) => result.sources.filter((source) => allowedDomains?.length
+    ? allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain))
+    : sourceMentionsProduct(source, productName)));
+  const relevantSourceCount = new Set(sourceGroups.flatMap((sources) => sources.map((source) => source.url))).size;
+  if (relevantSourceCount < 3) throw new AIValidationError("research", "insufficientRelevantSearchSources");
+  const sources = interleaveUniqueSources(sourceGroups)
+    .slice(0, 20)
     .map((source) => ({ ...source, snippet: source.snippet.slice(0, 3000) }));
   if (sources.length === 0) throw new AIValidationError("research", "nonEmptyTraceableSearchSources");
   const synthesis = await runStructuredAITask("research", {
@@ -32,6 +34,28 @@ async function researchProducts<Schema extends ZodType>({ searches, allowedDomai
     ],
   });
   return { ...synthesis, sources, searchRoute: searchResults[0]!.route };
+}
+
+function interleaveUniqueSources(groups: ResearchSource[][]) {
+  const unique = new Map<string, ResearchSource>();
+  const maxLength = Math.max(0, ...groups.map((group) => group.length));
+  for (let index = 0; index < maxLength; index += 1) {
+    for (const group of groups) {
+      const source = group[index];
+      if (source && !unique.has(source.url)) unique.set(source.url, source);
+    }
+  }
+  return [...unique.values()];
+}
+
+function sourceMentionsProduct(source: ResearchSource, productName: string) {
+  const needle = normalizeSearchText(productName);
+  if (needle.length < 2) return true;
+  return normalizeSearchText(`${source.title} ${source.url} ${source.snippet} ${source.siteName ?? ""}`).includes(needle);
+}
+
+function normalizeSearchText(value: string) {
+  return value.toLocaleLowerCase("zh-CN").replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
 function isDomainOrSubdomain(value: string, allowedDomain: string) {

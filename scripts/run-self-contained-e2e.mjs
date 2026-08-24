@@ -12,6 +12,7 @@ const supabaseSecretKey = localEnvironment.SUPABASE_SECRET_KEY;
 if (!supabaseUrl || !supabaseSecretKey) throw new Error("Full E2E requires Supabase server credentials in .env.local");
 
 const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+const protocolOnly = process.env.E2E_PROTOCOL_ONLY === "1";
 const token = randomUUID();
 const providerMock = await startE2EProviderMock();
 const appPort = await findAvailablePort();
@@ -23,6 +24,7 @@ try {
   appProcess = spawn(process.execPath, [
     "node_modules/next/dist/bin/next",
     "dev",
+    "--webpack",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -47,19 +49,25 @@ try {
   const response = await fetch(`${appOrigin}/api/e2e-test/full-flow`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-e2e-token": token },
-    body: JSON.stringify({ runId }),
+    body: JSON.stringify({ runId, protocolOnly }),
     signal: AbortSignal.timeout(300_000),
   });
   const result = await response.json();
   assert.equal(response.ok, true, `Full route E2E failed: ${JSON.stringify(result)}`);
   assert.equal(result.ok, true);
   assert.equal(result.single.comparabilityStatus, "not_comparable");
-  assert.equal(result.single.resultMode, "single");
-  assert.equal(result.single.reportMode, "single");
-  assert.equal(result.single.publishMode, "single");
-  assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
   assert.ok(result.single.testCases.every((item) => item.expectedOutputTypes.includes("image") && item.evidenceRequirements.length > 0));
-  assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
+  if (protocolOnly) {
+    assert.equal(result.single.protocolOnly, true);
+    assert.ok(result.single.testCases.length >= 2 && result.single.testCases.length <= 4);
+    assert.ok(result.single.rubricCount >= 3 && result.single.rubricCount <= 5);
+  } else {
+    assert.equal(result.single.resultMode, "single");
+    assert.equal(result.single.reportMode, "single");
+    assert.equal(result.single.publishMode, "single");
+    assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
+    assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
+  }
   assert.equal(result.comparison.productCount, 2);
   assert.equal(result.comparison.comparabilityStatus, "comparable");
   assert.equal(result.comparison.testCaseCount, 2);
@@ -69,10 +77,14 @@ try {
   assert.equal(result.cleanup.complete, true);
 
   const providerStats = providerMock.stats();
-  for (const task of ["research_search", "ProductResearch", "ComparabilityResult", "TestProtocol", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "ContentIdeas", "CommunityPost"]) {
+  const expectedTasks = protocolOnly
+    ? ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent"]
+    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "ContentIdeas", "CommunityPost"];
+  for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
-  assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
+  if (!protocolOnly) assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
+  assertProtocolScenario(providerStats.protocolAttempts);
 
   const supabase = createClient(supabaseUrl, supabaseSecretKey, { auth: { persistSession: false } });
   const projectIds = result.cleanup.projects.map((item) => item.projectId);
@@ -84,13 +96,20 @@ try {
   assert.ok(archivedProjects.every((project) => project.deleted_at && project.name.includes(runId)));
 
   console.log(`Run: ${runId}`);
-  console.log(`Single flow: ${result.single.testRunCount} TestRun(s), ${result.single.artifactIds.length} Artifact(s), ${result.single.judgeScoreCount} JudgeScore(s)`);
-  console.log(`Single routes: ${result.single.routeChecks.join(" → ")}`);
+  if (protocolOnly) {
+    console.log(`Single Protocol: ${result.single.testCases.length} TestCase(s), ${result.single.rubricCount} Rubric dimension(s)`);
+  } else {
+    console.log(`Single flow: ${result.single.testRunCount} TestRun(s), ${result.single.artifactIds.length} Artifact(s), ${result.single.judgeScoreCount} JudgeScore(s)`);
+    console.log(`Single routes: ${result.single.routeChecks.join(" → ")}`);
+  }
   console.log(`Comparison regression: comparable Protocol with ${result.comparison.testCaseCount} TestCases`);
   console.log("Not-comparable regression: Protocol correctly blocked");
   console.log(`Provider boundary: ${providerStats.total} mocked external request(s), ${providerStats.multimodalJudgeRequests} multimodal Judge request(s)`);
+  console.log(`Protocol attempts: ${providerStats.protocolAttempts.map((item) => `${item.attempt}:${item.reasoning}:${item.outcome}:${item.finishReason ?? "null"}`).join(", ")}`);
   console.log(`Cleanup: ${archivedProjects.length}/${projectIds.length} temporary Projects soft-deleted`);
-  console.log("Create → Research → Protocol → TestRun/Artifact → Judge → Human Review → Results → Report → Publish: verified");
+  console.log(protocolOnly
+    ? "Create → Research → Protocol plus comparison/not-comparable regressions: verified"
+    : "Create → Research → Protocol → TestRun/Artifact → Judge → Human Review → Results → Report → Publish: verified");
 } catch (error) {
   const recentLogs = logs.join("").split("\n").slice(-80).join("\n");
   if (recentLogs) console.error(`\nNext.js E2E logs:\n${recentLogs}`);
@@ -143,6 +162,26 @@ function collectLogs(stream, output) {
     output.push(chunk);
     if (output.length > 400) output.splice(0, output.length - 400);
   });
+}
+
+function assertProtocolScenario(protocolAttempts) {
+  const scenario = process.env.E2E_PROTOCOL_RESPONSE_SCENARIO ?? "normal";
+  const expectedOutcomes = {
+    "empty-then-success": ["empty_response", "success"],
+    "truncated-then-success": ["truncated_response", "success"],
+    "invalid-json-then-success": ["invalid_json", "success"],
+    "schema-invalid-then-success": ["schema_validation", "success"],
+  }[scenario];
+  if (!expectedOutcomes) {
+    assert.equal(protocolAttempts[0]?.reasoning, "standard");
+    return;
+  }
+  const attempts = protocolAttempts.slice(0, 2);
+  assert.deepEqual(attempts.map((item) => item.outcome), expectedOutcomes);
+  const expectedReasoning = scenario === "empty-then-success"
+    ? ["standard", "standard"]
+    : ["standard", "high"];
+  assert.deepEqual(attempts.map((item) => item.reasoning), expectedReasoning);
 }
 
 function parseEnv(text) {

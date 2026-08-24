@@ -60,7 +60,7 @@ export class ZhipuProvider implements AIProvider {
       search_recency_filter: "noLimit",
     }, { task: request.task, model: request.engine, attempt: request.attempt, timeoutMs: request.timeoutMs });
     const parsed = searchEnvelopeSchema.safeParse(data);
-    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid web search response", { provider: this.name, model: request.engine, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_response" });
+    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid web search response", { provider: this.name, model: request.engine, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_envelope" });
     return parsed.data.search_result.map((source) => ({
       title: source.title,
       url: source.link,
@@ -77,7 +77,7 @@ export class ZhipuProvider implements AIProvider {
       file: request.fileUrl,
     }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs, authorization: "raw" });
     const parsed = ocrEnvelopeSchema.safeParse(data);
-    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid OCR response", { provider: this.name, model: request.model, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_response" });
+    if (!parsed.success) throw new AIProviderError("zhipu returned an invalid OCR response", { provider: this.name, model: request.model, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_envelope" });
     return {
       markdown: parsed.data.md_results,
       requestId: parsed.data.request_id ?? parsed.data.id ?? null,

@@ -38,11 +38,12 @@ test("generates from the selected completed ResearchRun without test output", ()
   assert.match(service, /keyFeatures: product\.keyFeatures/);
   assert.match(service, /officialBestPractices: product\.officialBestPractices/);
   assert.match(service, /limitations: product\.limitations/);
-  assert.match(service, /sourceType, snippet/);
+  assert.match(service, /sourceType \}\) => \(\{ url, sourceType \}\)/);
+  assert.doesNotMatch(service, /sources: product\.sources\.map\(\(\{[^}]*snippet/);
   assert.doesNotMatch(service, /testRuns|testArtifacts|judgeScores|finalScore/);
   assert.match(service, /generateProtocol/);
   assert.doesNotMatch(service, /glm-|deepseek-v|provider:\s*["']/);
-  assert.match(service, /不得出现任何被测产品名称或品牌/);
+  assert.match(service, /不得出现产品名称或品牌/);
 });
 
 test("models native product capabilities before designing realistic tasks", () => {
@@ -50,12 +51,15 @@ test("models native product capabilities before designing realistic tasks", () =
     assert.match(service, new RegExp(`"${field}"`));
   }
   assert.match(service, /coreCapabilitiesCount: "3-8"/);
-  assert.match(service, /ordinary chatbot can basically complete the task/);
-  assert.match(service, /nativeCapabilitiesTakePriorityOverGenericLlmCapabilities/);
-  assert.match(service, /completeARealGoalRatherThanDemonstrateAnIsolatedCapability/);
-  assert.match(service, /writingTasksRemainValidForWritingMarketingCopyOrGeneralAssistantProducts/);
+  assert.match(service, /普通聊天框也能基本完成且不是产品核心定位/);
+  assert.match(service, /优先测试原生交互与差异化工作流/);
+  assert.match(service, /真实用户目标/);
+  assert.match(service, /写作产品才以写作改写为核心/);
+  assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
+  assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v2"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v8"/);
+  assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
 });
 
 test("requires explainable cases and a final generic-task quality gate", () => {
@@ -65,24 +69,25 @@ test("requires explainable cases and a final generic-task quality gate", () => {
   for (const task of ["写文章", "写营销文案", "写邮件", "总结给定文字", "Brainstorm", "普通知识问答"]) {
     assert.match(service, new RegExp(task));
   }
-  assert.match(service, /finalTaskQualityReview/);
-  assert.match(service, /replaceGenericTaskWhenGenericCapabilityIsNotCorePositioning/);
-  assert.match(service, /rejectMechanicallyCreatedCasesAddedOnlyToCoverRubricDimensions/);
+  assert.match(service, /taskQualityChecks,/);
+  assert.match(service, /deprioritizeUnlessCoreToProduct/);
+  assert.match(service, /eachCaseInternallyAnswers/);
 });
 
 test("deepens single-product coverage while preserving comparison fairness", () => {
   assert.match(service, /testCaseCount >= 2 && testCaseCount <= 4/);
-  assert.match(service, /testCaseCapabilityCoverageMustBeMeaningfullyDistinct/);
-  assert.match(service, /chooseOnlyCoreCapabilitiesSharedByEveryProduct/);
-  assert.match(service, /useComparabilityCommonCapabilitiesAsTheFairnessBoundary/);
-  assert.match(service, /neverScoreAProductOnAnotherProductsExclusiveCapability/);
-  assert.match(service, /preserveIdenticalPromptInputAndConditionsPerCase/);
+  assert.match(service, /caseCount: \{ default: 3, min: 2, max: 4/);
+  assert.match(service, /useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true/);
+  assert.match(service, /rubricCount: \{ default: 4, min: 3, max: 5/);
+  assert.match(service, /sharedCoreCapabilitiesOnly: true/);
+  assert.match(service, /samePromptInputAndConditions: true/);
+  assert.match(service, /excludeExclusiveCapabilities: true/);
   assert.match(service, /projectMode === "comparison" && result\.comparability\.status === "not_comparable"/);
 });
 
 test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", () => {
-  assert.match(schema, /testCases:[\s\S]*\.min\(1\)\.max\(12\)/);
-  assert.match(schema, /rubric:[\s\S]*\.min\(2\)\.max\(12\)/);
+  assert.match(schema, /testCases:[\s\S]*\.min\(2\)\.max\(4\)/);
+  assert.match(schema, /rubric:[\s\S]*\.min\(3\)\.max\(5\)/);
   assert.match(schema, /Rubric weights must total exactly 100/);
   assert.match(schema, /mandatoryProtocolRuleIds/);
   assert.match(schema, /same-input/);
@@ -90,6 +95,13 @@ test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", ()
   assert.match(schema, /single-generation/);
   assert.match(schema, /no-editing/);
   assert.match(schema, /complete-upload/);
+  assert.match(schema, /generatedProtocolContentSchema/);
+  assert.match(schema, /omit\(\{ position: true, executionRules: true \}\)/);
+  assert.match(service, /normalizeGeneratedProtocol/);
+  assert.match(service, /Protocol must use blind-neutral wording and omit every tested product name/);
+  assert.match(service, /testMode: "standardized"/);
+  assert.match(service, /position: index \+ 1/);
+  assert.match(service, /executionRules: standardizedExecutionRules/);
   assert.doesNotMatch(service, /商业汇报生成|长文转 PPT|数据分析 PPT|极限约束测试|内容完整性 20/);
 });
 
