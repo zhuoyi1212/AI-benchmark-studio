@@ -121,8 +121,9 @@ test("regenerate remains readable and single-product copy avoids comparison sema
   assert.match(actionComponent, /RefreshCw[\s\S]*重新生成新版本/);
   assert.match(actionComponent, /!pending && state\.message/);
   assert.match(button, /outline: "border bg-white hover:bg-accent"/);
-  assert.match(view, /experienceMode \? "体验方案检查通过" : "公平性检查通过"/);
-  assert.match(view, /体验任务聚焦核心能力，并保持证据完整、执行一致/);
+  assert.match(view, /测试计划检查通过/);
+  assert.match(view, /快速测评主线/);
+  assert.match(view, /专业评分配置（可选）/);
 });
 
 test("Protocol input omits raw Research snippets and JSON mode stays explicit", () => {
