@@ -8,8 +8,8 @@ import type { ProjectWorkflowState, WorkflowStageId } from "@/lib/types/workflow
 import { cn } from "@/lib/utils";
 
 const workflowSteps = [
-  ["research", "产品调研"], ["protocol", "测评方案"], ["test", "测试执行"], ["review", "盲评"],
-  ["results", "结果"], ["report", "报告"], ["publish", "发布包"],
+  ["research", "产品调研"], ["protocol", "测试计划"], ["test", "真实测试"], ["review", "专业评分"],
+  ["results", "测评发现"], ["report", "深度报告"], ["publish", "社区内容"],
 ] as const;
 
 export function WorkflowSteps({ projectId, workflowState }: { projectId: string; workflowState: ProjectWorkflowState }) {
