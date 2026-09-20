@@ -117,7 +117,7 @@ test("full route E2E owns a unique temporary Project lifecycle instead of a fixe
 test("full route E2E uses real services and mocks only the local external AI boundary", () => {
   for (const operation of [
     "createProject", "executeProductResearch", "generateProtocol", "uploadTestArtifact",
-    "runBlindJudge", "lockHumanReview", "revealHumanReview", "generateFinalResultAnalysis",
+    "startProfessionalReview", "runBlindJudge", "lockHumanReview", "revealHumanReview", "generateFinalResultAnalysis",
     "generateReport", "discoverContentIdeas", "generateCommunityPost",
   ]) assert.match(e2eRoute, new RegExp(operation));
   assert.match(providerEndpoints, /E2E_TEST_MODE !== "1"/);
