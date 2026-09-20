@@ -185,8 +185,27 @@ begin
   where id = p_findings_id and status = 'running';
 
   if not found then raise exception 'Findings is not running'; end if;
+
+  -- Quick Findings is now the primary post-test result. Keep an active
+  -- professional Judge run in reviewing state, but otherwise let the project
+  -- resume at Results instead of forcing users into Blind Review.
+  update public.projects
+  set status = 'completed', updated_at = now()
+  where id = (
+    select project_id from public.experience_findings where id = p_findings_id
+  )
+    and (
+      status = 'testing'
+      or (
+        status = 'reviewing'
+        and not exists (
+          select 1 from public.judge_runs judge
+          where judge.project_id = public.projects.id
+        )
+      )
+    );
 end;
-$$;
+$;
 
 create or replace function public.confirm_experience_findings(
   p_findings_id uuid,
@@ -389,13 +408,51 @@ begin
 
   update public.projects
   set status = case
+        when target_pack.findings_id is not null and status in ('testing', 'completed') then 'published'
         when target_pack.report_id is not null and status = 'reported' then 'published'
         else status
       end,
       updated_at = now()
   where id = target_pack.project_id;
 end;
-$$;
+$;
+
+create or replace function public.start_professional_review(
+  p_project_id uuid,
+  p_protocol_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  current_status text;
+begin
+  select status into current_status
+  from public.projects
+  where id = p_project_id and deleted_at is null
+  for update;
+
+  if current_status is null then
+    raise exception 'Professional Review project not found';
+  end if;
+  if current_status not in ('testing', 'completed', 'published', 'reported', 'reviewing') then
+    raise exception 'Project is unavailable for Professional Review';
+  end if;
+
+  -- initialize_blind_layer historically accepts testing/reviewing. Quick mode
+  -- can already have advanced the project to Results or Publish, so normalize
+  -- only inside this explicit opt-in transaction.
+  if current_status in ('completed', 'published', 'reported') then
+    update public.projects
+    set status = 'testing', updated_at = now()
+    where id = p_project_id;
+  end if;
+
+  perform public.initialize_blind_layer(p_project_id, p_protocol_id);
+end;
+$;
 
 revoke all on function public.begin_experience_findings(uuid, uuid, jsonb, text) from public, anon, authenticated;
 revoke all on function public.start_experience_findings(uuid, text, text, text) from public, anon, authenticated;
@@ -403,6 +460,7 @@ revoke all on function public.complete_experience_findings(uuid, jsonb, jsonb) f
 revoke all on function public.confirm_experience_findings(uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.fail_experience_findings(uuid, text) from public, anon, authenticated;
 revoke all on function public.begin_findings_publish_pack(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.start_professional_review(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.complete_publish_pack(uuid, jsonb, jsonb, jsonb) from public, anon, authenticated;
 
 grant execute on function public.begin_experience_findings(uuid, uuid, jsonb, text) to service_role;
@@ -411,4 +469,5 @@ grant execute on function public.complete_experience_findings(uuid, jsonb, jsonb
 grant execute on function public.confirm_experience_findings(uuid, jsonb) to service_role;
 grant execute on function public.fail_experience_findings(uuid, text) to service_role;
 grant execute on function public.begin_findings_publish_pack(uuid, uuid) to service_role;
+grant execute on function public.start_professional_review(uuid, uuid) to service_role;
 grant execute on function public.complete_publish_pack(uuid, jsonb, jsonb, jsonb) to service_role;
