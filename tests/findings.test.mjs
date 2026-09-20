@@ -46,7 +46,7 @@ test("human review confirms or edits Findings instead of changing scores", () =>
   assert.match(editor, /好用/);
   assert.match(editor, /一般/);
   assert.match(editor, /问题/);
-  assert.match(page, /确认 Findings/);
+  assert.match(page, /FindingsEditor/);
 });
 
 test("real test can go directly to Findings while professional scoring stays optional", () => {
@@ -67,6 +67,8 @@ test("PublishPack can bind either confirmed Findings or a professional Report", 
   assert.match(publishService, /source\.kind === "findings"/);
   assert.match(publishService, /humanConfirmedFindings/);
   assert.match(publishService, /优先使用真实 Case/);
+  assert.match(publishService, /buildRawFindingsEvidenceContent/);
+  assert.match(publishService, /完整原始 Artifact/);
 });
 
 test("new public Findings functions remain service-role only", () => {
