@@ -247,7 +247,7 @@ export async function generateCommunityPost(
       factCheckMessages.push({ role: "user" as const, content: await buildRawFindingsEvidenceContent(projectId) });
     }
 
-    const checkedResult = await aiTaskService.generateCommunityPost({
+    const checkedResult = await aiTaskService.factCheckCommunityPost({
       schema: evidenceGroundedPostSchema,
       schemaName: "EvidenceCheckedCommunityPost",
       messages: factCheckMessages,
