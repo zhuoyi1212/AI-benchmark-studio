@@ -50,18 +50,27 @@ export function ProtocolView({ protocol, productCount, canRegenerate, preserveHi
 
         <aside className="space-y-4 xl:sticky xl:top-6 xl:h-fit">
           <Card className="p-5 shadow-none">
-            <div className="flex items-center gap-2"><Scale className="h-4 w-4 text-blue-600" /><h2 className="section-title">Rubric</h2></div>
-            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">点击维度查看四档评分标准</p>
-            <div className="mt-5 space-y-1">{protocol.rubric.map((rubric) => <button key={rubric.id} onClick={() => setSelectedRubricId(rubric.id)} className={`w-full rounded-md px-3 py-2.5 text-left transition-colors ${selectedRubric?.id === rubric.id ? "bg-blue-50" : "hover:bg-slate-50"}`}><div className="flex justify-between gap-3 text-xs"><span className="font-medium">{rubric.name}</span><span className="font-semibold tabular-nums text-blue-700">{rubric.weight}%</span></div><div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${rubric.weight}%` }} /></div></button>)}</div>
-            {selectedRubric && <div className="mt-4 rounded-md border bg-slate-50 p-3"><div className="text-xs font-semibold">{selectedRubric.name} · 优秀标准</div><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{selectedRubric.scoringStandard.excellent}</p></div>}
-            <div className="mt-4 flex justify-between border-t pt-4 text-xs font-semibold"><span>权重合计</span><span className={totalWeight === 100 ? "text-emerald-700" : "text-amber-700"}>{totalWeight}%</span></div>
+            <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-blue-600" /><h2 className="section-title">快速测评主线</h2></div>
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">主流程只依赖 Test Cases、观察重点和真实 Artifact。完成测试后直接提炼 Findings，不需要先打分。</p>
+            <div className="mt-4 space-y-2 border-t pt-4 text-xs text-slate-700">
+              <div className="flex justify-between"><span>测试任务</span><strong>{protocol.testCases.length}</strong></div>
+              <div className="flex justify-between"><span>执行方式</span><strong>真实测试 + 留证</strong></div>
+              <div className="flex justify-between"><span>下一步</span><strong>Findings</strong></div>
+            </div>
           </Card>
-          <div className={`rounded-lg border p-4 ${totalWeight === 100 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-start gap-2.5"><ShieldCheck className={`mt-0.5 h-4 w-4 ${totalWeight === 100 ? "text-emerald-600" : "text-amber-600"}`} /><div><p className="text-xs font-semibold">{totalWeight === 100 ? experienceMode ? "体验方案检查通过" : "公平性检查通过" : "Rubric 权重无效"}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{experienceMode ? "体验任务聚焦核心能力，并保持证据完整、执行一致；Rubric 权重必须合计 100%。" : "同一 Case 对所有产品使用相同输入与 Prompt，Rubric 权重必须合计 100%。"}</p></div></div></div>
+          <details className="rounded-lg border bg-white p-4">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold"><Scale className="h-4 w-4 text-slate-500" />专业评分配置（可选）</summary>
+            <p className="mt-2 text-[11px] leading-5 text-muted-foreground">只有主动进入“专业评分”时才使用这些 Rubric。快速测评不会读取分数。</p>
+            <div className="mt-4 space-y-1">{protocol.rubric.map((rubric) => <button type="button" key={rubric.id} onClick={() => setSelectedRubricId(rubric.id)} className={`w-full rounded-md px-3 py-2.5 text-left transition-colors ${selectedRubric?.id === rubric.id ? "bg-slate-100" : "hover:bg-slate-50"}`}><div className="flex justify-between gap-3 text-xs"><span className="font-medium">{rubric.name}</span><span className="font-semibold tabular-nums text-slate-600">{rubric.weight}%</span></div></button>)}</div>
+            {selectedRubric && <div className="mt-3 rounded-md bg-slate-50 p-3"><div className="text-xs font-semibold">{selectedRubric.name} · 优秀标准</div><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{selectedRubric.scoringStandard.excellent}</p></div>}
+            <div className="mt-3 flex justify-between border-t pt-3 text-[11px]"><span>专业 Rubric 权重</span><span>{totalWeight}%</span></div>
+          </details>
+          <div className={`rounded-lg border p-4 ${totalWeight === 100 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-start gap-2.5"><ShieldCheck className={`mt-0.5 h-4 w-4 ${totalWeight === 100 ? "text-emerald-600" : "text-amber-600"}`} /><div><p className="text-xs font-semibold">{totalWeight === 100 ? "测试计划检查通过" : "专业评分配置异常"}</p><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{totalWeight === 100 ? "任务、证据要求和观察重点可以直接进入真实测试；专业 Rubric 已预备，但不会阻塞快速 Findings。" : "请重新生成方案，确保可选的专业评分配置完整。"}</p></div></div></div>
         </aside>
       </div>
 
       <div className="sticky bottom-5 z-20 mt-9 flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-white shadow-xl">
-        <div className="hidden items-center gap-3 sm:flex">{protocol.status === "locked" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}<div><p className="text-xs font-medium">{protocol.status === "locked" ? `Protocol v${protocol.version} 已锁定` : `Protocol v${protocol.version} 锁定后不可修改`}</p><p className="text-[10px] text-slate-400">{experienceMode ? `${protocol.testCases.length} 个体验任务` : `${protocol.testCases.length} Cases`} · {protocol.rubric.length} 评分维度</p></div></div>
+        <div className="hidden items-center gap-3 sm:flex">{protocol.status === "locked" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LockKeyhole className="h-4 w-4 text-slate-400" />}<div><p className="text-xs font-medium">{protocol.status === "locked" ? `Protocol v${protocol.version} 已锁定` : `Protocol v${protocol.version} 锁定后不可修改`}</p><p className="text-[10px] text-slate-400">{experienceMode ? `${protocol.testCases.length} 个体验任务` : `${protocol.testCases.length} Cases`} · 真实证据优先 · 专业评分可选</p></div></div>
         <div className="ml-auto flex items-center gap-2">{canRegenerate && <GenerateProtocolAction projectId={protocol.projectId} regenerate experienceMode={experienceMode} preserveHistory={preserveHistory} />}{protocol.status === "draft" && totalWeight === 100 ? <LockProtocolAction projectId={protocol.projectId} protocolId={protocol.id} testCaseCount={protocol.testCases.length} rubricCount={protocol.rubric.length} experienceMode={experienceMode} /> : protocol.status === "locked" ? <Button size="lg" className="bg-white text-slate-950 hover:bg-slate-100" asChild><Link href={`/projects/${protocol.projectId}/test`}>进入测试执行<ArrowRight className="h-4 w-4" /></Link></Button> : null}</div>
       </div>
     </>
