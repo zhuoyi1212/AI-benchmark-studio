@@ -1847,6 +1847,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_professional_review: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
       start_result_analysis: {
         Args: {
           p_model: string
