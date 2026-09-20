@@ -8,8 +8,11 @@ import type { ProjectWorkflowState, WorkflowStageId } from "@/lib/types/workflow
 import { cn } from "@/lib/utils";
 
 const workflowSteps = [
-  ["research", "产品调研"], ["protocol", "测试计划"], ["test", "真实测试"], ["review", "专业评分"],
-  ["results", "测评发现"], ["report", "深度报告"], ["publish", "社区内容"],
+  ["research", "产品调研"],
+  ["protocol", "测试计划"],
+  ["test", "真实测试"],
+  ["results", "测评发现"],
+  ["publish", "社区内容"],
 ] as const;
 
 export function WorkflowSteps({ projectId, workflowState }: { projectId: string; workflowState: ProjectWorkflowState }) {
@@ -24,7 +27,7 @@ export function WorkflowSteps({ projectId, workflowState }: { projectId: string;
   return (
     <TooltipProvider delayDuration={250}>
       <nav aria-label="测评工作流" className="mb-8 overflow-x-auto border-b">
-        <div className="flex min-w-[760px] items-center">
+        <div className="flex min-w-[620px] items-center">
           {workflow.map((step, index) => {
             const active = step.id === activeStep;
             const content = <>
