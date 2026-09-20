@@ -71,11 +71,13 @@ test("Judge failures are persisted and retry creates an auditable run", () => {
   assert.doesNotMatch(judgeService, /mock|fallback/i);
 });
 
-test("early reveal and downstream access are rejected before Review lock", () => {
+test("professional analysis still requires Review reveal while quick Findings do not", () => {
   assert.match(reviewMigration, /status = 'locked'/);
   assert.match(reviewService, /只有锁定最终评分后才能揭晓产品身份/);
   assert.match(resultService, /review\.status !== "revealed"/);
-  assert.match(resultsPage, /redirect\(`\/projects\/\$\{projectId\}\/review`\)/);
+  assert.match(resultsPage, /getExperienceFindingsWorkspace/);
+  assert.match(resultsPage, /不需要先跑 AI Judge/);
+  assert.doesNotMatch(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
 });
 
 test("invalid Human Override values and missing reasons are rejected", () => {
