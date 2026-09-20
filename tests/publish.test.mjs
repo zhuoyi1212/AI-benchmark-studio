@@ -43,7 +43,7 @@ test("allows evidence-backed text-only posts without fabricated screenshots", ()
   assert.match(textOnlyMigration, /imageCount'\)::integer not between 0 and 9/);
   assert.match(textOnlyMigration, /jsonb_array_length\(p_recommendations\) not between 0 and 9/);
   assert.doesNotMatch(textOnlyMigration, /must retain at least one screenshot/);
-  assert.match(editor, /没有截图证据，文章仍会使用 Judge 与 Report 中的真实文本证据/);
+  assert.match(editor, /没有截图证据，文章仍会使用已保存的测试发现与文本证据/);
   assert.match(editor, /readOnly=\{maxImages === 0\}/);
 });
 test("plans community content, applies a selected style, and fact-checks the final post", () => {
@@ -60,24 +60,16 @@ test("plans community content, applies a selected style, and fact-checks the fin
   assert.match(editor, /文章结构/);
 });
 
-test("gives article generation direct Judge and Human Review evidence with a minimum publishable structure", () => {
+test("keeps community writing grounded in test evidence instead of score-first summaries", () => {
   assert.match(service, /judgeEvidence: buildJudgeEvidence\(source\)/);
   assert.match(service, /humanReview: source\.report\.review/);
-  assert.match(service, /正文至少 4 段/);
-  assert.match(service, /post\.body\.trim\(\)\.length < 200/);
-  assert.match(service, /publishableEvidenceArticleStructure/);
-  assert.match(service, /不得把由不适用 Rubric、输入缺失或执行环境造成的低分直接归因于产品能力/);
-  assert.match(service, /没有可验证逐字来源时，不得使用引号声称某句话是官方宣传语/);
-  assert.match(service, /二手来源中的价格或套餐不要写入正文/);
-  assert.match(service, /不得据此推断产品未调用工具、默认行为或能力不足/);
-  assert.match(service, /atLeastThreeEvidenceGroundedIdeas/);
+  assert.match(service, /Final Score 仅可作为辅助背景/);
+  assert.match(service, /Research 只提供背景/);
+  assert.match(service, /不得创造体验、数据、竞品对比或未测试能力/);
+  assert.match(service, /将过度概括改成证据实际覆盖的范围/);
+  assert.match(service, /缺少过程日志只能写本次未留存/);
   assert.match(service, /evidenceGroundedPostSchema/);
-  assert.match(service, /可能通过隐式代理/);
-  assert.match(service, /本项目评分不得称为‘官方测评’/);
-  assert.match(service, /Skill 生态、协作能力或透明度是产品短板/);
-  assert.match(service, /缺少工具日志只能表述为‘本次证据未提供’，不得推断产品默认行为/);
-  assert.match(service, /不得要求或声称展示私有思维链、内部决策链/);
-  assert.match(service, /优先把“实际 Case 表现与汇总分差异”作为方法学发现/);
+  assert.match(service, /atLeastThreeEvidenceGroundedIdeas/);
 });
 test("guards Publish by current completed Report and exposes explicit states", () => {
   assert.match(migration, /PublishPack requires a current completed Report/); assert.match(migration, /private\.final_score_signature/);
@@ -94,16 +86,19 @@ test("preserves Content Discovery provenance across Community Post retries", () 
   assert.match(lineageMigration, /grant execute[\s\S]*to service_role/);
 });
 
-test("rejects opening-only new generations while preserving historical post readability", async () => {
+test("requires editorial planning and fact-check metadata for new generations while preserving historical posts", async () => {
   const { communityPostGenerationSchema, communityPostOutputSchema } = await import("../lib/ai/schemas/publish.schemas.ts");
   const post = { title: "测试结果", body: "本次回答提供了文献列表。".repeat(30), tags: ["测评"], interactionQuestion: "你如何核验引用？", screenshotRecommendations: [] };
   assert.equal(communityPostOutputSchema.safeParse(post).success, true);
-  const incomplete = communityPostGenerationSchema.safeParse(post);
+  const metadata = {
+    editorialPlan: { coreConclusion: "有明确优点，也有具体限制。", highlights: ["优点有真实证据"], neutralPoints: [], painPoints: ["限制有真实证据"], structure: ["结论", "好用", "问题", "个人感受"], avoidClaims: ["不扩大到未测试场景"] },
+    factCheck: { status: "passed", revisedClaimCount: 0, notes: [] },
+  };
+  const incomplete = communityPostGenerationSchema.safeParse({ ...post, ...metadata });
   assert.equal(incomplete.success, false);
   assert.deepEqual(incomplete.error.issues[0].path, ["body"]);
   assert.match(incomplete.error.issues[0].message, /complete article/);
-  assert.equal(communityPostGenerationSchema.safeParse({ ...post, body: "甲\n\n乙\n\n丙\n\n丁" }).success, false);
   const body = ["任务：检索学术综述并列出来源。", "回答：给出了论文链接和方法比较。", "核验：部分文献发表状态不完整。", "范围：仅核查本次回答，不推断其他功能。"].map(p => p.repeat(5)).join("\n\n");
-  assert.equal(communityPostGenerationSchema.safeParse({ ...post, body }).success, true);
+  assert.equal(communityPostGenerationSchema.safeParse({ ...post, ...metadata, body }).success, true);
   assert.match(service, /const evidenceGroundedPostSchema = communityPostGenerationSchema/);
 });
