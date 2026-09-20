@@ -94,7 +94,9 @@ publish_packs
 - Final Score：latest active human override ?? ai_score
 - Final Analysis：result_analyses + final_score_signature
 - Report：reports，绑定 result_analysis
-- Publish：publish_packs，绑定 report
+- Publish：publish_packs 当前保留 report 生命周期绑定，但内容输入独立构造成 CommunityPostSource；Report 正文不是文章 source of truth
+- Publish Style QA：最终 Community Post JSON 内保存 Style Critic 结果、调用溯源与是否自动 rewrite；只有最终 Critic 通过的正文可以成为 ready
+- Safe Rewrite：项目自有 `community-style-policy.ts` 固定语言规则；复用 community_post_rewrite Flash 路由，一次改写。确定性门禁加独立 Meaning Preservation 语义检查，拒绝改稿时只回退到审稿合格的原稿。规则不从第三方 Skill、文件或网络动态加载。
 
 不要维护多个互相冲突的 Final Score 或 progress source of truth。
 
@@ -163,7 +165,9 @@ Page
 | Final Result Analysis | DeepSeek / `deepseek-v4-pro` |
 | Report | 智谱 / `glm-5.2` |
 | Content Discovery | DeepSeek / `deepseek-v4-pro` |
-| Community Post | 智谱 / `glm-5.2` |
+| Community Post | DeepSeek / `deepseek-v4-flash`（non-thinking） |
+| Community Post Rewrite | DeepSeek / `deepseek-v4-flash`（non-thinking） |
+| Community Style Critic | DeepSeek / `deepseek-v4-pro` |
 | Screenshot Understanding | 智谱 / `glm-4.6v` |
 | OCR preprocessing | 智谱 / `glm-ocr` |
 
@@ -171,7 +175,7 @@ Page
 
 AI Pipeline：
 
-`Research → Protocol Generation → Judge → Final Result Analysis → Report → Content Discovery → Community Post`
+`Research → Protocol Generation → Judge → Final Result Analysis → Report → Raw Evidence Mining → Micro Finding / Human-readable Moment → Community Angle → CommunityWritingPacket → DeepSeek Community Post → Three-part Critic`
 
 每次运行记录：
 
@@ -236,9 +240,13 @@ HumanReviewEvent append-only：
 
 ## 16. Report / Publish
 
-`ResultAnalysis → Report → PublishPack`
+`Research + Evidence / Findings + Product Context → CommunityPostSource → Community Angles → Community Post`
 
 社区截图推荐最终引用真实 `test_artifact.id`。
+
+Publish 使用独立的 `CommunityPostSource`：提取 productContext、interestingFacts、observedBehaviors、strengths、frustrations、surprises、expectationVsReality、userTradeoffs、productPositioning、unresolvedQuestions、qualitativeSentiment 与 artifacts。禁止把 `ranking`、`caseScores`、`dimensionScores` 或完整 Report 发送给 Content Discovery / Community Post。
+
+Evidence authenticity 是硬边界：真实用户 Evidence 才能启用 Experience Post；Research、公开资料、Demo fixture 与模拟素材只能支持 Opinion / Discussion。Content Discovery 必须输出 5–8 个多类型 Community Angles，Community Post 按 short / medium / long 动态校验长度，并经过 score-free、report-language-free、观点密度与第一人称真实性校验。
 
 ## 17. Storage
 
@@ -301,3 +309,17 @@ AI 调用失败不能破坏已有实验记录，也不能 silent fallback 到 Mo
 `Project → Research → Protocol → TestRun/Artifact → Blind/Judge → Review → Analysis → Report → Publish`
 
 某阶段真实化后，真实 Project 不允许 silent fallback 到 Mock。Demo fixture/test fixture 可以保留。
+
+
+### Publish 内容机制调整（2026-09-09）
+
+Publish 内容链改为一次选材判断、一次 Flash 写作、一次现有 Critic；仅语言问题增加一次 Flash 改写和一次复审。legacy packet 字段继续用于历史读取和来源关联，正文只接收 editorialBrief。Router 新增可选 onResponse 观察接口，仅 Publish 使用，记录实际消息与 answer content，不存 provider reasoning；其他任务行为不变。
+
+选材默认聚焦一个已有 Test Case，页面可选择任务；未截断的原始文本另存为 completeAnswer，仅用于 Critic 核对遗漏，不重复塞给正文模型。局部引文不能证明全文缺失。Pro high 选材对照没有显示优势且成本增加，最终恢复 Pro standard，Critic 原配置不变。
+
+
+### Publish review v9（2026-09-10）
+
+既有 Task Service / Router / Provider / append-only attemptAudit 继续使用。community-review.ts 校验五类事实依据与具体问题；communityReviewDecision 由问题类别导出 pass/rewrite/stop，不使用新分数。事实/背景/价值问题停止，语言/重复问题最多一次改写并复核含义。问题引文须属于 draft，避免修改历史任务。旧 review 通过旧字段读取；新 review 的 totalScore 为 null，页面不显示虚构分数。正文输出不含 coreOpinion/contentType，服务从已选选题补回并执行原有验证。无数据库迁移。
+
+2026-09-11 Publish 输入修正：editorialBrief优先taskContext与completeAnswer，answerIsComplete说明是否使用完整存档；没有全文时保留摘录，额外证据仍保留。Critic不再在brief之外重复传同份任务/全文。自定义角度保留rawQuote而不拼入whatHappened；生成所需材料及配置先校验再begin。无数据库迁移。

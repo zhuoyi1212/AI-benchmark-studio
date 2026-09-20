@@ -8,7 +8,7 @@ const [
   researchPage, researchService, testPage, testService, blindService, judgePage, judgeService,
   reviewMigration, reviewService, resultsPage, resultService, resultMigration, reportService,
   testMigration, blindMigration, initialSchema, publishService, publishMigration, textOnlyPublishMigration,
-  e2eRunner, e2eRoute, providerEndpoints, legacyVerifier,
+  e2eRunner, e2eRoute, providerEndpoints, providerMock, legacyVerifier,
 ] = await Promise.all([
   read("app/projects/[projectId]/research/page.tsx"),
   read("lib/services/research.service.ts"),
@@ -32,6 +32,7 @@ const [
   read("scripts/run-self-contained-e2e.mjs"),
   read("app/api/_e2e/full-flow/route.ts"),
   read("lib/ai/providers/endpoints.ts"),
+  read("scripts/e2e-provider-mock.mjs"),
   read("scripts/verify-full-e2e.mjs"),
 ]);
 
@@ -121,4 +122,5 @@ test("full route E2E uses real services and mocks only the local external AI bou
   assert.match(providerEndpoints, /process\.env\.NODE_ENV === "production"/);
   assert.match(providerEndpoints, /apiKey: e2eCredential/);
   assert.match(providerEndpoints, /localhost|127\.0\.0\.1/);
+  assert.match(providerMock, /Search context: \$\{query\}/);
 });

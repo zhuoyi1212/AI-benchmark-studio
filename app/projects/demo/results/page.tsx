@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Award, Bot, Check, Crown, FileText, History, Minus, Sparkles, UserCheck, Users2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WorkflowSteps } from "@/components/workflow-steps";
+import { demoWorkflowState } from "@/lib/mock/workflow.mock";
 import { PageHeader } from "@/components/page-header";
 import { ProductLogo } from "@/components/product-logo";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export default function ResultsPage() {
   const gridTemplate = `160px repeat(${protocol.rubric.length}, minmax(82px, 1fr))`;
 
   return <div className="page-shell">
-    <WorkflowSteps current={4} projectId="demo" />
+    <WorkflowSteps projectId="demo" workflowState={demoWorkflowState} />
     <PageHeader eyebrow={`项目 / ${project.name}`} title="最终结果" description="最终分数来自 Blind AI Judge 与人工证据复核，全部综合分均由 Rubric 维度自动汇总。" action={<Badge variant="success"><Check className="h-3 w-3" />最终评分已锁定</Badge>} />
     {champion && <section className="relative overflow-hidden rounded-xl border border-blue-200 bg-white p-7 shadow-soft"><div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,.1),transparent_65%)]" /><div className="relative flex flex-col justify-between gap-7 sm:flex-row sm:items-end"><div><div className="eyebrow text-blue-600">综合冠军</div><div className="mt-4 flex items-center gap-4"><ProductLogo initials={champion.initials} name={champion.productName} className="h-14 w-14 rounded-xl text-xl" /><div><h2 className="text-3xl font-semibold tracking-[-.04em]">{champion.productName}</h2><p className="mt-1 text-sm text-muted-foreground">{analysis.winner?.reason}</p></div></div></div><div className="flex items-end gap-3"><Crown className="mb-2 h-6 w-6 text-amber-500" /><div className="text-6xl font-semibold tracking-[-.06em] text-blue-700">{champion.finalScore.toFixed(1)}</div><div className="mb-2 text-xs text-muted-foreground">/ 10</div></div></div></section>}
     <section className="mt-4 flex flex-col justify-between gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:items-center"><div className="flex items-center gap-4"><div className="flex -space-x-1"><span className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-slate-100 text-slate-600"><Bot className="h-4 w-4" /></span><span className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-blue-100 text-blue-700"><UserCheck className="h-4 w-4" /></span></div><div><div className="text-xs font-semibold">评分来源 · AI Judge + 人工复核</div><p className="mt-1 text-[11px] text-muted-foreground">{reviewSummary.total} 个评分项中，{reviewSummary.adjusted} 项经过人工调整，{reviewSummary.accepted} 项接受 AI 评分。</p></div></div><Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}><History className="h-3.5 w-3.5" />查看评分调整记录</Button></section>

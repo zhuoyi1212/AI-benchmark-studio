@@ -7,6 +7,7 @@ import {
   testExecutionRepository,
   type RunExecutionMetadata,
 } from "@/lib/repositories/test-execution.repository";
+import { blindReviewRepository } from "@/lib/repositories/blind-review.repository";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
@@ -68,10 +69,8 @@ export async function getTestExecutionWorkspace(projectId: string): Promise<Test
   if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
 
   try {
-    if (["protocol_locked", "testing"].includes(protocolWorkspace.research.project.status)) {
-      await testExecutionRepository.ensureMatrix(projectId, protocol.id);
-    }
     const rows = await testExecutionRepository.listRuns(protocol.id);
+    if (rows.length === 0) return null;
     const artifacts = await testExecutionRepository.listArtifacts(rows.map((row) => row.id));
     const artifactsByRun = Map.groupBy(artifacts, (artifact) => artifact.test_run_id);
     const mappedRuns = await Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? [])));
@@ -149,6 +148,9 @@ export async function finalizeTestExecution(projectId: string, protocolId: strin
 
   try {
     await testExecutionRepository.finalize(projectId, protocolId);
+    // Blind samples are created by this explicit confirmation, not by a GET
+    // of the Review page.
+    await blindReviewRepository.initialize(projectId, protocolId);
   } catch (error) {
     throw new TestExecutionError(toUserFacingError(error));
   }

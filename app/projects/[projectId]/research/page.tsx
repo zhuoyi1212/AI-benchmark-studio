@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
 import { ProductLogo } from "@/components/product-logo";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ResearchAction } from "@/app/projects/[projectId]/research/research-action";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getResearchWorkspace } from "@/lib/services/research.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 import type { ComparabilityResult, ProductResearch, ResearchSource } from "@/lib/types/research";
 
 export const maxDuration = 300;
@@ -34,8 +36,12 @@ const sourceTypeLabels: Record<ResearchSource["sourceType"], string> = {
 export default async function ResearchPage({ params }: ResearchPageProps) {
   await connection();
   const { projectId } = await params;
-  const workspace = await getResearchWorkspace(projectId);
+  const [workspace, workflowState] = await Promise.all([
+    getResearchWorkspace(projectId),
+    getProjectWorkflowState(projectId),
+  ]);
   if (!workspace) notFound();
+  if (!workflowState) notFound();
 
   const { project, latestRun, completedResult, runCount } = workspace;
   const projectMode = getProjectMode(project.products);
@@ -44,6 +50,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
 
   return (
     <div className="page-shell">
+      <WorkflowSteps projectId={projectId} workflowState={workflowState} />
       <Link href="/projects" className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回我的测评</Link>
       <PageHeader
         eyebrow={`项目 / ${project.name}`}
@@ -71,7 +78,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
           </section>
           <div className="sticky bottom-5 z-20 mt-8 flex items-center justify-between rounded-lg border bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="text-xs text-muted-foreground">调研完成于 {formatDateTime(completedResult.generatedAt)}</div>
-            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry />{projectMode === "comparison" && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成{projectMode === "single" ? "体验" : "测评"}方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
+            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry preserveHistory={workflowState.stages.protocol.completed} />{projectMode === "comparison" && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成{projectMode === "single" ? "体验" : "测评"}方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
           </div>
         </>
       ) : !running ? (

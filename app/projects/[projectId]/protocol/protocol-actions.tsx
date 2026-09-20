@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { LoaderCircle, LockKeyhole, RefreshCw, Sparkles } from "lucide-react";
+import { LoaderCircle, LockKeyhole, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,13 +14,66 @@ import {
 import {
   generateProtocolAction,
   lockProtocolAction,
+  removeDraftTestCaseAction,
   type ProtocolActionState,
 } from "@/app/projects/[projectId]/protocol/actions";
 
 const initialState: ProtocolActionState = { message: null };
 
-export function GenerateProtocolAction({ projectId, regenerate = false, experienceMode = false }: { projectId: string; regenerate?: boolean; experienceMode?: boolean }) {
+export function RemoveTestCaseAction({ projectId, protocolId, testCaseId, title, disabled = false }: {
+  projectId: string;
+  protocolId: string;
+  testCaseId: string;
+  title: string;
+  disabled?: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(removeDraftTestCaseAction, initialState);
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button type="button" size="sm" variant="ghost" className="text-slate-500 hover:bg-red-50 hover:text-red-700" disabled={disabled || pending} aria-label={`删除任务：${title}`}>
+            <Trash2 className="h-4 w-4" />删除
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogTitle>删除“{title}”？</DialogTitle>
+          <DialogDescription>删除后，这个任务不会进入测试。剩余任务会保留，至少需要留下 1 个任务。</DialogDescription>
+          <form action={formAction} className="mt-6 flex justify-end gap-2">
+            <input type="hidden" name="projectId" value={projectId} />
+            <input type="hidden" name="protocolId" value={protocolId} />
+            <input type="hidden" name="testCaseId" value={testCaseId} />
+            <DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose>
+            <Button type="submit" variant="destructive" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在删除...</> : "删除任务"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {!pending && state.message && <p role="alert" className="max-w-48 text-right text-[11px] leading-4 text-red-600">{state.message}</p>}
+    </div>
+  );
+}
+
+export function GenerateProtocolAction({ projectId, regenerate = false, experienceMode = false, preserveHistory = false }: { projectId: string; regenerate?: boolean; experienceMode?: boolean; preserveHistory?: boolean }) {
   const [state, formAction, pending] = useActionState(generateProtocolAction, initialState);
+  if (regenerate && preserveHistory) {
+    return (
+      <div className="flex flex-col items-end gap-2">
+        <Dialog>
+          <DialogTrigger asChild><Button type="button" variant="outline" className="border-slate-300 bg-white text-slate-950 hover:bg-slate-100 hover:text-slate-950"><RefreshCw className="h-4 w-4" />重新生成新版本</Button></DialogTrigger>
+          <DialogContent>
+            <DialogTitle>生成新的 Protocol 版本？</DialogTitle>
+            <DialogDescription>生成新的 Protocol 后，现有测试、评分、报告和发布包仍将保留为历史版本；若要使用新 Protocol，需要重新锁定并执行后续流程。</DialogDescription>
+            <form action={formAction} className="mt-6 flex justify-end gap-2">
+              <input type="hidden" name="projectId" value={projectId} />
+              <DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose>
+              <Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在生成...</> : "确认生成新版本"}</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {!pending && state.message && <p role="alert" className="max-w-sm text-right text-xs leading-5 text-red-300">{state.message}</p>}
+      </div>
+    );
+  }
   return (
     <form action={formAction} className="flex flex-col items-end gap-2" aria-busy={pending}>
       <input type="hidden" name="projectId" value={projectId} />

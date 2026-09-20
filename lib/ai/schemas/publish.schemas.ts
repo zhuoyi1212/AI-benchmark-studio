@@ -90,3 +90,9 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
   }
 });
 export type CommunityPostOutput = z.infer<typeof communityPostOutputSchema>;
+
+// Apply completeness to new generations only; historical posts stay readable.
+export const communityPostGenerationSchema = communityPostOutputSchema.refine(
+  (post) => post.body.trim().length >= 200 && post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length >= 4,
+  { path: ["body"], message: "Return the complete article in body, not just an opening: at least 200 characters and 4 paragraphs separated by blank lines. Include the tested task, concrete output, evidence-backed findings, and scope limitations without repeating the same conclusion." },
+);

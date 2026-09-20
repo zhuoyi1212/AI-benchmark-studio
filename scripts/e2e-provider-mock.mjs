@@ -75,7 +75,7 @@ function createSearchResponse(body) {
     search_result: [{
       title: "Official E2E product documentation",
       link: `https://${domain}/docs/${suffix}`,
-      content: "Official product positioning, core capability, pricing and usage documentation for the isolated E2E run.",
+      content: `Official product positioning, core capability, pricing and usage documentation for the isolated E2E run. Search context: ${query}.`,
       media: domain,
       publish_date: "2026-08-20",
     }],
@@ -215,40 +215,110 @@ function buildStructuredOutput(schemaName, messages) {
       finalRecommendation: single ? "建议先用自己的真实任务验证工作流匹配度，再决定是否长期使用。" : "建议结合具体场景和维度表现选择产品。",
     };
   }
-  if (schemaName === "ContentIdeas") {
-    const input = findJsonMessage(messages, (value) => value.imageArtifacts && value.protocol);
+  if (schemaName === "MicroFindingDiscovery") {
+    const input = findJsonMessage(messages, (value) => value.productContext && value.products);
+    const cases = input.products.flatMap((product) => product.cases);
+    const microFindings = Array.from({ length: 10 }, (_, index) => {
+      const item = cases[index % cases.length];
+      const number = index + 1;
+      const whatHappened = `工具收到第${number}个具体要求后，先把任务里需要确认的部分找出来，再交付一个可以直接核对的结果。`;
+      return {
+        id: `finding-${number}`,
+        observation: `它没有只给一句建议，而是完成了第${number}个可以核对的动作。`,
+        rawEvidence: item.artifact.concreteEvidence ?? item.artifact.observableOutput ?? item.artifact.rawExcerpt ?? item.artifact.notes ?? `第${number}条原始任务记录。`,
+        sourceContext: `${item.title}中的第${number}个可观察细节。`,
+        whyInteresting: "这个小动作能区分只会回答和真的把任务往前推进。",
+        possibleInterpretation: "判断 AI 工具时，可以先看它有没有减少用户补充步骤。",
+        tension: "当前材料只覆盖这个任务，不能外推到所有场景。",
+        confidence: 0.88,
+        sourceTestCaseId: item.testCaseId,
+        sourceArtifactIds: [item.artifact.artifactId],
+        sourceKinds: ["raw_artifact", "task_result"],
+        humanReadableMoment: {
+          whatHappened,
+          whyItMatters: "普通用户不必先学会告诉工具每一步怎么做，也能看懂它有没有把事情办明白。",
+          technicalTruth: `The tool completed observable task step ${number} and returned a verifiable result.`,
+          analogy: null,
+        },
+      };
+    });
+    const ranking = (offset) => ({ discussionValue: 0.91 - offset, novelty: 0.86 - offset, evidenceStrength: 0.94 - offset, specificity: 0.93 - offset, accessibility: 0.96 - offset, tension: 0.88 - offset });
+    const angle = (id, title, contentType, coreOpinion, anchor, support, offset) => ({
+      id, title, hook: title, coreOpinion, anchorFindingId: anchor, supportingFindingIds: [support],
+      whyThisMatters: "它把一个抽象的产品判断落到了普通人能复述的小事上。",
+      tensionOrCounterPoint: "但这个判断只适用于当前任务，更多场景仍需继续验证。",
+      audience: "关心 AI 工具能否真正减少操作负担的普通用户",
+      contentType, ranking: ranking(offset),
+    });
     return {
-      ideas: [{
-        id: "experience-evidence",
-        title: input.projectMode === "single" ? "真实体验后，我更关注它能否进入长期工作流" : "综合得分之外，工作流差异更值得讨论",
-        type: "真实体验",
-        angle: "从一次生成质量与长期使用价值的差别切入。",
-        insight: "看起来完成任务只是第一步，能否稳定进入日常工作流更重要。",
-        whyInteresting: "这个判断同时有原始测试结果和评分证据支持，也给真实用户留下讨论空间。",
-        supportingEvidence: ["统一任务下的原始证据完整保留了实际输出"],
-        relatedTestCaseIds: [input.protocol.testCases[0].id],
-        relatedArtifactIds: input.imageArtifacts[0] ? [input.imageArtifacts[0].artifactId] : [],
-        informationValue: 0.9,
-        discussionPotential: 0.86,
-        confidence: 0.92,
-        recommended: true,
-      }],
+      microFindings,
+      ideas: [
+        angle("less-instruction", "AI好不好用先看你少说多少", "contrarian_take", "AI 工具真正省事的地方，可能不是回答更快，而是用户可以少交代几步。", "finding-1", "finding-2", 0),
+        angle("show-process", "AI做事要不要把过程全摊开", "debate", "直接交付和过程可见之间，没有一个适合所有人的答案。", "finding-3", "finding-4", 0.01),
+        angle("verify-result", "AI交付以后人为什么更忙了", "observation", "工具做得更多以后，人的工作可能从操作变成核对。", "finding-5", "finding-6", 0.02),
+        angle("new-user", "第一次用AI先看它会不会找事", "recommendation", "普通用户挑 AI 工具时，可以先看它能否自己补齐必要步骤。", "finding-7", "finding-8", 0.03),
+        angle("small-action", "一个小动作比功能清单更说明问题", "opinion", "产品值不值得继续用，常常藏在一个不起眼的任务动作里。", "finding-9", "finding-10", 0.04),
+      ],
     };
   }
   if (schemaName === "CommunityPost") {
-    const input = findJsonMessage(messages, (value) => value.selectedIdea && value.imageArtifacts);
+    const input = findJsonMessage(messages, (value) => value.writingPacket);
+    const packet = input.writingPacket;
+    const rewritten = Boolean(input.critic && input.draft);
+    const opening = rewritten
+      ? `我现在判断 ${packet.product.name}，会先看一个很小的动作。`
+      : `最近我在想，判断 ${packet.product.name} 时，可能不用先看完整功能。`;
+    const body = `${opening}\n\n${packet.anchorMoment.whatHappened}\n\n这个细节不大，却把区别说得很清楚：${packet.anchorMoment.whyItMatters} 说白了，我更在意的不是它能说多少，而是用户少交代几步以后，它还能不能把事情办明白。\n\n但问题也出在这里。工具自己往前走得越多，人就越需要知道最后该怎么核对。省掉操作，不代表省掉判断；直接给结果和展示过程之间，本来就有取舍。\n\n${packet.limitation} 所以我的结论只放在这个小切口上：${packet.angle.coreOpinion}\n\n如果让你选，你更愿意少说几步直接拿结果，还是多看一点过程再放心接手？`;
     return {
-      title: input.projectMode === "single" ? "我真实体验了这款 AI 产品之后，更在意它能否进入长期工作流" : "测完两款 AI 产品，我更在意综合分之外的工作流差异",
-      body: "我用统一任务真实体验了这款 AI 产品，并保留了未经编辑的原始证据。真正想确认的不是功能列表有多长，而是它在现实任务里能不能稳定交付。\n\n测试时，我先锁定任务和评分标准，再按默认工作流执行两个核心场景。每个结果都保留原始文件，后续评分只依据这些证据，没有拿产品宣传补齐未观察到的表现。\n\n最重要的发现是：它可以完成核心任务，但首次生成质量和长期工作流效率并不是同一个概念。具体证据能看到结果结构完整，评分理由也支持这个判断；与此同时，当前测试只覆盖一次默认生成，不能代表所有复杂场景。\n\n它更适合愿意先用真实任务验证工作流的人，不适合只根据功能列表直接做长期采购决定。暴露出来的问题同样重要：当前样本还不足以证明复杂任务下的稳定性。\n\n我的判断是，选择工具之前最好先用自己的真实任务验证，而不是只看官方介绍。你实际使用 AI 产品时，更看重第一次生成质量，还是长期编辑效率？",
-      tags: ["AI产品体验", "真实测试", "工作流"],
-      interactionQuestion: "你实际使用 AI 产品时，更看重第一次生成质量，还是长期编辑效率？",
-      screenshotRecommendations: input.imageArtifacts[0] ? [{
-        artifactId: input.imageArtifacts[0].artifactId,
-        reason: "支持正文中关于核心任务完成度与视觉结构的判断。",
-        supportsClaim: "首次生成质量和长期工作流价值需要分开判断。",
-        supportsParagraph: 2,
-        order: 1,
-      }] : [],
+      title: packet.angle.hook,
+      coreOpinion: packet.angle.coreOpinion,
+      contentType: packet.angle.contentType,
+      body,
+      tags: ["AI产品", "产品观察", "工作流"],
+      interactionQuestion: "你更愿意少说几步直接拿结果，还是多看一点过程再放心接手？",
+      screenshotRecommendations: [],
+    };
+  }
+  if (schemaName === "SafeCommunityRewrite") {
+    const input = findJsonMessage(messages, (value) => value.original && value.writingPacket);
+    return {
+      title: input.original.title,
+      body: input.original.body.replace("最近我在想，判断", "判断"),
+      interactionQuestion: input.original.interactionQuestion,
+    };
+  }
+  if (schemaName === "CommunityStyleCritic") {
+    const input = findJsonMessage(messages, (value) => value.draft && value.writingPacket);
+    const rewritten = Boolean(input.original);
+    return rewritten ? {
+      meaningPreservation: { numbersPreserved: true, experiencePreserved: true, productBehaviorPreserved: true, conclusionScopePreserved: true, opinionPreserved: true, evidencePreserved: true, violations: [] },
+      verdict: "通过",
+      totalScore: 90,
+      scores: { specificity: 22, opinionAndTradeoff: 23, evidenceAndBoundaries: 18, communityVoice: 13, discussionSpace: 9, titleAndRhythm: 5 },
+      coreOpinion: input.draft.coreOpinion,
+      communityStrengths: ["开头直接给出判断", "具体素材与边界清楚", "结尾问题有明确分歧"],
+      styleRisks: [],
+      factRisks: [],
+      evidenceCritic: { pass: true, concreteEvidencePresent: true, evidenceSpecificity: 5, opinionEvidenceBinding: 5, unsupportedClaims: [] },
+      jargonCritic: { pass: true, generalAudienceUnderstands: true, grandmotherTest: true, storySurvivesWithoutJargon: true, unnecessaryTerms: [] },
+      styleAndVaguenessCritic: { pass: true, communityFeel: 5, liveliness: 4, antiVagueness: 5, opinionDensity: 4, reportTone: 0, vaguePhrases: [] },
+      requiredChanges: [],
+      recommendedStructure: "保留当前观点型结构。",
+      rewriteSample: { title: input.draft.title, opening: input.draft.body.split("\n\n").slice(0, 2).join("\n\n"), ending: input.draft.interactionQuestion },
+    } : {
+      verdict: "小修",
+      totalScore: 80,
+      scores: { specificity: 18, opinionAndTradeoff: 21, evidenceAndBoundaries: 17, communityVoice: 11, discussionSpace: 9, titleAndRhythm: 4 },
+      coreOpinion: input.draft.coreOpinion,
+      communityStrengths: ["主观点可以提炼", "讨论问题具体"],
+      styleRisks: [{ excerpt: "最近我越来越觉得", pattern: "开头偏通用", impact: "第一屏没有立刻进入具体判断" }],
+      factRisks: [],
+      evidenceCritic: { pass: true, concreteEvidencePresent: true, evidenceSpecificity: 4, opinionEvidenceBinding: 4, unsupportedClaims: [] },
+      jargonCritic: { pass: true, generalAudienceUnderstands: true, grandmotherTest: true, storySurvivesWithoutJargon: true, unnecessaryTerms: [] },
+      styleAndVaguenessCritic: { pass: false, communityFeel: 3, liveliness: 3, antiVagueness: 4, opinionDensity: 4, reportTone: 1, vaguePhrases: [] },
+      requiredChanges: ["开头直接给出唯一判断", "把具体材料提前", "缩短解释性长句"],
+      recommendedStructure: "观点型：判断 → 具体材料 → 取舍 → 分歧。",
+      rewriteSample: { title: input.draft.title, opening: "我只先看一件事：结果能不能快速验收。", ending: input.draft.interactionQuestion },
     };
   }
   throw new Error(`Unsupported structured schema: ${schemaName}`);

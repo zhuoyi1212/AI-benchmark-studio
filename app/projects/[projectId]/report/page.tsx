@@ -4,10 +4,13 @@ import { connection } from "next/server";
 import { ArrowLeft, ArrowUpRight, Check, Clock3, Database, FileText, FlaskConical, Quote, Send, Sparkles, Trophy } from "lucide-react";
 import { ReportGenerationAction } from "@/app/projects/[projectId]/report/report-generation-action";
 import { ProductLogo } from "@/components/product-logo";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getReportWorkspace, type ReportEvidence, type ReportWorkspace } from "@/lib/services/report.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
+import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 
 export const maxDuration = 300;
 const comparisonToc = ["TL;DR", "最终排名", "为什么测试", "我们怎么测试", "Case 复盘", "产品优缺点", "最终推荐", "测试限制"];
@@ -16,10 +19,14 @@ const singleToc = ["TL;DR", "体验得分", "为什么体验", "我们怎么体�
 export default async function ReportPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
-  const workspace = await getReportWorkspace(projectId);
+  const [workspace, workflowState] = await Promise.all([
+    getReportWorkspace(projectId),
+    getProjectWorkflowState(projectId),
+  ]);
   if (!workspace) redirect(`/projects/${projectId}/results`);
+  if (!workflowState) redirect("/projects");
   if (!workspace.report || workspace.report.status !== "completed" || !workspace.report.content) {
-    return <ReportState workspace={workspace} />;
+    return <ReportState workspace={workspace} workflowState={workflowState} />;
   }
   const report = workspace.report.content;
   const singleProduct = workspace.projectMode === "single";
@@ -29,6 +36,7 @@ export default async function ReportPage({ params }: { params: Promise<{ project
   const evidenceByCase = Map.groupBy(workspace.evidence, (item) => item.testCaseId);
   return <div className="min-h-screen bg-white">
     <div className="border-b bg-[#fafafa]"><div className="mx-auto flex max-w-[1180px] items-center justify-between px-6 py-3 lg:px-10"><Link href={`/projects/${projectId}/results`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回结果</Link><div className="flex items-center gap-2"><Badge variant="success"><Check className="h-3 w-3" />{singleProduct ? "体验报告已生成" : "报告已生成"}</Badge><Button size="sm" asChild><Link href={`/projects/${projectId}/publish`}><Send className="h-3.5 w-3.5" />生成社区内容</Link></Button></div></div></div>
+    <div className="mx-auto max-w-[1180px] px-6 pt-8 lg:px-10"><WorkflowSteps projectId={projectId} workflowState={workflowState} /></div>
     <article className="mx-auto max-w-[1180px] px-6 pb-24 pt-12 lg:px-10">
       <header className="max-w-4xl"><div className="eyebrow text-blue-600">{report.eyebrow}</div><h1 className="mt-4 text-4xl font-semibold leading-[1.15] tracking-[-.045em] text-slate-950 sm:text-5xl">{report.title}</h1><p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">{report.subtitle}</p><div className="mt-7 flex flex-wrap items-center gap-5 border-t pt-5 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />AI Benchmark Studio</span><span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{report.readingTimeMinutes} 分钟阅读</span><span>Report v{workspace.report.version}</span><span>更新于 {formatDate(workspace.report.completedAt)}</span></div></header>
       <div className="mt-12 grid gap-12 lg:grid-cols-[180px_minmax(0,760px)] xl:grid-cols-[180px_minmax(0,760px)_1fr]">
@@ -49,11 +57,11 @@ export default async function ReportPage({ params }: { params: Promise<{ project
   </div>;
 }
 
-function ReportState({ workspace }: { workspace: ReportWorkspace }) {
+function ReportState({ workspace, workflowState }: { workspace: ReportWorkspace; workflowState: ProjectWorkflowState }) {
   const failed = workspace.report?.status === "failed";
   const running = workspace.report?.status === "pending" || workspace.report?.status === "running";
   const singleMode = workspace.projectMode === "single";
-  return <div className="page-shell"><Link href={`/projects/${workspace.projectId}/results`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回最终结果</Link><div className="mx-auto max-w-2xl pt-12 text-center"><Badge variant="neutral"><FileText className="h-3 w-3" />{singleMode ? "Experience Report" : "Deep Report"}</Badge><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em]">{failed ? "上次报告未完成" : running ? "深度报告生成中" : singleMode ? "生成可追溯的深度体验报告" : "生成可追溯的深度报告"}</h1><p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">{singleMode ? `报告将把 Research、体验方案、Final Score、Judge Evidence、人工复核和 ${workspace.protocol.testCases.length} 个真实体验场景组织成完整心得。` : `报告将绑定当前 Final Result Analysis，并组织 Protocol、Research、Final Score、Judge Evidence、人工复核和 ${workspace.protocol.testCases.length} 个 Case 的真实 Artifact。`}</p><Card className="mt-8 p-8 shadow-none">{running ? <div className="text-sm text-blue-700">正在组织报告，请稍后刷新页面…</div> : <ReportGenerationAction projectId={workspace.projectId} retry={failed} />}{failed && workspace.report?.errorMessage && <p className="mt-3 text-xs text-amber-700">{workspace.report.errorMessage}</p>}</Card></div></div>;
+  return <div className="page-shell"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /><Link href={`/projects/${workspace.projectId}/results`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回最终结果</Link><div className="mx-auto max-w-2xl pt-12 text-center"><Badge variant="neutral"><FileText className="h-3 w-3" />{singleMode ? "Experience Report" : "Deep Report"}</Badge><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em]">{failed ? "上次报告未完成" : running ? "深度报告生成中" : singleMode ? "生成可追溯的深度体验报告" : "生成可追溯的深度报告"}</h1><p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">{singleMode ? `报告将把 Research、体验方案、Final Score、Judge Evidence、人工复核和 ${workspace.protocol.testCases.length} 个真实体验场景组织成完整心得。` : `报告将绑定当前 Final Result Analysis，并组织 Protocol、Research、Final Score、Judge Evidence、人工复核和 ${workspace.protocol.testCases.length} 个 Case 的真实 Artifact。`}</p><Card className="mt-8 p-8 shadow-none">{running ? <div className="text-sm text-blue-700">正在组织报告，请稍后刷新页面…</div> : <ReportGenerationAction projectId={workspace.projectId} retry={failed} />}{failed && workspace.report?.errorMessage && <p className="mt-3 text-xs text-amber-700">{workspace.report.errorMessage}</p>}</Card></div></div>;
 }
 
 function EvidenceLinks({ items }: { items: ReportEvidence[] }) {

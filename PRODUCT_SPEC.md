@@ -2,13 +2,13 @@
 
 ## 1. 产品定位
 
-AI Benchmark Studio 是用于设计、执行、审查和沉淀 AI 产品横向测评实验的工作台。
+AI Benchmark Studio 的最终目的，是持续生产适合 AI 讨论社区、X、小红书等平台发布的 AI 内容。
 
-它不是 AI 写测评文章工具、单纯排行榜、AI 产品目录、第三方网站自动操作 Agent 或社区内容生成器。
+Single Product Mode 不以“完整 Benchmark Report”为 North Star，而以“发现值得讨论的问题并形成有素材支撑的观点”为 North Star。结构化 Research、体验素材与内部分析是内容可信度基础，不是最终内容形态。
 
 核心价值：
 
-> 建立可复现、可审计、可追溯的 AI 产品实验流程，并沉淀结构化实验数据与原始证据。
+> Research / Experience → 找到值得讨论的东西 → 形成观点 → 用可信素材支撑 → 生成社区帖子。
 
 核心资产：
 
@@ -23,11 +23,13 @@ AI Benchmark Studio 是用于设计、执行、审查和沉淀 AI 产品横向�
 
 ## 3. 完整工作流
 
-`Create Project → Product Research → Comparability Check → Generate Protocol → Review Protocol → Lock Protocol → Execute Tests → Upload Raw Artifacts → Create Blind Samples → AI Blind Judge → Human Review → Lock Final Scores → Reveal → Final Result Analysis → Deep Report → Content Discovery → Community Post`
+`Create Project → Product Research → Experience / Evidence → Internal Analysis → Community Angle Discovery → Select Opinion → Community Post`
+
+Benchmark、Blind、Judge、Human Review 与 Report 可以继续作为内部可信度和素材生产链，但不得决定社区帖的叙事结构，也不得以内部术语进入最终内容。
 
 ### AI Provider 原则
 
-业务工作流只依赖 AI Task Service，不依赖供应商或具体模型。第一版由集中 Router 在智谱与 DeepSeek 之间按任务分工：智谱负责 Web Search、Research Synthesis、多模态理解、Report 与 Community Post；DeepSeek 负责 Comparability、Protocol、纯文本 Judge、Final Result Analysis 与 Content Discovery。供应商失败不得静默跨厂商 fallback 或回退 Mock。
+业务工作流只依赖 AI Task Service，不依赖供应商或具体模型。第一版由集中 Router 在智谱与 DeepSeek 之间按任务分工：智谱负责 Web Search、Research Synthesis、多模态理解与 Report；DeepSeek 负责 Comparability、Protocol、纯文本 Judge、Final Result Analysis、Micro Finding / Community Angle Discovery、Community Post 与单次 Rewrite。供应商失败只允许同 Provider 重试，不得静默跨厂商 fallback 或回退 Mock。
 
 ## 4. Create Project
 
@@ -92,6 +94,8 @@ TestCase：
 - inputArtifacts
 - observationFocus
 - executionRules
+
+Protocol 草稿生成后，用户可以删除不合适的 TestCase，并按剩余任务继续测评。系统至少保留 1 个 TestCase，不要求用户必须执行 3 个任务；锁定后仍保持不可修改。
 
 Rubric：
 
@@ -260,15 +264,25 @@ Report Generation 默认由 GLM 文本模型负责组织已确定的分析与证
 
 ## 17. Community Publish Pack
 
-不是 Report 缩写。
+Publish 不是 Report 缩写，Report 也不是文章母稿。
 
-正确流程：
+当前流程（2026-09-09，用户授权的内容机制调整）：
 
-`完整实验数据 → AI 发现值得讨论的观点 → ContentIdeas[] → 用户选/自定义角度 → 配置 → AI Community Post → 关联真实截图证据`
+`原始任务与回答 → 选材判断 → 精简写作材料 → Flash 初稿 → 事实与可读性审查 → 仅需语言修正时改写一次并复审`
 
-ContentIdea 的数量、title、type、angle 都必须动态。
+一次围绕用户选择的一个真实任务选材，避免不同任务的数字和背景混用。先判断素材适合成帖、短观察、需要补充上下文，还是不建议发布。返回 0–8 个候选，不凑数量、不强求类型多样。每个候选保留任务背景、产品实际回答、逐字证据、一个有限判断和必要边界。原任务本来要求的普通动作不能拔高成产品特色。
 
-Content Discovery 默认由 DeepSeek 从完整实验数据发现观点；用户选定角度后，Community Post 默认由 GLM 文本模型负责中文表达。两者都只能使用已存在的实验事实与证据。
+Micro Finding / Human-readable Moment / CommunityWritingPacket 的历史字段继续可读，只作兼容与来源追踪；不再分配额外生成步骤，也不把同一判断重复投给正文模型。禁止把完整 Report、Results、排名或评分发给正文模型。
+
+正文模型只接收选定产品、第三人称任务背景、观察、一次核心判断、最多三段原文与必要边界。最终正文及针对性改写继续使用 `deepseek-v4-flash` non-thinking；发现与 Critic 保留现有集中模型配置，不默认升级写作模型。
+
+用简单话讲清一件具体的事。读者应知道任务是什么、AI 写了什么、细节为什么支持判断。每段增加内容；一句能说清就不扩成三段。不强制反差、三个理由、反例、第一人称观点、互动问题或免责声明。默认约 250–500 字，允许更短；short 最多 300 字，medium 最多 500 字，long 最多 900 字，均不设凑字数下限。标题最多 28 字、标签 1–3 个，互动问题可为空。
+
+产品声称不等于已经核验，任务里的“我”不代表作者经历。无作者亲历证据不能新增使用时长、购买、养宠物、打电话、到店等经历；可以表达“我更在意这句提醒”等判断。数字、单位、原始结果、产品行为和来源不可改写失真。
+
+事实安全和文章质量分别审查。遗漏判断仅在有完整记录时交给语义审稿，并把全文送给 Critic；只有节选时仍拦截无依据的遗漏判断。无可执行修改意见时停止，不盲目改写。沿用 Evidence / Jargon / Style 的事实门槛与模型配置，增加逐段新信息、重复结论、逻辑跳跃与篇幅是否匹配素材的语义判断。初稿通过直接完成；事实有问题停止，不拿错误初稿继续润色；仅语言问题允许一次修正。失败明确保存，不能把未通过文章存为 ready。不运行第三方 Skill 或默认脚本。
+
+每次调用保存实际输入、模型返回（不含思维链）、route、usage、校验结果。失败稿也保留在当前 PublishPack 的 attemptAudit 中。原有文章保持不变，新生成使用新版本。旧选题可查看；再次生成须按新规范发现选题。原始 Evidence 与上游实验不重跑、不覆盖。
 
 ## 18. Screenshot
 
@@ -313,3 +327,8 @@ MVP 只提供：
 - LangChain / LangGraph
 - 自动社媒发布
 - AI 生图作为实验依据
+
+
+### Publish 新审稿规则（2026-09-10）
+
+新生成不再以主观总分和多个风格分数决定通过。核对来源、数字、产品行为、作者经历和推断依据；具体事实、背景或选材问题停止，具体语言或重复问题最多改写一次并复核，无问题即可结束。此规则替代前文 Publish 中的旧审稿分数阈值，事实约束不变；旧分数仅作为历史记录显示。审稿意见必须指向当前文章，不能要求修改原始测试回答。选题元数据由程序保存，正文模型不再复写。模型自审通过不等于人工内容验收通过。

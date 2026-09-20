@@ -24,6 +24,8 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /judge_multimodal:[\s\S]*reasoning: "standard"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
+  assert.match(config, /community_post:[\s\S]*provider: "zhipu"[\s\S]*promptVersion: "community-post\.v2-complete\.3"/);
+  assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
   assert.doesNotMatch(taskService, /glm-|deepseek-v/);
@@ -53,6 +55,8 @@ test("normalizes and validates structured output without cross-provider fallback
 
 test("uses current default models and rejects retired DeepSeek aliases", () => {
   assert.match(serverEnv, /"deepseek-v4-pro"/);
+  assert.match(serverEnv, /"deepseek-v4-flash"/);
+  assert.match(serverEnv, /DEEPSEEK_WRITING_MODEL/);
   assert.match(serverEnv, /"glm-5\.2"/);
   assert.match(serverEnv, /"glm-4\.6v"/);
   assert.match(serverEnv, /"glm-ocr"/);

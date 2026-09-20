@@ -30,6 +30,7 @@ test("uploads only validated raw multimodal evidence to private Storage", () => 
   assert.match(schema, /'benchmark-artifacts'[\s\S]*false,[\s\S]*52428800/);
   assert.match(repository, /\.storage[\s\S]*\.upload\(/);
   assert.match(repository, /createSignedUrl\(path, 3600\)/);
+  assert.match(repository, /attempt <= 3[\s\S]*attempt \* 250/);
   assert.match(service, /validateFileSignature/);
   assert.match(service, /maxTextArtifactBytes = 500_000/);
   assert.match(service, /mimeTypeByExtension/);

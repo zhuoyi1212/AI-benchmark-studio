@@ -83,7 +83,8 @@ test("records failed runs and never falls back to Mock or another provider", () 
 
 test("runs Judge Cases sequentially to avoid provider quota spikes", () => {
   assert.match(service, /for \(const testCase of context\.testCases\)/);
-  assert.match(service, /maxTokens: 6_000/);
+  assert.match(service, /maxTokens: 9_000/);
+  assert.match(service, /maxAttempts: 3/);
   assert.doesNotMatch(service, /Promise\.allSettled\([\s\S]*executeJudgeCase/);
 });
 

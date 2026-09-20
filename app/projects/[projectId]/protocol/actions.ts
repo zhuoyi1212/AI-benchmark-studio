@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   generateProtocol,
   lockProtocol,
+  removeDraftTestCase,
   ProtocolExecutionError,
 } from "@/lib/services/protocols.service";
 
@@ -59,4 +60,31 @@ export async function lockProtocolAction(
   revalidatePath(path);
   revalidatePath("/projects");
   redirect(path);
+}
+
+export async function removeDraftTestCaseAction(
+  _previousState: ProtocolActionState,
+  formData: FormData,
+): Promise<ProtocolActionState> {
+  const projectId = projectIdSchema.safeParse(formData.get("projectId"));
+  const protocolId = protocolIdSchema.safeParse(formData.get("protocolId"));
+  const testCaseId = protocolIdSchema.safeParse(formData.get("testCaseId"));
+  if (!projectId.success || !protocolId.success || !testCaseId.success) {
+    return { message: "测试任务标识无效。" };
+  }
+  const path = `/projects/${projectId.data}/protocol`;
+
+  try {
+    await removeDraftTestCase(projectId.data, protocolId.data, testCaseId.data);
+  } catch (error) {
+    if (error instanceof ProtocolExecutionError) {
+      revalidatePath(path);
+      return { message: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath(path);
+  revalidatePath("/projects");
+  return { message: null };
 }

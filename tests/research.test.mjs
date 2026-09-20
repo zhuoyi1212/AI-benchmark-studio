@@ -49,8 +49,24 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(schema, /Positioning must contain traceable product facts/);
   assert.match(service, /价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写/);
   assert.match(service, /二手来源只能补充官方资料未覆盖的体验或背景/);
+  assert.match(service, /Single-product research must list at least one testable core capability/);
+  assert.match(service, /schema: validatedComparabilitySchema/);
   assert.match(config, /research-search\.v3/);
-  assert.match(config, /research-synthesis\.v3/);
+  assert.match(config, /research-synthesis\.v6/);
+  assert.match(config, /comparability\.v2/);
+  assert.match(taskService, /verifiedResearchSchema/);
+  assert.match(taskService, /Source URL must exactly reference one of the retrieved sources/);
+  assert.match(service, /allowedSourceUrls: product\.officialUrl/);
+  assert.match(taskService, /officialSources\.length >= 3 \? officialSources : relevantSources/);
+});
+
+test("research placeholder guard does not reject normal product descriptions containing uncertainty words", async () => {
+  const { isUnresolvedResearchPlaceholder } = await import("../lib/ai/schemas/research.schemas.ts");
+
+  assert.equal(isUnresolvedResearchPlaceholder("秘塔AI搜索是一款面向普通用户的搜索工具，回答中没有广告信息。"), false);
+  assert.equal(isUnresolvedResearchPlaceholder("该产品提供搜索与信息整理能力，但官网没有提供明确的套餐价格。"), false);
+  assert.equal(isUnresolvedResearchPlaceholder("无法从现有来源确认产品定位。"), true);
+  assert.equal(isUnresolvedResearchPlaceholder("未找到相关信息。"), true);
 });
 
 test("records all routed task metadata and completes only a full run", () => {

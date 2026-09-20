@@ -15,6 +15,7 @@ export type AIModelEnvironment = {
   zhipuVisionModel: string;
   zhipuOcrModel: string;
   deepSeekReasoningModel: string;
+  deepSeekWritingModel: string;
 };
 
 let cachedAIModels: AIModelEnvironment | undefined;
@@ -50,8 +51,9 @@ export function getServerEnvironment(): ServerEnvironment {
 export function getAIModelEnvironment(): AIModelEnvironment {
   if (cachedAIModels) return cachedAIModels;
   const deepSeekReasoningModel = process.env.DEEPSEEK_REASONING_MODEL?.trim() || "deepseek-v4-pro";
-  if (["deepseek-chat", "deepseek-reasoner"].includes(deepSeekReasoningModel)) {
-    throw new AIConfigurationError("DEEPSEEK_REASONING_MODEL uses a retired model alias");
+  const deepSeekWritingModel = process.env.DEEPSEEK_WRITING_MODEL?.trim() || "deepseek-v4-flash";
+  if ([deepSeekReasoningModel, deepSeekWritingModel].some((model) => ["deepseek-chat", "deepseek-reasoner"].includes(model))) {
+    throw new AIConfigurationError("DeepSeek model configuration uses a retired model alias");
   }
 
   cachedAIModels = {
@@ -59,6 +61,7 @@ export function getAIModelEnvironment(): AIModelEnvironment {
     zhipuVisionModel: process.env.ZAI_VISION_MODEL?.trim() || "glm-4.6v",
     zhipuOcrModel: process.env.ZAI_OCR_MODEL?.trim() || "glm-ocr",
     deepSeekReasoningModel,
+    deepSeekWritingModel,
   };
   return cachedAIModels;
 }

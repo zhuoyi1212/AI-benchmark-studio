@@ -25,6 +25,7 @@ test("classifies provider failures without exposing request secrets", () => {
   assert.match(errors, /status === 429[\s\S]*"rate_limit"/);
   assert.match(errors, /status >= 500[\s\S]*"provider_5xx"/);
   assert.match(errors, /status === 401 \|\| status === 403[\s\S]*"authentication"/);
+  assert.match(errors, /status === 402[\s\S]*"payment_required"/);
   assert.match(errors, /return "bad_request"/);
   assert.match(http, /error\.name === "TimeoutError" \|\| error\.name === "AbortError"/);
   assert.match(http, /response body could not be read[\s\S]*isTimeoutError\(error\) \? "timeout" : "network"/);
@@ -50,9 +51,11 @@ test("normalizes completion finish reason and separates envelope, empty, and tru
 test("uses a bounded task-specific timeout and retry budget", () => {
   assert.match(config, /standardTimeoutMs = 90_000/);
   assert.match(config, /reasoningHeavyTimeoutMs = 120_000/);
+  assert.match(config, /judgeTextTimeoutMs = 300_000/);
   assert.match(config, /structuredTaskMaxAttempts = 2/);
+  assert.match(config, /judgeTaskMaxAttempts = 3/);
   assert.match(config, /protocol:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
-  assert.match(config, /judge_text:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
+  assert.match(config, /judge_text:[\s\S]*timeoutMs: judgeTextTimeoutMs[\s\S]*maxAttempts: judgeTaskMaxAttempts/);
   assert.match(config, /result_analysis:[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
   assert.match(config, /content_discovery:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"[\s\S]*timeoutMs: reasoningHeavyTimeoutMs/);
   assert.match(router, /request\.maxAttempts \?\? route\.maxAttempts, route\.maxAttempts/);

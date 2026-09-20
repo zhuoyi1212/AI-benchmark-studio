@@ -37,12 +37,17 @@ export const judgeRepository = {
   },
 
   async listCaseInputs(judgeRunId: string, testCaseId: string): Promise<JudgeCaseInputRow[]> {
-    const { data, error } = await getSupabaseServerClient().rpc("get_judge_case_inputs", {
-      p_judge_run_id: judgeRunId,
-      p_test_case_id: testCaseId,
-    });
-    if (error) throwRepositoryError("judge.listCaseInputs", error);
-    return data;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { data, error } = await getSupabaseServerClient().rpc("get_judge_case_inputs", {
+        p_judge_run_id: judgeRunId,
+        p_test_case_id: testCaseId,
+      });
+      if (!error) return data;
+      console.error("[JudgeInputReadError]", { attempt, code: error.code, message: error.message });
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+      else throwRepositoryError("judge.listCaseInputs", error);
+    }
+    throw new Error("Unreachable Judge input read state");
   },
 
   async createSignedArtifactUrl(storagePath: string): Promise<string> {
@@ -52,12 +57,24 @@ export const judgeRepository = {
   },
 
   async completeCase(judgeCaseRunId: string, scores: JudgeCaseScoreOutput[], usage: AIUsage): Promise<void> {
-    const { error } = await getSupabaseServerClient().rpc("complete_judge_case_run", {
-      p_judge_case_run_id: judgeCaseRunId,
-      p_scores: scores as unknown as Json,
-      p_usage: usage as unknown as Json,
-    });
-    if (error) throwRepositoryError("judge.completeCase", error);
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { error } = await getSupabaseServerClient().rpc("complete_judge_case_run", {
+        p_judge_case_run_id: judgeCaseRunId,
+        p_scores: scores as unknown as Json,
+        p_usage: usage as unknown as Json,
+      });
+      if (!error) return;
+      console.error("[JudgePersistenceError]", { attempt, code: error.code, message: error.message, details: error.details, hint: error.hint });
+
+      const { data: persisted, error: readError } = await getSupabaseServerClient()
+        .from("judge_case_runs")
+        .select("status")
+        .eq("id", judgeCaseRunId)
+        .maybeSingle();
+      if (!readError && persisted?.status === "completed") return;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+      else throwRepositoryError("judge.completeCase", error);
+    }
   },
 
   async complete(judgeRunId: string): Promise<void> {

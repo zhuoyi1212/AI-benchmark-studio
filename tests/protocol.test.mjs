@@ -124,3 +124,21 @@ test("wires the real Research to Protocol route and explicit generation failure 
   assert.match(page, /getProtocolWorkspace/);
   assert.match(page, /ResearchRun/);
 });
+
+test("draft protocol lets the user remove unwanted test cases while retaining one", async () => {
+  const [currentRepository, currentService, clientActions, view, removalMigration] = await Promise.all([
+    read("lib/repositories/protocols.repository.ts"),
+    read("lib/services/protocols.service.ts"),
+    read("app/projects/[projectId]/protocol/protocol-actions.tsx"),
+    read("app/projects/[projectId]/protocol/protocol-view.tsx"),
+    read("supabase/migrations/202608170017_protocol_draft_test_case_removal.sql"),
+  ]);
+
+  assert.match(currentRepository, /removeDraftTestCase[\s\S]*remove_draft_test_case/);
+  assert.match(currentService, /removeDraftTestCase[\s\S]*status !== "draft"[\s\S]*length <= 1/);
+  assert.match(actions, /removeDraftTestCaseAction/);
+  assert.match(clientActions, /删除任务/);
+  assert.match(view, /至少保留 1 个/);
+  assert.match(view, /disabled=\{protocol\.testCases\.length <= 1\}/);
+  assert.match(removalMigration, /test_case_count <= 1[\s\S]*delete from public\.test_cases/);
+});

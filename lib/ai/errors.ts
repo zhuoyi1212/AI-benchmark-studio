@@ -12,6 +12,7 @@ export type AIProviderErrorCategory =
   | "rate_limit"
   | "provider_5xx"
   | "authentication"
+  | "payment_required"
   | "bad_request"
   | "invalid_json_body"
   | "invalid_envelope"
@@ -77,6 +78,7 @@ export function classifyProviderStatus(status: number): AIProviderErrorCategory 
   if (status === 429) return "rate_limit";
   if (status >= 500) return "provider_5xx";
   if (status === 401 || status === 403) return "authentication";
+  if (status === 402) return "payment_required";
   return "bad_request";
 }
 

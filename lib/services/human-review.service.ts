@@ -52,7 +52,9 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
   const judge = await getJudgeReviewWorkspace(projectId);
   if (!judge?.latestRun || judge.latestRun.status !== "completed") return null;
   try {
-    const reviewSessionId = await humanReviewRepository.ensure(projectId, judge.protocolId);
+    const existingSession = await humanReviewRepository.findByJudgeRun(judge.latestRun.id);
+    if (!existingSession) return null;
+    const reviewSessionId = existingSession.id;
     const [session, events, finalScores] = await Promise.all([
       humanReviewRepository.getSession(reviewSessionId),
       humanReviewRepository.listEvents(reviewSessionId),

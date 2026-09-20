@@ -42,7 +42,7 @@
 | `result_analyses` | Reveal 后最终分析 | 绑定 ReviewSession 和 `final_score_signature` |
 | `reports` | 深度报告 | 只能绑定 completed 且非 stale 的 ResultAnalysis |
 | `report_artifacts` | 报告证据引用 | 只能引用 ResultAnalysis 同一 Protocol 的真实 Artifact |
-| `publish_packs` | 社区选题、配置与帖子 | 绑定 completed Report；保留运行元数据 |
+| `publish_packs` | 社区选题、配置与帖子 | 绑定 completed Report；`community_post` 同时保存最终 Style Critic 溯源与单次 rewrite 状态 |
 | `publish_pack_artifacts` | 社区截图推荐 | 可选；有配图时只允许同 Project/Protocol 的 image TestArtifact，顺序 1–9 |
 
 三张 Artifact 关联表用 FK 取代不可校验的 JSON ID 列表：`judge_run_artifacts` 固化 Judge 输入，`report_artifacts` 固化报告证据，`publish_pack_artifacts` 固化社区截图。Report/Publish 引用还必须与 ResultAnalysis 属于同一 Protocol。
@@ -224,3 +224,8 @@ Auth 在后续接入。`projects.owner_id` 可为空是为了允许第一阶段�
 ## 验证边界
 
 M1 初始化 migration 已在空的远端项目执行并通过 Schema lint；每个增量 migration 必须先 dry-run，再应用、lint 并重新生成 TypeScript 类型。本机尚无容器运行时，因此本地全量 reset 仍待 Docker/Podman 可用后补跑；任何破坏性远端 reset 仍需单独确认。
+
+
+### Publish 内容机制调整（2026-09-09）
+
+Publish 不新增表或 migration。publish_packs.community_post.attemptAudit 保存当前版本追加的任务事件（started / response / completed / failed）；ready 写入时保留该字段，failed 保留现有 JSON。写入采用状态与 updated_at 比较，拒绝并发覆盖及已结束版本修改。对浏览器仍投影旧的公开文章字段，不发送完整审计输入。

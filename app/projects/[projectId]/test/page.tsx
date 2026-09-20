@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
 import { ProductLogo } from "@/components/product-logo";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CopyPromptButton, FinalizeExecutionAction, UploadArtifactAction } from "@/app/projects/[projectId]/test/test-actions";
 import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 import type { TestArtifact } from "@/lib/types/test-run";
 
 export const maxDuration = 300;
@@ -19,8 +21,12 @@ type TestPageProps = { params: Promise<{ projectId: string }> };
 export default async function TestPage({ params }: TestPageProps) {
   await connection();
   const { projectId } = await params;
-  const workspace = await getTestExecutionWorkspace(projectId);
+  const [workspace, workflowState] = await Promise.all([
+    getTestExecutionWorkspace(projectId),
+    getProjectWorkflowState(projectId),
+  ]);
   if (!workspace) redirect(`/projects/${projectId}/protocol`);
+  if (!workflowState) redirect("/projects");
 
   const { project, protocol, testRuns } = workspace;
   const completed = testRuns.filter((run) => run.status === "uploaded" || run.status === "ready_for_review").length;
@@ -31,6 +37,7 @@ export default async function TestPage({ params }: TestPageProps) {
 
   return (
     <div className="page-shell">
+      <WorkflowSteps projectId={projectId} workflowState={workflowState} />
       <Link href={`/projects/${projectId}/protocol`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回锁定 Protocol</Link>
       <PageHeader eyebrow={`项目 / ${project.name}`} title="测试执行" description={`严格按 Protocol v${protocol.version} 在各产品中执行相同任务，并保存未经修饰的原始输出。`} action={<Badge variant="success"><LockKeyhole className="h-3 w-3" />Protocol v{protocol.version} 已锁定</Badge>} />
       <Card className="mb-7 p-5 shadow-none"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><div className="grid h-11 w-11 place-items-center rounded-lg bg-blue-50 text-blue-600"><FileUp className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex justify-between gap-4"><span className="text-sm font-semibold">总体进度</span><span className="text-sm font-semibold tabular-nums">{completed} / {total} 项已上传</span></div><Progress className="mt-3" value={progress} /></div><span className="text-2xl font-semibold tabular-nums text-blue-700">{Math.round(progress)}%</span></div></Card>

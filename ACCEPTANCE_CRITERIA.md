@@ -27,6 +27,7 @@
 
 - 基于指定 ResearchRun 生成
 - TestCase 数量动态
+- 草稿中的 TestCase 可由用户删除，至少保留 1 个，不强制执行 3 个任务
 - Rubric 数量动态
 - 不依赖固定 AI PPT 模板
 - 单项 weight > 0 且 <= 100
@@ -118,14 +119,22 @@ Reveal 只能发生在 locked 后，且不改变已锁定 Final Score。
 
 ## Publish
 
-- ContentIdeas 动态生成
-- 数量/type/title/angle 不写死
-- Rediscover 真实重新调用生成逻辑，不是在两组 Mock 中切换
-- 支持 Custom Angle
-- Community Post 动态生成 title/body/tags/question
-- Screenshot Recommendation 只能引用真实 TestArtifact
-- 不生图
-- 不自动发布
+- 先将材料分为成帖、短观察、缺上下文、不建议，允许 0 个可写候选，不凑数量或类型
+- 候选的原句必须能回溯到同一产品、同一任务的真实 Artifact；不能用页面外壳当回答
+- 精简写作材料保留场景与原句，核心判断只传一次，不以 Report 或旧文章为母稿
+- 一篇讲清一件具体事情；段落有新信息，判断有依据，措辞简单连贯
+- 允许短观察只有一段、互动问题为空；篇幅服从材料，不靠重复或免责声明补字数
+- 数字、来源、产品行为不失真；产品声称与核验事实分开；不得新增作者经历
+- 个人判断不等同虚构经历，改写允许删重复句、重组段落，改变核心判断须另建候选
+- 不向正文模型发送完整 Report、排名或评分；保留现有 score-free 和事实校验
+- 正文与至多一次语言改写使用 non-thinking deepseek-v4-flash，复用 Task Service / Router / Provider
+- 首稿通过直接完成；事实风险停止；语言修正失败明确失败，不无限重试或 silent fallback
+- Critic 模型与事实门槛不变，分别审查事实与可读性，不把提问、反差作为硬要求
+- 保存实际模型输入、返回、失败稿、route、usage 与审稿记录；不保存思维链
+- 历史文章可读，新结果用新版本；不重跑上游步骤，不覆盖原始证据
+- 使用多条真实材料验证自动结果，人工样稿不能冒充 API 输出或写进生产模板
+- 执行 typecheck、相关 Publish tests、build、git diff --check，并在网站核对新文章
+- Screenshot Recommendation 只能引用真实 TestArtifact，不生图、不自动发布到社区
 
 ## Main Flow Mock Audit
 
@@ -218,3 +227,12 @@ npm run build
 - 已知限制
 - Mock 审计结果
 - 是否满足本文件全部条目
+
+
+### Publish 内容机制验收补充（2026-09-10）
+
+- 新审稿不得出现分数与结论冲突；拒绝必须附当前文章原句、依据和修改要求。
+- 不得把产品未完成历史任务误当成观察文章的事实错误。
+- 无证据的遗漏断言停止；原文有署名时声称没有必须被拒绝。
+- 简短事实稿可直接通过；正文不复写选题元数据，元数据由程序锁定。
+- 多条材料的真实样稿与人工阅读仍是必需项；单篇通过或程序测试通过不表示全部内容质量验收完成。

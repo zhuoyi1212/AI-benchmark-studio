@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { GenerateProtocolAction } from "@/app/projects/[projectId]/protocol/prot
 import { ProtocolView } from "@/app/projects/[projectId]/protocol/protocol-view";
 import { getProjectMode } from "@/lib/project-mode";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const maxDuration = 300;
 
@@ -18,8 +20,12 @@ type ProtocolPageProps = { params: Promise<{ projectId: string }> };
 export default async function ProtocolPage({ params }: ProtocolPageProps) {
   await connection();
   const { projectId } = await params;
-  const workspace = await getProtocolWorkspace(projectId);
+  const [workspace, workflowState] = await Promise.all([
+    getProtocolWorkspace(projectId),
+    getProjectWorkflowState(projectId),
+  ]);
   if (!workspace) notFound();
+  if (!workflowState) notFound();
 
   const { research, protocol, versionCount } = workspace;
   const completedResearch = research.completedResult;
@@ -28,6 +34,7 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
 
   return (
     <div className="page-shell">
+      <WorkflowSteps projectId={projectId} workflowState={workflowState} />
       <Link href={`/projects/${projectId}/research`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回产品调研</Link>
       <PageHeader
         eyebrow={`项目 / ${research.project.name}`}
@@ -38,7 +45,7 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
 
       {versionCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {versionCount} 个 Protocol 版本；当前展示最新版本，历史锁定版本未被覆盖。</p>}
 
-      {protocol ? <ProtocolView protocol={protocol} productCount={research.project.products.length} canRegenerate={["research_ready", "protocol_draft", "protocol_locked"].includes(research.project.status)} /> : (
+      {protocol ? <ProtocolView protocol={protocol} productCount={research.project.products.length} canRegenerate={["research_ready", "protocol_draft", "protocol_locked"].includes(research.project.status)} preserveHistory={workflowState.stages.test.completed} /> : (
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center shadow-none">
             <div className="grid h-11 w-11 place-items-center rounded-lg bg-blue-50 text-blue-700"><Sparkles className="h-5 w-5" /></div>

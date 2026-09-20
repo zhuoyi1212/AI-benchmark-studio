@@ -88,8 +88,19 @@ export async function executeProductResearch(projectId: string): Promise<string>
 
     await researchRepository.insertProductResearch(completedProducts.map((item) => item.write));
     const persistedResearch = await researchRepository.listProductResearch(activeRunId);
+    const validatedComparabilitySchema = comparabilityResultSchema.superRefine((result, context) => {
+      if (result.commonCapabilities.length === 0) {
+        context.addIssue({
+          code: "custom",
+          path: ["commonCapabilities"],
+          message: projectMode === "single"
+            ? "Single-product research must list at least one testable core capability"
+            : "Comparison research must list at least one shared capability",
+        });
+      }
+    });
     const comparability = await aiTaskService.evaluateComparability({
-      schema: comparabilityResultSchema,
+      schema: validatedComparabilitySchema,
       schemaName: "ComparabilityResult",
       messages: [
         {
@@ -151,12 +162,13 @@ async function researchOneProduct(
     productName: product.name,
     searches: buildSearches(product),
     allowedDomains: getHostname(product.officialUrl) ? [getHostname(product.officialUrl)!] : undefined,
+    allowedSourceUrls: product.officialUrl ? [product.officialUrl] : [],
     schema: productResearchSynthesisSchema,
     schemaName: "ProductResearch",
     messages: [
       {
         role: "system",
-        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实，不得依据记忆补充。优先使用提交官网域名内的产品页、文档、帮助中心、更新日志和定价页；二手来源只能补充官方资料未覆盖的体验或背景，不能覆盖官方事实。价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写，否则 pricing 返回 null。输出简体中文。sourceUrls 只能逐字引用给定 URL，并应优先选择高质量官方来源。",
+        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实，不得依据记忆补充。优先使用提交官网域名内的产品页、文档、帮助中心、更新日志和定价页；二手来源只能补充官方资料未覆盖的体验或背景，不能覆盖官方事实。positioning 直接说明产品是什么、面向谁、解决什么问题，不要用“无法确认”“未找到信息”等检索说明代替产品定位；缺失信息写入 limitations。价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写，否则 pricing 返回 null。输出简体中文。sourceUrls 只能逐字引用给定 URL，并应优先选择高质量官方来源。",
       },
       {
         role: "user",
@@ -217,7 +229,22 @@ function selectVerifiedSources(
   product: ProjectProductSummary,
 ): ResearchSource[] {
   const retrievedByUrl = new Map(retrieved.map((source) => [normalizeUrl(source.url), source]));
-  const selected = [...new Set(synthesis.sourceUrls.map(normalizeUrl))].map((url) => retrievedByUrl.get(url));
+  const retrievedByCanonicalUrl = new Map(retrieved.map((source) => [canonicalResearchUrl(source.url), source]));
+  const submittedOfficialUrl = product.officialUrl ? normalizeUrl(product.officialUrl) : null;
+  const selected = [...new Set(synthesis.sourceUrls.map(normalizeUrl))].map((url) => {
+    const retrievedSource = retrievedByUrl.get(url) ?? retrievedByCanonicalUrl.get(canonicalResearchUrl(url));
+    if (retrievedSource) return retrievedSource;
+    if (submittedOfficialUrl === url) {
+      return {
+        title: `${product.name} 官方网站`,
+        url: product.officialUrl!,
+        snippet: "创建项目时提交并限定检索域名的产品官方网站。",
+        siteName: getHostname(product.officialUrl),
+        publishedAt: null,
+      } satisfies AIRetrievedSource;
+    }
+    return undefined;
+  });
   if (selected.some((source) => !source)) {
     throw new AIValidationError("research", "sourceUrlsMustReferenceRetrievedSources");
   }
@@ -333,6 +360,13 @@ function normalizeUrl(value: string) {
   const url = new URL(value);
   url.hash = "";
   return url.toString().replace(/\/$/, "");
+}
+
+function canonicalResearchUrl(value: string) {
+  const url = new URL(value);
+  const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+  const pathname = decodeURIComponent(url.pathname).replace(/\/+$/, "") || "/";
+  return `${hostname}${pathname}`;
 }
 
 function getHostname(value: string | null | undefined) {

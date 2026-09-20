@@ -16,7 +16,9 @@ type RouteTemplate = {
 
 const standardTimeoutMs = 90_000;
 const reasoningHeavyTimeoutMs = 120_000;
+const judgeTextTimeoutMs = 300_000;
 const structuredTaskMaxAttempts = 2;
+const judgeTaskMaxAttempts = 3;
 
 const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research_search: {
@@ -31,7 +33,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "research-synthesis.v3",
+    promptVersion: "research-synthesis.v6",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -40,7 +42,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   comparability: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "comparability.v1",
+    promptVersion: "comparability.v2",
     reasoning: "high",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -61,8 +63,8 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     capability: "structured_text",
     promptVersion: "judge.v1",
     reasoning: "high",
-    timeoutMs: reasoningHeavyTimeoutMs,
-    maxAttempts: structuredTaskMaxAttempts,
+    timeoutMs: judgeTextTimeoutMs,
+    maxAttempts: judgeTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
   judge_multimodal: {
@@ -71,7 +73,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     promptVersion: "judge.v1",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
-    maxAttempts: structuredTaskMaxAttempts,
+    maxAttempts: judgeTaskMaxAttempts,
     model: (models) => models.zhipuVisionModel,
   },
   result_analysis: {
@@ -105,7 +107,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "community-post.v2",
+    promptVersion: "community-post.v2-complete.3",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

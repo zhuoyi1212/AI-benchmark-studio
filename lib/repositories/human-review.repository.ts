@@ -36,6 +36,16 @@ export const humanReviewRepository = {
     return data;
   },
 
+  async findByJudgeRun(judgeRunId: string): Promise<ReviewSessionRow | null> {
+    const { data, error } = await getSupabaseServerClient()
+      .from("review_sessions")
+      .select(reviewSessionColumns)
+      .eq("judge_run_id", judgeRunId)
+      .maybeSingle();
+    if (error) throwRepositoryError("humanReview.findByJudgeRun", error);
+    return data;
+  },
+
   async listEvents(reviewSessionId: string): Promise<HumanReviewEventRow[]> {
     const { data, error } = await getSupabaseServerClient()
       .from("human_review_events")

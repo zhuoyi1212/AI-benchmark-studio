@@ -225,7 +225,7 @@ Report 默认由 Router 选择 `glm-5.2`，只组织已确定的 Final Analysis 
 
 截图只能引用真实 TestArtifact。不生图，不自动发布。
 
-Content Discovery 默认使用 `deepseek-v4-pro`；Community Post 默认使用 `glm-5.2`。截图优先复用 ContentIdea、Artifact metadata 与 Judge evidence，仅确需理解画面时使用 `glm-4.6v`。
+Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Post 首稿与单次 Rewrite 使用 non-thinking `deepseek-v4-flash`，不自动升级 Pro。截图优先复用 ContentIdea、Artifact metadata 与 Judge evidence，仅确需理解画面时使用 `glm-4.6v`。
 
 ## M13 — Remove Main Flow Mock Dependencies
 
@@ -272,6 +272,10 @@ Content Discovery 默认使用 `deepseek-v4-pro`；Community Post 默认使用 `
 
 ## Progress Log
 
+2026-09-08 Final Language Follow-up：最终写作 / Safe Rewrite 共享自然连贯规则，删除重复模板指令；仅给写作包补充 anchor 对应原任务背景（600字上限），增加任务转述与亲历边界、审核备注和连贯性审查。原上游不动。真实生成 v30 人工发现对象偷换，排除交付；v31–v33 被拦截，尚无可交付的新自动正文。Mac 锁屏，视觉验证未完成；不得将此项记为生成验收通过。保留混合工作区，未提交此前未归属改动。
+
+2026-09-09 Existing Case Language Revision ✅ 保留上游与旧版本，仅将现有 v29 正文按“场景 → 回答细节 → 个人判断”做编辑辅助 Flash 改写，独立事实/语言/含义复审通过后保存为 v37 ready；审计明确记录编辑草稿与真实模型输出，不冒充纯自动生成。浏览器已刷新确认新版标题、正文及选题卡；上游数据、六份证据文件和历史版本校验不变。typecheck、Publish 53/53、build、diff check 通过。未运行 libai、未重新测试或创建项目；保留混合工作区，未提交此前未归属改动。
+
 每完成一个 Milestone 追加，不删除旧记录：
 
 ```text
@@ -299,3 +303,22 @@ M14 ✅ 5f37200 完整真实跑通 Create → Research → Protocol → Lock →
 M15 ✅ 6537a7d 完成 Code、Database、Security、Product Rule 与 Mock 五项最终审查；修复社区选题/帖子暴露内部 Schema 字段名的 P1，新增可重复 Secret/Client/Provider/Mock 边界审计。远端 DB lint 零错误、16 个 migration 对齐、105 项测试、typecheck、build 与浏览器检查均通过，未发现剩余 P0/P1。
 Single Product Flow ✅ 当前分支支持 1 产品从 Research、体验 Protocol、Test/Artifact、Blind Judge、Human Review 到 Results、Report、Publish 的完整语义分流，并保留多产品横评与多模态证据链。
 Evidence-first Article Flow ✅ 支持直接粘贴并逐字保存文本证据，TXT/MD/JSON/CSV 统一走文本 Judge；Results 展示 Case 级 Judge/人工复核素材，Publish 可在无截图时基于真实证据生成文章，同时保留图片、多产品与 Blind 回归。
+Community Content North Star ✅ Single Product Publish 改为 CommunityPostSource → 5–8 Community Angles → Community Post；Report 不再作为文章母稿，新增 Experience / Opinion 真实性边界、short/medium/long、多帖复用与观点密度门禁。
+Watcha Community Style QA ✅ Publish 采用观猹式选题/写作 System Prompt，新增 Forbidden Patterns、独立 Style Critic、单次自动 rewrite、最终复审和事实风险硬门禁。
+Micro Moment Community Writing ✅ Publish 增加 Raw Evidence → Micro Finding → Human-readable Moment → Evidence-bound Angle → CommunityWritingPacket；DeepSeek 生文后执行 Evidence / Jargon / Style-Vagueness 三类 Critic、奶奶测试、Anti-Vagueness 与单次 Rewrite。
+Cost-aware Community Writing ✅ 最终正文与 Rewrite 切换至 non-thinking `deepseek-v4-flash`，medium 输出上限由 8000 降至 1800 tokens；Critic 继续拦截 Flash 新增的无证据观点，不允许默认 Pro fallback。
+Safe Community Style Policy ✅ 2026-09-07 固化项目自有语言规则；复用 Flash 做一次窄职责改写，不依赖第三方 Skill/runtime。新增数字/单位/算式/经历确定性门禁、对照原稿的六项 Meaning Preservation、审计记录与只回退到合格原稿的选择逻辑。十条现有审计基线句子纳入回归；Publish 41/41、全仓 168/168、typecheck、build、git diff --check 通过。本轮未调用真实生文 API、未修改生产文章或数据库；保留已有混合工作区，未把此前改动混入新 commit。
+Incremental Publish Regression ✅ 2026-09-08 仅复用现有豆包/智谱项目六份原文重新加工 Publish；新增原文引用校验、作者经历边界、观点绑定、缺失断言拦截和写入响应丢失恢复。真实 Flash 正文与一次 Safe Rewrite 生成 v29，Pro high 复审通过，人工对照原文及浏览器确认最新帖子可见。上游行与六份文件 SHA-256、旧 v1–v4 均未改变，无新项目或 migration。Publish 52/52、全仓 179/179、typecheck、build、diff check 通过。v21–v24 自动误放行已在交付审计排除，未覆盖历史；候选选题仍需人工语义审核，不宣称全部候选通过。保留混合工作区，未打包提交此前未归属改动。
+
+
+### Publish 内容机制调整（2026-09-09）
+
+2026-09-09 Publish 后续调整：在隔离副本实现选材分级、精简写作输入、合格即停、单次语言改写及失败调用保存。类型检查、60 项 Publish 回归与 build 已通过。用户明确授权后已运行真实验证。非思考与思考选材均发现错误；单任务选材也需要事实复核。保留全部新版本和调用记录，v40–v45 均未通过内容验收；浏览器确认 failed 状态，最新完成文章仍为 v39。最终 typecheck、60 项 Publish tests、16 项路由/韧性测试、build、diff --check 通过，原始任务、回答及历史文章比对未变。下一步需解决选题解释与审稿判断不可靠的问题，不宣称模块已经验收完成。
+
+2026-09-10 Publish 继续：新审稿 v9 取消重叠分数，问题引文须属于当前文章；正文 v7 不复写选题元数据。新增 v46 failed、v47/v48 ready；v48 为自动 Flash 短观察，非人工正文。旧正确稿可通过，错误遗漏夹具被拒绝；咖啡馆审稿截断，真实内容质量验收尚未完成。完整对照和用量保存在工作区 outputs/publish-implementation/审稿与正文对照-20260910.md。
+
+2026-09-11 自查修正：Publish 写作与审稿共享原任务和完整存档，去掉重复观察摘要；节选标记保留，补充证据不丢失。修复自定义角度将长引文拼进600字摘要导致失败，并把材料预校验前移到创建版本之前。65项Publish测试、typecheck、build、diff检查通过；新v50沿用旧选题仍偏格式检查，v51使用用户认可的人工角度、Flash自动正文。电动车隔离选材仍有算式解释及推断错误，候选未发布，整体内容质量未验收完成。原始材料和上游不变。
+
+2026-09-18 产品库清理：按用户要求移除 /products 的 demo 产品卡片与无效搜索入口，显示简洁空状态；不删除真实产品实体、项目或历史证据。typecheck、3 项 Mock 边界测试、build、git diff --check 通过，浏览器确认“暂无产品”。秘塔 Research v7 复用，Protocol v1 已生成；用户选择仅保留学术引用核验任务，后续等待真实手动实测证据。保持已有混合工作区，不将无关改动打包提交。
+
+2026-09-20 秘塔真实测评继续：单学术引用核验任务已完成手动证据上传、Judge、append-only复核、Results与Report。智谱恢复版实际生成Publish v1–v5，保留失败、各次输入/输出/用量于工作区 outputs/metaso-review-20260920；根据实测只补完整正文校验、证据边界和取消固定第一人称模板，未重启观猹/短观察/Critic。v5在网站显示正常，891字，主要事实限定为HaluEval发表状态遗漏；仍有范围说明重复，上游Report/候选角度有过度概括，不能宣称内容全面验收。审计同时确认当前正文输入含Judge证据摘录而非完整文本Artifact，后续应优先补原文证据而非继续风格改写。Publish10/10、路由及Provider韧性16/16、typecheck、build、diff检查通过。原始记录和既有混合工作区保留，未提交。

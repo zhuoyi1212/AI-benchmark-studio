@@ -48,6 +48,9 @@ test("keeps score, ranking, winner, evidence, and limitations outside generated 
   assert.match(schema, /userVisibleText/);
   assert.doesNotMatch(schema, /internalIdentifierPattern\.test\(JSON\.stringify\(value\)\)/);
   assert.match(service, /assertExactCoverage/);
+  assert.match(service, /exactReportResponseSchema/);
+  assert.match(service, /validationRepairInstruction:[\s\S]*caseReviews/);
+  assert.match(service, /productAnalyses must cover every expected Product exactly once/);
   assert.match(service, /calculateCaseScores/);
   assert.match(page, /workspace\.ranking/);
   assert.match(page, /workspace\.analysis\.products/);

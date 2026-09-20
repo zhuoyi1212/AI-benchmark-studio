@@ -16,11 +16,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { ContentIdea, PublishConfig } from "@/lib/ai/schemas/publish.schemas";
 import { defaultPublishConfig, publishChannels, publishGoals } from "@/lib/publish-config";
 import type { PublishScreenshot, PublishWorkspace } from "@/lib/services/publish.service";
+import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 import { cn } from "@/lib/utils";
 
 const initialState: PublishActionState = { message: null };
 
-export function PublishEditor({ workspace }: { workspace: PublishWorkspace }) {
+export function PublishEditor({ workspace, workflowState }: { workspace: PublishWorkspace; workflowState: ProjectWorkflowState }) {
   const pack = workspace.pack;
   const [discoverState, discoverAction, discovering] = useActionState(discoverIdeasAction, initialState);
   const [postState, postAction, generating] = useActionState(generatePostAction, initialState);
@@ -47,7 +48,7 @@ export function PublishEditor({ workspace }: { workspace: PublishWorkspace }) {
   const moveImage = (index: number, direction: -1 | 1) => setSelectedIds((current) => { const nextIndex = index + direction; if (nextIndex < 0 || nextIndex >= current.length) return current; const next = [...current]; [next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!]; return next; });
   const replaceImage = (artifactId: string) => { if (replaceIndex === null) return; setSelectedIds((current) => current.length === 0 ? [artifactId] : current.map((id, index) => index === replaceIndex ? artifactId : id)); setReplaceIndex(null); toast.success("截图已替换"); };
 
-  return <TooltipProvider><div className="page-shell max-w-[1420px]"><WorkflowSteps current={7} /><PageHeader eyebrow={`项目 / ${workspace.projectName}`} title="社区发布包" description={workspace.projectMode === "single" ? "从一次真实产品体验中提炼独立观点，并以测试证据支撑结论。" : "从完整测评中提炼独立观点，并以测试阶段保存的真实证据支撑结论。"} action={ready ? <Badge variant="success"><Check className="h-3 w-3" />已准备好 · 1 篇帖子{selectedImages.length > 0 ? ` · ${selectedImages.length} 张截图` : ""}</Badge> : <Badge variant="neutral"><Sparkles className="h-3 w-3" />内容发现</Badge>} /><ProcessStrip current={ready ? 4 : pack?.ideas.length ? 2 : 0} />
+  return <TooltipProvider><div className="page-shell max-w-[1420px]"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /><PageHeader eyebrow={`项目 / ${workspace.projectName}`} title="社区发布包" description={workspace.projectMode === "single" ? "从一次真实产品体验中提炼独立观点，并以测试证据支撑结论。" : "从完整测评中提炼独立观点，并以测试阶段保存的真实证据支撑结论。"} action={ready ? <Badge variant="success"><Check className="h-3 w-3" />已准备好 · 1 篇帖子{selectedImages.length > 0 ? ` · ${selectedImages.length} 张截图` : ""}</Badge> : <Badge variant="neutral"><Sparkles className="h-3 w-3" />内容发现</Badge>} /><ProcessStrip current={ready ? 4 : pack?.ideas.length ? 2 : 0} />
     {!ready && <><section><div className="mb-4 flex items-end justify-between gap-4"><div><div className="eyebrow text-blue-600">AI 推荐社区选题</div><h2 className="mt-2 text-xl font-semibold">这次{workspace.projectMode === "single" ? "体验" : "测评"}有什么值得说？</h2><p className="mt-1.5 text-sm text-muted-foreground">选题来自当前 Final Result、Case 证据与真实 Artifact，不使用固定模板。</p></div><form action={discoverAction}><input type="hidden" name="projectId" value={workspace.projectId} /><Button variant="outline" size="sm" disabled={discovering || pack?.status === "discovering"}>{discovering ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}{pack?.ideas.length ? "重新发现选题" : "发现社区选题"}</Button></form></div>
       {pack?.ideas.length ? <div className="grid gap-3 lg:grid-cols-2">{pack.ideas.map((idea, index) => <IdeaCard key={idea.id} idea={idea} index={index} active={selectedIdeaId === idea.id} onSelect={() => setSelectedIdeaId(idea.id)} />)}</div> : <Card className="grid min-h-44 place-items-center p-8 text-center shadow-none"><div><Sparkles className="mx-auto h-6 w-6 text-blue-600" /><p className="mt-3 text-sm font-medium">{pack?.status === "discovering" ? "正在从完整实验中发现观点…" : pack?.status === "failed" ? "上次内容发现未完成" : "准备分析值得传播的发现"}</p><p className="mt-1 text-xs text-muted-foreground">ContentIdea 的数量、类型、标题和角度都由实验数据动态决定。</p></div></Card>}
       {(discoverState.message || pack?.errorMessage) && <p role="alert" className="mt-3 text-xs text-red-600">{discoverState.message ?? pack?.errorMessage}</p>}

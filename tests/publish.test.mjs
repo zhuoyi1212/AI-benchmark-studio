@@ -79,3 +79,17 @@ test("preserves Content Discovery provenance across Community Post retries", () 
   assert.match(lineageMigration, /candidate\.discovered_at is not null/);
   assert.match(lineageMigration, /grant execute[\s\S]*to service_role/);
 });
+
+test("rejects opening-only new generations while preserving historical post readability", async () => {
+  const { communityPostGenerationSchema, communityPostOutputSchema } = await import("../lib/ai/schemas/publish.schemas.ts");
+  const post = { title: "测试结果", body: "本次回答提供了文献列表。".repeat(30), tags: ["测评"], interactionQuestion: "你如何核验引用？", screenshotRecommendations: [] };
+  assert.equal(communityPostOutputSchema.safeParse(post).success, true);
+  const incomplete = communityPostGenerationSchema.safeParse(post);
+  assert.equal(incomplete.success, false);
+  assert.deepEqual(incomplete.error.issues[0].path, ["body"]);
+  assert.match(incomplete.error.issues[0].message, /complete article/);
+  assert.equal(communityPostGenerationSchema.safeParse({ ...post, body: "甲\n\n乙\n\n丙\n\n丁" }).success, false);
+  const body = ["任务：检索学术综述并列出来源。", "回答：给出了论文链接和方法比较。", "核验：部分文献发表状态不完整。", "范围：仅核查本次回答，不推断其他功能。"].map(p => p.repeat(5)).join("\n\n");
+  assert.equal(communityPostGenerationSchema.safeParse({ ...post, body }).success, true);
+  assert.match(service, /const evidenceGroundedPostSchema = communityPostGenerationSchema/);
+});

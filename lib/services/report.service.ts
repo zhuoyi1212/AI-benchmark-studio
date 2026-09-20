@@ -109,8 +109,28 @@ export async function generateReport(projectId: string): Promise<string> {
     if (persisted.status !== "pending") throw new RepositoryError("report.requirePending", { message: "Report is not pending" });
 
     const input = await createReportInput(source);
+    const expectedTestCaseIds = input.experiment.protocol.testCases.map((item) => item.id);
+    const expectedProductIds = input.lockedRanking.map((item) => item.productId);
+    const exactReportResponseSchema = generatedReportResponseSchema.superRefine((value, context) => {
+      if (!hasExactSet(value.caseReviews.map((item) => item.testCaseId), expectedTestCaseIds)) {
+        context.addIssue({
+          code: "custom",
+          path: ["caseReviews"],
+          message: "caseReviews must cover every expected TestCase exactly once",
+        });
+      }
+      for (const [index, review] of value.caseReviews.entries()) {
+        if (!hasExactSet(review.productAnalyses.map((item) => item.productId), expectedProductIds)) {
+          context.addIssue({
+            code: "custom",
+            path: ["caseReviews", index, "productAnalyses"],
+            message: "productAnalyses must cover every expected Product exactly once",
+          });
+        }
+      }
+    });
     const result = await aiTaskService.generateReport({
-      schema: generatedReportResponseSchema,
+      schema: exactReportResponseSchema,
       schemaName: "BenchmarkReport",
       messages: [
         {
@@ -132,6 +152,7 @@ export async function generateReport(projectId: string): Promise<string> {
       ],
       maxTokens: 14_000,
       maxAttempts: 2,
+      validationRepairInstruction: `caseReviews 必须且只能覆盖这些 TestCase ID，每个恰好一次：${JSON.stringify(expectedTestCaseIds)}。每个 caseReviews.productAnalyses 必须且只能覆盖这些 Product ID，每个恰好一次：${JSON.stringify(expectedProductIds)}。不得改写、遗漏或新增 ID。`,
       beforeExecute: (route) => reportRepository.start(persisted.id, route),
     });
     assertExactCoverage(result.data, input);
@@ -238,10 +259,16 @@ function assertExactCoverage(output: GeneratedReport, input: ReportGenerationInp
 }
 
 function assertExactSet(actual: string[], expected: string[], schemaName: string) {
-  const expectedSet = new Set(expected);
-  if (actual.length !== expectedSet.size || new Set(actual).size !== expectedSet.size || actual.some((id) => !expectedSet.has(id))) {
+  if (!hasExactSet(actual, expected)) {
     throw new AIValidationError("report", schemaName);
   }
+}
+
+function hasExactSet(actual: string[], expected: string[]) {
+  const expectedSet = new Set(expected);
+  return actual.length === expectedSet.size
+    && new Set(actual).size === expectedSet.size
+    && actual.every((id) => expectedSet.has(id));
 }
 
 function asArray(value: Json): Json[] {

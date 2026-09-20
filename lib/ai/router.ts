@@ -52,6 +52,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs });
+      await request.onResponse?.({ route, attempt, reasoning: attemptReasoning, messages: attemptMessages, content: response.content, requestId: response.requestId, usage: response.usage });
       let json: unknown;
       try {
         json = parseJson(response.content, route.task, request.schemaName);
@@ -64,7 +65,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
         const retryDelayMs = willRepair ? getRetryDelayMs(attempt) : null;
         logAIValidationError(route, error, performance, maxAttempts, retryDelayMs);
         if (!willRepair || retryDelayMs === null) break;
-        attemptMessages = buildRepairMessages(messages, response.content, error);
+        attemptMessages = buildRepairMessages(messages, response.content, error, request.validationRepairInstruction);
         attemptReasoning = route.repairReasoning;
         await delay(retryDelayMs);
         continue;
@@ -86,7 +87,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
         const retryDelayMs = willRepair ? getRetryDelayMs(attempt) : null;
         logAIValidationError(route, validationError, performance, maxAttempts, retryDelayMs);
         if (!willRepair || retryDelayMs === null) break;
-        attemptMessages = buildRepairMessages(messages, response.content, validationError);
+        attemptMessages = buildRepairMessages(messages, response.content, validationError, request.validationRepairInstruction);
         attemptReasoning = route.repairReasoning;
         await delay(retryDelayMs);
         continue;
@@ -101,7 +102,7 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
       const performance = providerErrorAttemptPerformance(attemptReasoning, error);
       attemptPerformance.push(performance);
       const willRetry = error.retryable && attempt < maxAttempts;
-      const retryDelayMs = willRetry ? getRetryDelayMs(attempt) : null;
+      const retryDelayMs = willRetry ? getProviderRetryDelayMs(error, attempt) : null;
       logAIProviderError(error, attemptReasoning, maxAttempts, retryDelayMs);
       if (!willRetry || retryDelayMs === null) break;
       attemptMessages = buildProviderRetryMessages(messages, error);
@@ -142,6 +143,13 @@ function unsupportedCapabilityError(route: ReturnType<typeof resolveAITaskRoute>
 function getRetryDelayMs(failedAttempt: number) {
   const exponentialDelayMs = 800 * (2 ** Math.max(0, failedAttempt - 1));
   return exponentialDelayMs + Math.floor(Math.random() * 400);
+}
+
+function getProviderRetryDelayMs(error: AIProviderError, failedAttempt: number) {
+  if (error.category === "rate_limit") {
+    return 65_000 * failedAttempt + Math.floor(Math.random() * 5_000);
+  }
+  return getRetryDelayMs(failedAttempt);
 }
 
 function delay(milliseconds: number) {
@@ -257,14 +265,15 @@ function buildProviderRetryMessages(messages: AIMessage[], error: AIProviderErro
   return [...messages, { role: "user", content: retryInstruction }];
 }
 
-function buildRepairMessages(messages: AIMessage[], previousContent: string, error: AIValidationError): AIMessage[] {
+function buildRepairMessages(messages: AIMessage[], previousContent: string, error: AIValidationError, validationRepairInstruction?: string): AIMessage[] {
   const repairInstruction = error.category === "invalid_json"
     ? "Previous response was not valid JSON. Return one complete valid JSON object only. No Markdown fences or explanatory prose."
     : [
         "Correct the previous output to satisfy these validation issues. Keep the protocol content unchanged where possible.",
         ...error.issues.map((issue) => `- ${issue.path}: ${issue.code}: ${issue.message}`),
+        validationRepairInstruction,
         "Return exactly one complete JSON object only.",
-      ].join("\n");
+      ].filter(Boolean).join("\n");
   return [
     ...messages,
     { role: "assistant", content: previousContent },

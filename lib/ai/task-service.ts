@@ -9,9 +9,10 @@ type ProductResearchRequest<Schema extends ZodType> = StructuredTaskRequest<Sche
   productName: string;
   searches: WebSearchRequest[];
   allowedDomains?: string[];
+  allowedSourceUrls?: string[];
 };
 
-async function researchProducts<Schema extends ZodType>({ productName, searches, allowedDomains, ...request }: ProductResearchRequest<Schema>) {
+async function researchProducts<Schema extends ZodType>({ productName, searches, allowedDomains, allowedSourceUrls = [], ...request }: ProductResearchRequest<Schema>) {
   if (searches.length === 0) throw new Error("Product Research requires at least one source search");
   const searchResults = await Promise.all(searches.map((search) => runResearchSearch(search)));
   const sourceGroups = searchResults.map((result) => result.sources.filter((source) => {
@@ -23,12 +24,26 @@ async function researchProducts<Schema extends ZodType>({ productName, searches,
   if (allowedDomains?.length && !sourceGroups.flat().some((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))) {
     throw new AIValidationError("research", "officialSearchSourceRequired");
   }
-  const sources = interleaveUniqueSources(sourceGroups)
+  const relevantSources = interleaveUniqueSources(sourceGroups);
+  const officialSources = allowedDomains?.length
+    ? relevantSources.filter((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))
+    : [];
+  const sources = (officialSources.length >= 3 ? officialSources : relevantSources)
     .slice(0, 20)
     .map((source) => ({ ...source, snippet: source.snippet.slice(0, 3000) }));
   if (sources.length === 0) throw new AIValidationError("research", "nonEmptyTraceableSearchSources");
+  const permittedSourceKeys = new Set([...sources.map((source) => source.url), ...allowedSourceUrls].map(canonicalSourceUrl));
+  const verifiedResearchSchema = request.schema.superRefine((value, context) => {
+    if (!value || typeof value !== "object" || !("sourceUrls" in value) || !Array.isArray(value.sourceUrls)) return;
+    value.sourceUrls.forEach((url, index) => {
+      if (typeof url === "string" && !permittedSourceKeys.has(canonicalSourceUrl(url))) {
+        context.addIssue({ code: "custom", path: ["sourceUrls", index], message: "Source URL must exactly reference one of the retrieved sources" });
+      }
+    });
+  });
   const synthesis = await runStructuredAITask("research", {
     ...request,
+    schema: verifiedResearchSchema,
     messages: [
       ...request.messages,
       {
@@ -60,6 +75,17 @@ function sourceMentionsProduct(source: ResearchSource, productName: string) {
 
 function normalizeSearchText(value: string) {
   return value.toLocaleLowerCase("zh-CN").replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function canonicalSourceUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    const pathname = decodeURIComponent(url.pathname).replace(/\/+$/, "") || "/";
+    return `${hostname}${pathname}`;
+  } catch {
+    return value.trim().toLowerCase();
+  }
 }
 
 function isDomainOrSubdomain(value: string, allowedDomain: string) {

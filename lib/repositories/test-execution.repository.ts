@@ -79,9 +79,14 @@ export const testExecutionRepository = {
   },
 
   async createSignedUrl(path: string): Promise<string> {
-    const { data, error } = await getSupabaseServerClient().storage.from(artifactBucket).createSignedUrl(path, 3600);
-    if (error) throwRepositoryError("testExecution.createSignedUrl", error);
-    return data.signedUrl;
+    let lastError: { code?: string; message: string } | null = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { data, error } = await getSupabaseServerClient().storage.from(artifactBucket).createSignedUrl(path, 3600);
+      if (!error) return data.signedUrl;
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+    }
+    throwRepositoryError("testExecution.createSignedUrl", lastError ?? { message: "Unknown Storage error" });
   },
 
   async recordArtifact(testRunId: string, artifact: ArtifactRecord, metadata: RunExecutionMetadata): Promise<string> {

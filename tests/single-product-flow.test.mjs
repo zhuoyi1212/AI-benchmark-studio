@@ -41,13 +41,15 @@ test("evidence requirements remain linked through Judge and ResultAnalysis", () 
   assert.match(databaseTypes, /kind: "image" \| "pdf" \| "text" \| "video"/);
 });
 
-test("single output stages use experience semantics while comparison behavior remains available", () => {
+test("single output stages end in evidence-aware community content while comparison remains available", () => {
   assert.match(results, /projectMode === "single"/);
   assert.match(results, /不得使用排名、冠军或相对竞品措辞/);
   assert.match(report, /深度体验报告编辑/);
   assert.match(report, /深度测评报告编辑/);
-  assert.match(publish, /我真实体验了这个 AI 产品之后发现/);
-  assert.match(publish, /同一 Case 的多产品对比应连续排列/);
+  assert.match(publish, /这是单产品社区内容/);
+  assert.match(publish, /没有真实体验 Evidence 时/);
+  assert.match(publish, /assertPostExperienceEligibility/);
+  assert.doesNotMatch(publish, /我真实体验了这个 AI 产品之后发现/);
 });
 
 test("Publish candidates are restricted to current analysis and report evidence", () => {

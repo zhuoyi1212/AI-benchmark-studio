@@ -113,7 +113,10 @@ export type StructuredTaskRequest<Schema extends ZodType> = {
   messages: AIMessage[];
   maxTokens?: number;
   maxAttempts?: number;
+  validationRepairInstruction?: string;
   beforeExecute?: (route: AITaskRoute) => Promise<void>;
+  /** Optional Publish audit; stores answer content only, never provider reasoning. */
+  onResponse?: (event: { route: AITaskRoute; attempt: number; reasoning: AIReasoningMode; messages: AIMessage[]; content: string; requestId: string | null; usage: AIUsage }) => Promise<void>;
 };
 
 export type StructuredTaskResult<Output> = {

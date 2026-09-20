@@ -38,6 +38,7 @@
     "verify:publish": "node scripts/verify-publish.mjs",
     "verify:full-e2e": "node scripts/run-self-contained-e2e.mjs",
     "audit:final": "node scripts/final-audit.mjs",
+    "regenerate:auto-demo-publish": "node scripts/create-auto-demos.mjs --publish-only",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "db:reset": "supabase db reset --local",

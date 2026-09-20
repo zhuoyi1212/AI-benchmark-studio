@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +11,7 @@ import { RunBlindJudgeAction } from "@/app/projects/[projectId]/review/judge-act
 import { HumanReviewPanel } from "@/app/projects/[projectId]/review/human-review-panel";
 import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getJudgeReviewWorkspace, JudgeExecutionError, type JudgeReviewWorkspace } from "@/lib/services/judge.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const maxDuration = 300;
 
@@ -18,6 +20,7 @@ type ReviewPageProps = { params: Promise<{ projectId: string }> };
 export default async function BlindReviewPage({ params }: ReviewPageProps) {
   await connection();
   const { projectId } = await params;
+  const workflowStatePromise = getProjectWorkflowState(projectId);
   let workspace: JudgeReviewWorkspace | null = null;
   try {
     workspace = await getJudgeReviewWorkspace(projectId);
@@ -25,10 +28,12 @@ export default async function BlindReviewPage({ params }: ReviewPageProps) {
     if (!(error instanceof JudgeExecutionError)) throw error;
   }
   if (!workspace) redirect(`/projects/${projectId}/test`);
+  const workflowState = await workflowStatePromise;
+  if (!workflowState) redirect("/projects");
   if (workspace.latestRun?.status === "completed") {
     const reviewWorkspace = await getHumanReviewWorkspace(projectId);
     if (!reviewWorkspace) redirect(`/projects/${projectId}/review`);
-    return <HumanReviewPanel workspace={reviewWorkspace} />;
+    return <HumanReviewPanel workspace={reviewWorkspace} workflowState={workflowState} />;
   }
   const run = workspace.latestRun;
   const singleProduct = workspace.samples.length === 1;
@@ -37,6 +42,7 @@ export default async function BlindReviewPage({ params }: ReviewPageProps) {
 
   return (
     <div className="page-shell">
+      <WorkflowSteps projectId={projectId} workflowState={workflowState} />
       <Link href={`/projects/${projectId}/test`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回测试执行</Link>
       <PageHeader eyebrow={`Blind Review / Protocol v${workspace.protocolVersion}`} title="产品身份已隐藏" description={singleProduct ? "AI Judge 在匿名状态下评价这次真实体验的原始 Artifact，不接收产品身份。" : "AI Judge 只接收匿名 Sample、锁定的测试方案与原始 Artifact，不接收产品身份映射。"} action={<Badge variant="success"><EyeOff className="h-3 w-3" />Blind 状态生效</Badge>} />
 

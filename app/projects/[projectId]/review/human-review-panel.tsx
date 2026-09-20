@@ -12,6 +12,7 @@ import {
   type HumanReviewActionState,
 } from "@/app/projects/[projectId]/review/human-review-actions";
 import { PageHeader } from "@/components/page-header";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,12 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { HumanReviewScore, HumanReviewWorkspace } from "@/lib/services/human-review.service";
+import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "adjusted";
 const initialState: HumanReviewActionState = { message: null };
 
-export function HumanReviewPanel({ workspace }: { workspace: HumanReviewWorkspace }) {
+export function HumanReviewPanel({ workspace, workflowState }: { workspace: HumanReviewWorkspace; workflowState: ProjectWorkflowState }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
@@ -35,11 +37,12 @@ export function HumanReviewPanel({ workspace }: { workspace: HumanReviewWorkspac
   const [revertState, revertAction] = useActionState(revertHumanOverrideAction, initialState);
   const [lockState, lockAction] = useActionState(lockHumanReviewAction, initialState);
 
-  if (workspace.status !== "reviewing") return <LockedReview workspace={workspace} />;
+  if (workspace.status !== "reviewing") return <><div className="mx-auto w-full max-w-[1180px] px-6 pt-8 lg:px-10 lg:pt-10 [&>nav]:mb-0"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /></div><LockedReview workspace={workspace} /></>;
   const visibleScoreCount = filter === "adjusted" ? workspace.summary.adjusted : workspace.summary.total;
 
   return (
     <div className="page-shell">
+      <WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} />
       <PageHeader eyebrow={`Human Review / Protocol v${workspace.protocolVersion}`} title="人工复核 AI 评分" description="默认接受 AI Judge 结果；仅在证据与评分明显不一致时修改具体 Rubric 维度。" action={<Badge variant="success"><EyeOff className="h-3 w-3" />产品身份已隐藏</Badge>} />
       <section className="mb-7 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div className="flex items-center gap-3 bg-white p-5"><span className="grid h-10 w-10 place-items-center rounded-lg bg-blue-50 text-blue-600"><Scale className="h-5 w-5" /></span><div><div className="text-sm font-semibold">人工复核</div><div className="mt-0.5 flex items-center gap-1 text-[11px] text-emerald-700"><Check className="h-3 w-3" />评分矩阵完整</div></div></div>

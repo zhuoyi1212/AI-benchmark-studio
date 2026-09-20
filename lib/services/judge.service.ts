@@ -6,6 +6,7 @@ import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { judgeCaseOutputSchema, type JudgeCaseScoreOutput } from "@/lib/ai/schemas/judge.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
 import type { AIMessageContent, JudgeArtifactDescriptor } from "@/lib/ai/types";
+import { humanReviewRepository } from "@/lib/repositories/human-review.repository";
 import { judgeRepository, type JudgeCaseInputRow } from "@/lib/repositories/judge.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { protocolsRepository, type ProtocolTestCaseRow } from "@/lib/repositories/protocols.repository";
@@ -122,7 +123,10 @@ export async function runBlindJudge(projectId: string): Promise<string> {
   try {
     judgeRunId = await judgeRepository.begin(projectId, context.protocolId);
     const persistedRun = (await judgeRepository.listRuns(context.protocolId)).find((run) => run.id === judgeRunId);
-    if (persistedRun?.status === "completed") return judgeRunId;
+    if (persistedRun?.status === "completed") {
+      await humanReviewRepository.ensure(projectId, context.protocolId);
+      return judgeRunId;
+    }
     if (!persistedRun || persistedRun.status !== "running") throw new RepositoryError("judge.requireRunning", { message: "JudgeRun did not enter running state" });
 
     // Provider quotas are shared across Cases. Run them sequentially so one
@@ -132,6 +136,9 @@ export async function runBlindJudge(projectId: string): Promise<string> {
       await executeJudgeCase(judgeRunId, context, testCase);
     }
     await judgeRepository.complete(judgeRunId);
+    // The explicit Judge action creates the review session. Reading the
+    // Human Review page never advances the workflow.
+    await humanReviewRepository.ensure(projectId, context.protocolId);
     return judgeRunId;
   } catch (error) {
     if (judgeRunId) {
@@ -172,9 +179,25 @@ async function executeJudgeCase(
     })),
   });
   const content = await buildJudgeContent(context, testCase, inputs);
+  const expectedScoreKeys = new Set(context.samples.flatMap((sample) => context.rubric.map((dimension) => `${sample.sampleId}:${dimension.id}`)));
+  const expectedScorePairs = context.samples.flatMap((sample) => context.rubric.map((dimension) => ({
+    blindSampleId: sample.sampleId,
+    rubricDimensionId: dimension.id,
+  })));
+  const exactJudgeCaseOutputSchema = judgeCaseOutputSchema.superRefine((value, refinement) => {
+    const actualKeys = value.scores.map((score) => `${score.blindSampleId}:${score.rubricDimensionId}`);
+    if (actualKeys.length !== expectedScoreKeys.size || new Set(actualKeys).size !== expectedScoreKeys.size
+      || actualKeys.some((key) => !expectedScoreKeys.has(key))) {
+      refinement.addIssue({
+        code: "custom",
+        path: ["scores"],
+        message: `Judge output must contain exactly ${expectedScoreKeys.size} unique Sample × Rubric scores`,
+      });
+    }
+  });
   let judgeCaseRunId: string | null = null;
   const result = await aiTaskService.judgeSamples(testCase.id, descriptors, {
-    schema: judgeCaseOutputSchema,
+    schema: exactJudgeCaseOutputSchema,
     schemaName: "JudgeCaseScores",
     messages: [
       {
@@ -183,8 +206,9 @@ async function executeJudgeCase(
       },
       { role: "user", content },
     ],
-    maxTokens: 6_000,
-    maxAttempts: 2,
+    maxTokens: 9_000,
+    maxAttempts: 3,
+    validationRepairInstruction: `scores 必须且只能覆盖以下 ${expectedScoreKeys.size} 组 ID，每组恰好一条，不得遗漏、重复或新增；缩短 reason 与 evidence 以避免输出截断：${JSON.stringify(expectedScorePairs)}`,
     beforeExecute: async (route) => {
       judgeCaseRunId = await judgeRepository.beginCase(judgeRunId, testCase.id, route, inputSignature);
     },

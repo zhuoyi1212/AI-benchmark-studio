@@ -6,12 +6,13 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, identityGuard, initialSchema, repository, service, page, testPage] = await Promise.all([
+const [migration, identityGuard, initialSchema, repository, service, testService, page, testPage] = await Promise.all([
   read("supabase/migrations/202608170009_blind_layer_lifecycle.sql"),
   read("supabase/migrations/202608170011_blind_protocol_identity_guard.sql"),
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
   read("lib/repositories/blind-review.repository.ts"),
   read("lib/services/blind-review.service.ts"),
+  read("lib/services/test-execution.service.ts"),
   read("app/projects/[projectId]/review/page.tsx"),
   read("app/projects/[projectId]/test/page.tsx"),
 ]);
@@ -44,7 +45,7 @@ test("repository deliberately offers samples but no identity-mapping read method
   assert.doesNotMatch(repository, /blind_mappings|product_id|products/);
 });
 
-test("rejects identity-bearing Protocol text before initializing or projecting Blind Review", () => {
+test("rejects identity-bearing Protocol text before projecting Blind Review and initializes only on explicit finalization", () => {
   assert.match(identityGuard, /create function public\.assert_blind_protocol_safe/);
   assert.match(identityGuard, /status = 'locked'/);
   assert.match(identityGuard, /project_products/);
@@ -53,7 +54,9 @@ test("rejects identity-bearing Protocol text before initializing or projecting B
   assert.match(identityGuard, /returns void/);
   assert.match(identityGuard, /revoke all[\s\S]*from public, anon, authenticated/);
   assert.doesNotMatch(identityGuard, /grant execute[\s\S]*to (?:anon|authenticated)/);
-  assert.ok(service.indexOf("assertProtocolSafe") < service.indexOf("blindReviewRepository.initialize"));
+  assert.ok(service.indexOf("assertProtocolSafe") < service.indexOf("listSamples"));
+  assert.doesNotMatch(service, /blindReviewRepository\.initialize/);
+  assert.ok(testService.indexOf("testExecutionRepository.finalize") < testService.indexOf("blindReviewRepository.initialize"));
 });
 
 test("server projection contains only anonymous samples and neutral TestCase metadata", () => {

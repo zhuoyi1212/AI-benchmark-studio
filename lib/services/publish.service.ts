@@ -3,6 +3,7 @@ import "server-only";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
+  communityPostGenerationSchema,
   communityPostOutputSchema,
   contentIdeaSchema,
   contentIdeasOutputSchema,
@@ -25,7 +26,7 @@ import { getReportWorkspace, type ReportEvidence } from "@/lib/services/report.s
 import type { Json, PublishPackRow } from "@/lib/types/database";
 
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
-const evidenceGroundedPostSchema = communityPostOutputSchema.refine(
+const evidenceGroundedPostSchema = communityPostGenerationSchema.refine(
   (post) => !unsupportedProcessInference.test(post.body),
   "Missing process evidence must not be converted into claims about product behavior.",
 );
@@ -145,8 +146,8 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
       schema: evidenceGroundedPostSchema,
       schemaName: "CommunityPost",
       messages: [
-        { role: "system", content: source.projectMode === "single" ? "你是中文社区内容编辑。围绕用户选定观点写一篇‘我真实体验了这个 AI 产品之后发现……’的独立帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要、排名或虚构竞品比较。正文至少 4 段，依次形成 Hook、体验动机与方法、具体 Case 证据和关键发现、问题或意外、适合/不适合人群、个人判断与真实讨论问题。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制；不得把由不适用 Rubric、输入缺失或执行环境造成的低分直接归因于产品能力。没有可验证逐字来源时，不得使用引号声称某句话是官方宣传语；二手来源中的价格或套餐不要写入正文。缺少工具日志只能表述为‘本次证据未提供’，不得推断产品默认行为。不得要求或声称展示私有思维链、内部决策链，只讨论可观察的工具调用、执行日志和结果证据。有 imageArtifacts 时可选择真实截图，artifactId 只能从中选择；没有图片时 screenshotRecommendations 必须返回空数组，正文仍需引用 Judge Evidence 和 Report 中的可核查发现。不得创造体验或数据。" : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要或夸张营销文案。正文至少 4 段，覆盖 Hook、测试动机与方法、具体 Case 证据、关键差异或意外、用户意义、个人判断与真实讨论问题。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制，不得把测评设计偏差包装成产品差异。缺少工具日志只能表述为本次证据未提供，不得推断产品默认行为；不得要求私有思维链或内部决策链。有 imageArtifacts 时，artifactId 只能从中选择，并且同一 Case 的多产品对比应连续排列；没有图片时 screenshotRecommendations 必须返回空数组。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
-        { role: "system", content: "补充事实边界：本项目评分不得称为‘官方测评’或暗示来自产品官方。缺少工具日志不得据此宣称 Skill 生态、协作能力或透明度是产品短板；只能说明本次可观察证据不足。" },
+        { role: "system", content: source.projectMode === "single" ? "你是中文社区内容编辑。围绕用户选定观点写一篇严谨、易读的真实测评。使用“本次测试”描述留存记录，不预设作者亲身操作，也不套固定标题。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要、排名或虚构竞品比较。正文至少 4 段，写清任务与方法、产品实际回答、具体证据与判断、一次完整的范围说明。只展开所选角度，不必填满人群推荐等栏目，不重复结论或免责声明。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制；不得把由不适用 Rubric、输入缺失或执行环境造成的低分直接归因于产品能力。没有可验证逐字来源时，不得使用引号声称某句话是官方宣传语；二手来源中的价格或套餐不要写入正文。缺少工具日志只能表述为‘本次证据未提供’，不得推断产品默认行为。不得要求或声称展示私有思维链、内部决策链，只讨论可观察的工具调用、执行日志和结果证据。有 imageArtifacts 时可选择真实截图，artifactId 只能从中选择；没有图片时 screenshotRecommendations 必须返回空数组，正文仍需引用 Judge Evidence 和 Report 中的可核查发现。不得创造体验或数据。" : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要或夸张营销文案。正文至少 4 段，覆盖 Hook、测试动机与方法、具体 Case 证据、关键差异或意外、用户意义、个人判断与真实讨论问题。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制，不得把测评设计偏差包装成产品差异。缺少工具日志只能表述为本次证据未提供，不得推断产品默认行为；不得要求私有思维链或内部决策链。有 imageArtifacts 时，artifactId 只能从中选择，并且同一 Case 的多产品对比应连续排列；没有图片时 screenshotRecommendations 必须返回空数组。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
+        { role: "system", content: "补充事实边界（优先于选题和报告中的概括）：原始回答和 Human Review 的明确限定优先于 Report、Analysis、selectedIdea 的二次概括。发现冲突时舍弃二次概括，不要把两者拼在一起。仅核验某篇论文，就只说明该论文存在，禁止标题或正文概括为“来源都真实”“没有虚构引用”。同一论文出现多个编号本身不能证明引用混乱；提到某研究的统计数字本身不能证明产品把它泛化到当前模型。不能评价过程能力时，适合/不适合人群也不得根据该能力作推荐或排除。最终文本没有广告，只能说明该文本未见推广，不能验证整个产品无广告。内容只围绕能直接核验的发现，不为凑篇幅扩展未测能力或重复免责声明。研究中声称、实测文本和编辑判断要明确区分。本项目评分不得称为‘官方测评’或暗示来自产品官方。body 必须是完整正文，不是开头、摘要或提纲。写清原始任务、产品实际回答、证据支持的判断和范围限制。来源元数据抽查不能扩大为全部引用真实、全部链接有效或没有造假。复核中“不能推断某事”的提醒不能改写成产品已经做了该事；未留存的过程不等于产品能力缺失。缺少工具日志不得据此宣称 Skill 生态、协作能力或透明度是产品短板；只能说明本次可观察证据不足。" },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,

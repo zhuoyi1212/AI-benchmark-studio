@@ -15,6 +15,7 @@ import {
   protocolsRepository,
   type ProtocolTestCaseRow,
 } from "@/lib/repositories/protocols.repository";
+import { testExecutionRepository } from "@/lib/repositories/test-execution.repository";
 import { createInputSignature } from "@/lib/signatures";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getResearchWorkspace, type ResearchWorkspace } from "@/lib/services/research.service";
@@ -143,11 +144,18 @@ export async function generateProtocol(projectId: string): Promise<string> {
 
   try {
     const generationStartedAt = performance.now();
+    const isAutoDemo = research.project.name.startsWith("AUTO DEMO ·");
     const protocolContentSchema = generatedProtocolContentSchema.superRefine((protocol, context) => {
       const serialized = JSON.stringify(protocol).toLocaleLowerCase("zh-CN");
       if (research.project.products.some((product) => product.name.trim().length >= 3
         && serialized.includes(product.name.trim().toLocaleLowerCase("zh-CN")))) {
         context.addIssue({ code: "custom", path: ["root"], message: "Protocol must use blind-neutral wording and omit every tested product name" });
+      }
+      if (isAutoDemo && protocol.testCases.length > 3) {
+        context.addIssue({ code: "custom", path: ["testCases"], message: "AUTO DEMO Protocol must contain 2-3 focused experience tasks" });
+      }
+      if (isAutoDemo && protocol.testCases.some((testCase) => testCase.expectedOutputTypes.some((type) => !["text", "code", "mixed"].includes(type)))) {
+        context.addIssue({ code: "custom", path: ["testCases"], message: "AUTO DEMO Protocol must use text, code, or mixed Evidence only" });
       }
     });
     const generated = await aiTaskService.generateProtocol({
@@ -165,7 +173,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
           content: JSON.stringify({
             ...generationContext,
             requirements: {
-              caseCount: { default: 3, min: 2, max: 4, useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true, fourthOnlyForDistinctUncoveredCapability: true },
+              caseCount: { default: 3, min: 2, max: 4, useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true, fourthOnlyForDistinctUncoveredCapability: !isAutoDemo, ...(isAutoDemo ? { max: 3 } : {}) },
               rubricCount: { default: 4, min: 3, max: 5 },
               capabilityModeling: { sequence: capabilityModelingSequence, coreCapabilitiesCount: "3-8", inferTypeFromResearch: true },
               qualityGate: {
@@ -251,7 +259,32 @@ export async function lockProtocol(projectId: string, protocolId: string): Promi
   if (!workspace?.protocol) throw new ProtocolExecutionError("没有可锁定的 Protocol 草稿。");
   if (workspace.protocol.id !== protocolId) throw new ProtocolExecutionError("只能锁定当前最新的 Protocol 版本。");
   if (workspace.protocol.status !== "draft") throw new ProtocolExecutionError("当前 Protocol 已锁定，不能重复操作。");
-  try { await protocolsRepository.lock(protocolId); } catch (error) { throw new ProtocolExecutionError(toUserFacingError(error)); }
+  try {
+    await protocolsRepository.lock(protocolId);
+    // TestRun creation belongs to the explicit lock transition. Reading the
+    // Test page must not advance workflow state.
+    await testExecutionRepository.ensureMatrix(projectId, protocolId);
+  } catch (error) {
+    throw new ProtocolExecutionError(toUserFacingError(error));
+  }
+}
+
+export async function removeDraftTestCase(projectId: string, protocolId: string, testCaseId: string): Promise<void> {
+  const workspace = await getProtocolWorkspace(projectId);
+  if (!workspace?.protocol) throw new ProtocolExecutionError("没有可编辑的测评方案。");
+  if (workspace.protocol.id !== protocolId) throw new ProtocolExecutionError("只能编辑当前最新的测评方案。");
+  if (workspace.protocol.status !== "draft") throw new ProtocolExecutionError("方案锁定后不能删除任务。");
+  if (!workspace.protocol.testCases.some((testCase) => testCase.id === testCaseId)) {
+    throw new ProtocolExecutionError("没有找到这个测试任务。");
+  }
+  if (workspace.protocol.testCases.length <= 1) {
+    throw new ProtocolExecutionError("至少保留 1 个测试任务。");
+  }
+  try {
+    await protocolsRepository.removeDraftTestCase(projectId, protocolId, testCaseId);
+  } catch (error) {
+    throw new ProtocolExecutionError(toUserFacingError(error));
+  }
 }
 
 async function readProtocol(row: ProtocolRow): Promise<TestProtocol> {

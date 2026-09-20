@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, LockKeyhole, Scale, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { WorkflowSteps } from "@/components/workflow-steps";
+import { demoWorkflowState } from "@/lib/mock/workflow.mock";
 import { PageHeader } from "@/components/page-header";
 import { MockLoader } from "@/components/mock-loader";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -40,7 +41,7 @@ export default function ProtocolPage() {
 
   return <TooltipProvider><div className="page-shell">
     <MockLoader label="正在生成测试方案..." />
-    <WorkflowSteps current={1} projectId="demo" />
+    <WorkflowSteps projectId="demo" workflowState={demoWorkflowState} />
     <PageHeader eyebrow={`项目 / ${project.name}`} title={protocol.title} description="统一 Prompt、输入与评分标准，确保每个产品在相同条件下接受测试。" action={protocol.status === "locked" ? <Badge variant="success"><LockKeyhole className="h-3 w-3" />已锁定</Badge> : <Badge variant="warning"><FileText className="h-3 w-3" />草稿</Badge>} />
     <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-7">

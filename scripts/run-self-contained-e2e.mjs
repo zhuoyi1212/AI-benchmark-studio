@@ -39,6 +39,7 @@ try {
       E2E_TEST_TOKEN: token,
       ZAI_API_KEY: "e2e-provider-key-not-a-secret",
       DEEPSEEK_API_KEY: "e2e-provider-key-not-a-secret",
+      AI_BENCHMARK_NEXT_DIST_DIR: ".next-e2e",
       NEXT_TELEMETRY_DISABLED: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -81,11 +82,15 @@ try {
   const providerStats = providerMock.stats();
   const expectedTasks = protocolOnly
     ? ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent"]
-    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "ContentIdeas", "CommunityPost"];
+    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "MicroFindingDiscovery", "CommunityPost", "SafeCommunityRewrite", "CommunityStyleCritic"];
   for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
   if (!protocolOnly) {
+    assert.equal(providerStats.taskCounts.MicroFindingDiscovery, 1, "Micro Finding discovery must run once");
+    assert.equal(providerStats.taskCounts.CommunityPost, 1, "Community Post must generate only one initial draft");
+    assert.equal(providerStats.taskCounts.SafeCommunityRewrite, 1, "Community Post must perform exactly one safe language rewrite");
+    assert.equal(providerStats.taskCounts.CommunityStyleCritic, 2, "Style Critic must review the draft and the single rewrite");
     if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
     else assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
   }

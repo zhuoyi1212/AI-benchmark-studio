@@ -71,4 +71,13 @@ export const protocolsRepository = {
     const { error } = await getSupabaseServerClient().rpc("lock_protocol", { p_protocol_id: protocolId });
     if (error) throwRepositoryError("protocols.lock", error);
   },
+
+  async removeDraftTestCase(projectId: string, protocolId: string, testCaseId: string): Promise<void> {
+    const { error } = await getSupabaseServerClient().rpc("remove_draft_test_case", {
+      p_project_id: projectId,
+      p_protocol_id: protocolId,
+      p_test_case_id: testCaseId,
+    });
+    if (error) throwRepositoryError("protocols.removeDraftTestCase", error);
+  },
 };
