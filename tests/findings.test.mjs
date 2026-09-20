@@ -21,6 +21,8 @@ test("persists Findings independently from Judge, Review, Result Analysis, and R
   assert.match(migration, /protocol_id uuid not null/);
   assert.match(migration, /human_output jsonb/);
   assert.match(migration, /human_confirmed_at timestamptz/);
+  assert.match(migration, /Only unconfirmed completed Findings can be confirmed/);
+  assert.match(migration, /set status = 'completed', updated_at = now\(\)[\s\S]*human_confirmed_at/);
   assert.match(migration, /Findings requires a complete Artifact-backed TestRun matrix/);
   const findingsFunctions = migration.slice(migration.indexOf("create or replace function public.begin_experience_findings"), migration.indexOf("alter table public.publish_packs"));
   assert.doesNotMatch(findingsFunctions, /review_sessions|result_analyses|reports/);
