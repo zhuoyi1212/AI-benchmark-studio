@@ -147,6 +147,15 @@ export async function generateExperienceFindings(projectId: string): Promise<str
   }
 }
 
+export async function buildRawFindingsEvidenceContent(projectId: string): Promise<AIMessageContent> {
+  const [test, research] = await Promise.all([
+    getTestExecutionWorkspace(projectId),
+    getResearchWorkspace(projectId),
+  ]);
+  if (!test || !research?.completedResult) throw new FindingsExecutionError("无法读取当前真实测试证据。");
+  return buildArtifactContent(test, research.completedResult);
+}
+
 export async function confirmExperienceFindings(projectId: string, findingsId: string, value: unknown): Promise<void> {
   const workspace = await getExperienceFindingsWorkspace(projectId);
   if (!workspace?.latest || workspace.latest.id !== findingsId || workspace.latest.status !== "completed") {
