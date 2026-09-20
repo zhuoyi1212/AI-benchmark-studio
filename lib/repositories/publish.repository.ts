@@ -38,7 +38,14 @@ export const publishRepository = {
   async complete(packId: string, post: CommunityPostOutput, usage: AIUsage): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("complete_publish_pack", {
       p_publish_pack_id: packId,
-      p_community_post: { title: post.title, body: post.body, tags: post.tags, interactionQuestion: post.interactionQuestion } as unknown as Json,
+      p_community_post: {
+        title: post.title,
+        body: post.body,
+        tags: post.tags,
+        interactionQuestion: post.interactionQuestion,
+        ...(post.editorialPlan ? { editorialPlan: post.editorialPlan } : {}),
+        ...(post.factCheck ? { factCheck: post.factCheck } : {}),
+      } as unknown as Json,
       p_recommendations: post.screenshotRecommendations as unknown as Json,
       p_usage: usage as unknown as Json,
     });
