@@ -3,6 +3,7 @@ import "server-only";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
+  communityPostDraftSchema,
   communityPostGenerationSchema,
   communityPostOutputSchema,
   contentIdeaSchema,
@@ -122,6 +123,7 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
   }
   const pack = packs[0];
   if (!pack || pack.status !== "draft") throw new PublishExecutionError("请先完成社区选题发现。");
+
   const ideas = parseIdeas(pack.content_ideas);
   const selectedIdea = selectIdea(ideas, input.ideaId, input.customAngle);
   const imageArtifacts = source.screenshots;
@@ -141,22 +143,73 @@ export async function generateCommunityPost(projectId: string, input: { ideaId: 
     imageArtifacts,
   };
   const inputSignature = createInputSignature(postInput);
+
   try {
-    const result = await aiTaskService.generateCommunityPost({
-      schema: evidenceGroundedPostSchema,
-      schemaName: "CommunityPost",
+    const draftResult = await aiTaskService.generateCommunityPost({
+      schema: communityPostDraftSchema,
+      schemaName: "CommunityPostDraft",
       messages: [
-        { role: "system", content: source.projectMode === "single" ? "你是中文社区内容编辑。围绕用户选定观点写一篇严谨、易读的真实测评。使用“本次测试”描述留存记录，不预设作者亲身操作，也不套固定标题。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要、排名或虚构竞品比较。正文至少 4 段，写清任务与方法、产品实际回答、具体证据与判断、一次完整的范围说明。只展开所选角度，不必填满人群推荐等栏目，不重复结论或免责声明。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制；不得把由不适用 Rubric、输入缺失或执行环境造成的低分直接归因于产品能力。没有可验证逐字来源时，不得使用引号声称某句话是官方宣传语；二手来源中的价格或套餐不要写入正文。缺少工具日志只能表述为‘本次证据未提供’，不得推断产品默认行为。不得要求或声称展示私有思维链、内部决策链，只讨论可观察的工具调用、执行日志和结果证据。有 imageArtifacts 时可选择真实截图，artifactId 只能从中选择；没有图片时 screenshotRecommendations 必须返回空数组，正文仍需引用 Judge Evidence 和 Report 中的可核查发现。不得创造体验或数据。" : "你是中文社区内容编辑。围绕用户选定观点写一篇可独立成立、有证据、有判断、有讨论空间的帖子。事实必须来自 Research、Protocol、Judge Evidence、Human Review、Report 与真实 Artifact；不要大段复述官网，也不要写成报告摘要或夸张营销文案。正文至少 4 段，覆盖 Hook、测试动机与方法、具体 Case 证据、关键差异或意外、用户意义、个人判断与真实讨论问题。引用任何总分或维度分时，必须同时保留 Results/Report 已声明的评分适用性限制，不得把测评设计偏差包装成产品差异。缺少工具日志只能表述为本次证据未提供，不得推断产品默认行为；不得要求私有思维链或内部决策链。有 imageArtifacts 时，artifactId 只能从中选择，并且同一 Case 的多产品对比应连续排列；没有图片时 screenshotRecommendations 必须返回空数组。不得创造实验数据；用户可见文案不得输出 UUID、数据库字段名、Schema 字段名或内部 ID。" },
-        { role: "system", content: "补充事实边界（优先于选题和报告中的概括）：原始回答和 Human Review 的明确限定优先于 Report、Analysis、selectedIdea 的二次概括。发现冲突时舍弃二次概括，不要把两者拼在一起。仅核验某篇论文，就只说明该论文存在，禁止标题或正文概括为“来源都真实”“没有虚构引用”。同一论文出现多个编号本身不能证明引用混乱；提到某研究的统计数字本身不能证明产品把它泛化到当前模型。不能评价过程能力时，适合/不适合人群也不得根据该能力作推荐或排除。最终文本没有广告，只能说明该文本未见推广，不能验证整个产品无广告。内容只围绕能直接核验的发现，不为凑篇幅扩展未测能力或重复免责声明。研究中声称、实测文本和编辑判断要明确区分。本项目评分不得称为‘官方测评’或暗示来自产品官方。body 必须是完整正文，不是开头、摘要或提纲。写清原始任务、产品实际回答、证据支持的判断和范围限制。来源元数据抽查不能扩大为全部引用真实、全部链接有效或没有造假。复核中“不能推断某事”的提醒不能改写成产品已经做了该事；未留存的过程不等于产品能力缺失。缺少工具日志不得据此宣称 Skill 生态、协作能力或透明度是产品短板；只能说明本次可观察证据不足。" },
+        {
+          role: "system",
+          content: [
+            "你是中文社区测评内容编辑。先做内容策划，再写完整草稿。",
+            "社区内容的中心是用户实际测到了什么、哪些功能好用、哪些一般、哪些难用，以及这些现象对使用者意味着什么。不要围绕综合分展开；Final Score 仅可作为辅助背景，除非用户选题明确要求讨论评分。",
+            "editorialPlan 必须先明确 coreConclusion、highlights、neutralPoints、painPoints、文章结构和禁止扩大的结论。",
+            "如果 config.stylePreset=真实体验：使用第一人称、短句、直接判断，可以写“我这次测试”“我的感受是”，但只能描述本项目真实留存的测试；不能虚构未发生的操作。",
+            "如果 config.structure=好用 / 一般 / 难用：正文优先按“先给结论 → 好用的功能 → 体验一般的功能 → 不能用/用着难受的功能 → 个人感受”组织；某一类没有真实发现就省略，不要硬凑。",
+            "标题朴素直接，不做营销式悬念。每个功能段先说判断，再说具体测试现象和影响。",
+            "语言避免媒体稿和 AI 总结腔，不要使用“总体而言、值得注意的是、从这个角度来看、这一表现说明”等空泛连接词。",
+            "不要为了显得严谨反复写免责声明。范围限制只在必要位置简短说明一次。",
+            "Research 只提供背景；产品能力结论以真实 Test、Artifact、Judge Evidence 和 Human Review 中可观察证据为准。",
+            "不得创造体验、数据、竞品对比或未测试能力。没有完整证据时使用收缩后的说法。",
+            "有 imageArtifacts 时 screenshotRecommendations 只能引用其中 artifactId；没有图片时返回空数组。",
+            "输出简体中文完整正文，不能只返回提纲。",
+          ].join("\n"),
+        },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,
       maxAttempts: 2,
       beforeExecute: (route) => publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
     });
-    const post = normalizeScreenshotRecommendations(result.data, selectedIdea, imageArtifacts, config.imageCount);
+
+    const factCheckInput = {
+      source: postInput,
+      draft: draftResult.data,
+      factCheckRules: [
+        "逐条检查标题和正文中的事实性描述是否能被输入证据直接支持。",
+        "将过度概括改成证据实际覆盖的范围。例如只测试一个学校网站失败，不能写成所有非主流平台失败率高。",
+        "同一论文出现多个编号本身不能证明引用混乱；抽查一条引用不能扩大为全部来源真实或全部来源有误。",
+        "缺少过程日志只能写本次未留存，不能推断产品没有调用工具或能力不足。",
+        "评分不是社区文章主线，不要为了保留分数而牺牲真实使用发现。",
+        "保留自然社区语言，不要把核对后的文章改回报告体。",
+      ],
+    };
+
+    const checkedResult = await aiTaskService.generateCommunityPost({
+      schema: evidenceGroundedPostSchema,
+      schemaName: "EvidenceCheckedCommunityPost",
+      messages: [
+        {
+          role: "system",
+          content: [
+            "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
+            "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
+            "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
+            "editorialPlan 必须保留并可按核对结果微调。",
+            "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量；notes 只记录最重要的修订原因。",
+            "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
+          ].join("\n"),
+        },
+        { role: "user", content: JSON.stringify(factCheckInput) },
+      ],
+      maxTokens: 8_000,
+      maxAttempts: 2,
+    });
+
+    const post = normalizeScreenshotRecommendations(checkedResult.data, selectedIdea, imageArtifacts, config.imageCount);
     assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
-    await publishRepository.complete(pack.id, post, result.usage);
+    await publishRepository.complete(pack.id, post, checkedResult.usage);
     return pack.id;
   } catch (error) {
     try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
