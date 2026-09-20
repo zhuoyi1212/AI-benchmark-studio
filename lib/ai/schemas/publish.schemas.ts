@@ -110,13 +110,13 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
 });
 export type CommunityPostOutput = z.infer<typeof communityPostOutputSchema>;
 
-export const communityPostDraftSchema = communityPostOutputSchema.extend({
+export const communityPostDraftSchema = communityPostOutputSchema.safeExtend({
   editorialPlan: editorialPlanSchema,
 });
 export type CommunityPostDraft = z.infer<typeof communityPostDraftSchema>;
 
 // Apply completeness and evidence-check metadata to new generations only; historical posts stay readable.
-export const communityPostGenerationSchema = communityPostOutputSchema.extend({
+export const communityPostGenerationSchema = communityPostOutputSchema.safeExtend({
   editorialPlan: editorialPlanSchema,
   factCheck: factCheckSchema,
 }).refine(
