@@ -46,6 +46,20 @@ test("allows evidence-backed text-only posts without fabricated screenshots", ()
   assert.match(editor, /没有截图证据，文章仍会使用 Judge 与 Report 中的真实文本证据/);
   assert.match(editor, /readOnly=\{maxImages === 0\}/);
 });
+test("plans community content, applies a selected style, and fact-checks the final post", () => {
+  assert.match(schema, /stylePreset/);
+  assert.match(schema, /structure/);
+  assert.match(schema, /editorialPlanSchema/);
+  assert.match(schema, /factCheckSchema/);
+  assert.match(service, /CommunityPostDraft/);
+  assert.match(service, /EvidenceCheckedCommunityPost/);
+  assert.match(service, /逐句事实核验/);
+  assert.match(service, /评分不是社区文章主线/);
+  assert.match(service, /好用 \/ 一般 \/ 难用/);
+  assert.match(editor, /写作风格/);
+  assert.match(editor, /文章结构/);
+});
+
 test("gives article generation direct Judge and Human Review evidence with a minimum publishable structure", () => {
   assert.match(service, /judgeEvidence: buildJudgeEvidence\(source\)/);
   assert.match(service, /humanReview: source\.report\.review/);
