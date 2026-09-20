@@ -68,6 +68,9 @@ test("real Test Execution route validates actions and never imports demo data", 
   assert.match(actionComponent, /name="rawText"/);
   assert.match(actions, /TestExecutionError/);
   assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain,text\/markdown,application\/json,text\/csv,video\/mp4,video\/webm,video\/quicktime/);
+  assert.match(page, /提炼测评发现/);
+  assert.match(page, /专业评分（可选）/);
+  assert.match(page, /\/results/);
   assert.doesNotMatch(page + actions + actionComponent + service + repository, /@\/lib\/mock|mockTestRuns|\/projects\/demo/);
 });
 
