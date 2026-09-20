@@ -17,6 +17,7 @@ import {
 } from "@/lib/ai/schemas/publish.schemas";
 import { resultAnalysisInputSchema } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
+import type { AIMessage } from "@/lib/ai/types";
 import { publishRepository } from "@/lib/repositories/publish.repository";
 import { defaultPublishConfig } from "@/lib/publish-config";
 import { RepositoryError } from "@/lib/repositories/repository-error";
@@ -227,9 +228,9 @@ export async function generateCommunityPost(
       ],
     };
 
-    const factCheckMessages = [
+    const factCheckMessages: AIMessage[] = [
       {
-        role: "system" as const,
+        role: "system",
         content: [
           "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
           source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
@@ -240,7 +241,7 @@ export async function generateCommunityPost(
           "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
         ].join("\n"),
       },
-      { role: "user" as const, content: JSON.stringify(factCheckInput) },
+      { role: "user", content: JSON.stringify(factCheckInput) },
     ];
     if (source.kind === "findings") {
       factCheckMessages.push({ role: "user" as const, content: await buildRawFindingsEvidenceContent(projectId) });
