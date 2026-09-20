@@ -51,11 +51,14 @@ test("records immutable Artifact and execution metadata in one database transact
   assert.match(repository, /\.rpc\("record_test_artifact"/);
 });
 
-test("finalizes only a complete Artifact-backed matrix", () => {
+test("finalizes only a complete Artifact-backed matrix without auto-starting scoring", () => {
   assert.match(migration, /create function public\.finalize_test_execution/);
   assert.match(migration, /Every TestRun needs at least one raw Artifact before finalization/);
   assert.match(migration, /set status = 'ready_for_review'/);
   assert.match(repository, /\.rpc\("finalize_test_execution"/);
+  assert.doesNotMatch(service, /blindReviewRepository/);
+  assert.match(actions, /startProfessionalReviewAction/);
+  assert.match(actionComponent, /ProfessionalReviewAction/);
 });
 
 test("real Test Execution route validates actions and never imports demo data", () => {
