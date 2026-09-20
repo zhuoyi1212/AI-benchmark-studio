@@ -1,0 +1,30 @@
+name: Content flow checks
+
+on:
+  push:
+    branches:
+      - chatgpt/content-flow-refactor
+  pull_request:
+    branches:
+      - chatgpt/multimodal-artifacts
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SECRET_KEY: sb_secret_ci_placeholder_1234567890
+      ZAI_API_KEY: ci-placeholder
+      DEEPSEEK_API_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
