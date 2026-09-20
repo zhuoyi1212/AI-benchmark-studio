@@ -8,6 +8,7 @@ export const aiTaskTypes = [
   "judge_text",
   "judge_multimodal",
   "result_analysis",
+  "findings",
   "report",
   "content_discovery",
   "community_post",
