@@ -39,7 +39,7 @@ test("allows evidence-backed text-only posts without fabricated screenshots", ()
   assert.match(schema, /screenshotRecommendations: z\.array\(screenshotRecommendationSchema\)\.max\(9\)/);
   assert.match(service, /withAvailableImageCount/);
   assert.doesNotMatch(service, /没有可用的原始截图，不能生成/);
-  assert.match(service, /没有图片时 screenshotRecommendations 必须返回空数组/);
+  assert.match(service, /没有图片时必须返回空数组/);
   assert.match(textOnlyMigration, /imageCount'\)::integer not between 0 and 9/);
   assert.match(textOnlyMigration, /jsonb_array_length\(p_recommendations\) not between 0 and 9/);
   assert.doesNotMatch(textOnlyMigration, /must retain at least one screenshot/);
