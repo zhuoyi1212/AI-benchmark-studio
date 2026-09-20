@@ -58,19 +58,16 @@ test("marks old analysis stale when its Final Score signature differs", () => {
   assert.match(migration, /current_signature := private\.final_score_signature/);
 });
 
-test("dynamic Results route is revealed-only and has explicit generate/retry states", () => {
+test("professional Result Analysis stays available as an optional path behind Findings", () => {
+  assert.match(page, /getExperienceFindingsWorkspace/);
   assert.match(page, /getResultsWorkspace/);
-  assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/review`\)/);
+  assert.match(page, /专业测评模式（可选）/);
   assert.match(page, /ResultAnalysisAction/);
-  assert.match(page, /上次分析未完成/);
-  assert.match(page, /评分来源 · AI Judge \+ 人工复核/);
+  assert.match(page, /不需要先跑 AI Judge/);
   assert.match(service, /buildCaseEvidence/);
   assert.match(service, /sanitizePublicEvidence/);
-  assert.match(page, /证据化 Case 素材/);
-  assert.match(page, /item\.keyFindings/);
   assert.doesNotMatch(service + repository + page + actions, /@\/lib\/mock|mockFinalResultAnalysis|\/projects\/demo/);
 });
-
 test("keeps Result Analysis mutations service-role only", () => {
   assert.match(migration, /revoke all[\s\S]*from public, anon, authenticated/);
   assert.match(migration, /grant execute[\s\S]*to service_role/);
