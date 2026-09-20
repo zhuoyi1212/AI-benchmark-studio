@@ -1,53 +1,36 @@
 # AI Benchmark Studio
 
-AI 产品标准化测评工作台，用于建立可复现的 Test Protocol、执行盲评与人工复核，并沉淀结果、深度报告和社区发布包。
+AI 产品测评与内容生产工作台。核心目标是把真实测试、原始证据、测评发现和最终内容连成可追溯链路，而不是只生成一篇“像测评”的文章。
 
 ## 当前技术栈
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
+- Next.js 16 + TypeScript
+- Tailwind CSS + shadcn/ui
+- Supabase Postgres + Storage
+- 智谱 + DeepSeek
 
 ## 当前工作流
 
 ```text
 Research
-→ Protocol
-→ Test
-→ Blind Judge
-→ Human Review
-→ Results
-→ Report
-→ Publish
+→ 测试计划
+→ 真实 Test + Artifact
+→ 专业评分（当前保留，后续可降级为可选）
+→ 测评发现
+→ 深度报告（可选）
+→ 社区内容：内容策划 → 风格生成 → 事实核对
 ```
 
 ## 当前状态
 
-当前为前端 Mock Prototype，不连接数据库、文件存储或真实 AI API。
+项目已接入真实 Supabase、文件存储和 AI Provider，并已有真实项目跑通 Research、Protocol、Test、Judge、Review、Results、Report 与 Publish。
 
-## 动态数据边界
+当前重构方向：
 
-页面已按照未来真实 API Response 的结构开发。业务数据集中在 `lib/mock`，契约类型位于 `lib/types`；页面只负责展示、交互和本地状态，未来可将 Mock 数据访问函数替换为真实 API。
-
-| 数据 | 当前 | 未来 |
-|---|---|---|
-| Project | Mock | Supabase |
-| Research | Mock | Supabase + AI |
-| Protocol | Mock / localStorage | Supabase + AI |
-| Test Run | Mock | Supabase |
-| Artifact | Mock | Supabase Storage |
-| Judge Result | Mock | Supabase + AI |
-| Human Override | localStorage | Supabase |
-| Final Analysis | Mock | Supabase + AI |
-| Report | Mock | Supabase + AI |
-| Publish Pack | Mock | Supabase + AI |
-
-## 下一阶段
-
-- Supabase
-- AI Research
-- Protocol Generation
+- 社区内容优先围绕“真实发现”而不是“综合分”展开。
+- 评分能力保留为专业模式能力，不再作为社区内容的中心。
+- Publish 增加明确的写作风格、文章结构和事实核对阶段。
+- 原始 Artifact 和历史版本继续保留，不用生成内容覆盖原始证据。
 
 ## 启动
 
