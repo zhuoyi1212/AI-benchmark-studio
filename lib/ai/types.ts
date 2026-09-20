@@ -12,6 +12,7 @@ export const aiTaskTypes = [
   "report",
   "content_discovery",
   "community_post",
+  "community_post_evidence_check",
   "screenshot_understanding",
   "ocr",
 ] as const;
