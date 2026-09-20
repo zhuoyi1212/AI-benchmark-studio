@@ -68,7 +68,7 @@ test("keeps community writing grounded in confirmed Findings instead of score-fi
   assert.match(service, /将过度概括改成证据实际覆盖的范围/);
   assert.match(service, /缺少过程日志只能写本次未留存/);
   assert.match(service, /evidenceGroundedPostSchema/);
-  assert.match(service, /atLeastTwoEvidenceGroundedIdeas/);
+  assert.match(service, /atLeastOneEvidenceGroundedIdea/);
 });
 test("enters Publish from confirmed Findings while retaining Report fallback", async () => {
   const quickMigration = await read("supabase/migrations/20260920060000_quick_findings_flow.sql");
