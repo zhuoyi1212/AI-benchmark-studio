@@ -202,15 +202,8 @@ begin
 
   if not found then raise exception 'Findings is not running'; end if;
 
-  -- Quick Findings is now the primary post-test result.
-  update public.projects
-  set status = 'completed', updated_at = now()
-  where id = (
-    select project_id from public.experience_findings where id = p_findings_id
-  )
-    and status = 'testing';
 end;
-$$;
+$;
 
 create or replace function public.confirm_experience_findings(
   p_findings_id uuid,
@@ -230,11 +223,20 @@ begin
   set human_output = p_human_output,
       human_confirmed_at = now(),
       updated_at = now()
-  where id = p_findings_id and status = 'completed';
+  where id = p_findings_id
+    and status = 'completed'
+    and human_confirmed_at is null;
 
-  if not found then raise exception 'Only completed Findings can be confirmed'; end if;
+  if not found then raise exception 'Only unconfirmed completed Findings can be confirmed'; end if;
+
+  update public.projects
+  set status = 'completed', updated_at = now()
+  where id = (
+    select project_id from public.experience_findings where id = p_findings_id
+  )
+    and status = 'testing';
 end;
-$$;
+$;
 
 create or replace function public.fail_experience_findings(
   p_findings_id uuid,
