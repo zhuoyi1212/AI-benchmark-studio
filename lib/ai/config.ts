@@ -85,6 +85,15 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekReasoningModel,
   },
+  findings: {
+    provider: "zhipu",
+    capability: "multimodal",
+    promptVersion: "findings.v1",
+    reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.zhipuVisionModel,
+  },
   report: {
     provider: "zhipu",
     capability: "structured_text",
