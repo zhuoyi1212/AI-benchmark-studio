@@ -39,6 +39,8 @@ export type ContentIdea = z.infer<typeof contentIdeaSchema>;
 export const publishConfigSchema = z.object({
   channel: z.enum(["小红书", "站内社区", "知乎", "通用社区"]),
   goal: z.enum(["提供深度洞察", "分享真实体验", "帮助用户选型", "引发讨论", "分享踩坑经历", "提出反常识观点"]),
+  stylePreset: z.enum(["真实体验", "克制评测", "专业分析"]).default("真实体验"),
+  structure: z.enum(["好用 / 一般 / 难用", "优点 / 问题 / 结论", "自由结构"]).default("好用 / 一般 / 难用"),
   tone: text.max(500),
   length: text.max(80),
   imageCount: z.coerce.number().int().min(0).max(9),
@@ -74,11 +76,28 @@ export const screenshotRecommendationSchema = z.object({
   order: z.number().int().min(1).max(9),
 });
 
+export const editorialPlanSchema = z.object({
+  coreConclusion: text.max(1200),
+  highlights: z.array(text.max(800)).min(1).max(6),
+  neutralPoints: z.array(text.max(800)).max(6),
+  painPoints: z.array(text.max(800)).max(6),
+  structure: z.array(text.max(120)).min(3).max(8),
+  avoidClaims: z.array(text.max(800)).max(8),
+});
+
+export const factCheckSchema = z.object({
+  status: z.enum(["passed", "revised"]),
+  revisedClaimCount: z.number().int().nonnegative().max(50),
+  notes: z.array(text.max(800)).max(8),
+});
+
 export const communityPostContentSchema = z.object({
   title: text.max(240),
   body: text.max(12_000),
   tags: z.array(text.max(40)).min(1).max(12),
   interactionQuestion: text.max(600),
+  editorialPlan: editorialPlanSchema.optional(),
+  factCheck: factCheckSchema.optional(),
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({
@@ -91,8 +110,16 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
 });
 export type CommunityPostOutput = z.infer<typeof communityPostOutputSchema>;
 
-// Apply completeness to new generations only; historical posts stay readable.
-export const communityPostGenerationSchema = communityPostOutputSchema.refine(
+export const communityPostDraftSchema = communityPostOutputSchema.extend({
+  editorialPlan: editorialPlanSchema,
+});
+export type CommunityPostDraft = z.infer<typeof communityPostDraftSchema>;
+
+// Apply completeness and evidence-check metadata to new generations only; historical posts stay readable.
+export const communityPostGenerationSchema = communityPostOutputSchema.extend({
+  editorialPlan: editorialPlanSchema,
+  factCheck: factCheckSchema,
+}).refine(
   (post) => post.body.trim().length >= 200 && post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length >= 4,
   { path: ["body"], message: "Return the complete article in body, not just an opening: at least 200 characters and 4 paragraphs separated by blank lines. Include the tested task, concrete output, evidence-backed findings, and scope limitations without repeating the same conclusion." },
 );
