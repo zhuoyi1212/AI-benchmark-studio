@@ -162,6 +162,7 @@ test("workspace reads are side-effect free and explicit transitions create depen
   assert.doesNotMatch(blindService, /\.initialize\(/);
   assert.doesNotMatch(humanGetter, /\.ensure\(/);
   assert.match(protocolService, /lockProtocol[\s\S]*testExecutionRepository\.ensureMatrix/);
-  assert.match(testService, /finalizeTestExecution[\s\S]*blindReviewRepository\.initialize/);
+  assert.doesNotMatch(testService, /blindReviewRepository/);
+  assert.match(blindService, /startProfessionalReview[\s\S]*blindReviewRepository\.startProfessional/);
   assert.match(judgeService, /runBlindJudge[\s\S]*humanReviewRepository\.ensure/);
 });
