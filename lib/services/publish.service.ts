@@ -23,7 +23,7 @@ import { RepositoryError } from "@/lib/repositories/repository-error";
 import { resultAnalysisRepository } from "@/lib/repositories/result-analysis.repository";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { createInputSignature } from "@/lib/signatures";
-import { getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
+import { buildRawFindingsEvidenceContent, getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { getReportWorkspace, type ReportEvidence } from "@/lib/services/report.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import type { Json, PublishPackRow } from "@/lib/types/database";
@@ -227,23 +227,29 @@ export async function generateCommunityPost(
       ],
     };
 
+    const factCheckMessages = [
+      {
+        role: "system" as const,
+        content: [
+          "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
+          source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
+          "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
+          "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
+          "editorialPlan 必须保留并可按核对结果微调。",
+          "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
+          "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
+        ].join("\n"),
+      },
+      { role: "user" as const, content: JSON.stringify(factCheckInput) },
+    ];
+    if (source.kind === "findings") {
+      factCheckMessages.push({ role: "user" as const, content: await buildRawFindingsEvidenceContent(projectId) });
+    }
+
     const checkedResult = await aiTaskService.generateCommunityPost({
       schema: evidenceGroundedPostSchema,
       schemaName: "EvidenceCheckedCommunityPost",
-      messages: [
-        {
-          role: "system",
-          content: [
-            "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
-            "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
-            "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
-            "editorialPlan 必须保留并可按核对结果微调。",
-            "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
-            "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
-          ].join("\n"),
-        },
-        { role: "user", content: JSON.stringify(factCheckInput) },
-      ],
+      messages: factCheckMessages,
       maxTokens: 8_000,
       maxAttempts: 2,
     });
@@ -432,7 +438,7 @@ function assertIdeas(ideas: ContentIdea[], source: PublishSource) {
 
 function normalizeIdeas(ideas: ContentIdea[]): ContentIdea[] {
   const evidenceGroundedIdeas = ideas.filter((idea) => !unsupportedProcessInference.test(`${idea.angle}\n${idea.insight}\n${idea.whyInteresting}`));
-  if (evidenceGroundedIdeas.length < 3) throw new AIValidationError("content_discovery", "atLeastThreeEvidenceGroundedIdeas");
+  if (evidenceGroundedIdeas.length < 2) throw new AIValidationError("content_discovery", "atLeastTwoEvidenceGroundedIdeas");
   const recommendedIndex = evidenceGroundedIdeas.reduce((best, idea, index) => {
     const value = idea.informationValue + idea.discussionPotential + idea.confidence * 0.25;
     const bestIdea = evidenceGroundedIdeas[best]!;
