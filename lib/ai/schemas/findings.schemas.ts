@@ -17,7 +17,7 @@ export const experienceFindingItemSchema = z.object({
 
 export const experienceFindingsOutputSchema = z.object({
   summary: text.max(2400),
-  findings: z.array(experienceFindingItemSchema).min(2).max(12),
+  findings: z.array(experienceFindingItemSchema).min(1).max(12),
   limitations: z.array(text.max(1000)).min(1).max(8),
 });
 
