@@ -19,6 +19,9 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
     }
   }
 
+  const confirmedFindingIds = new Set(snapshot.experienceFindings
+    .filter((finding) => finding.status === "completed" && finding.humanConfirmedAt && completedTestProtocolIds.has(finding.protocolId))
+    .map((finding) => finding.id));
   const completedJudgeRunIds = new Set(snapshot.judgeRuns
     .filter((run) => run.status === "completed" && completedTestProtocolIds.has(run.protocolId))
     .map((run) => run.id));
@@ -31,13 +34,16 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
   const completedReportIds = new Set(snapshot.reports
     .filter((report) => report.status === "completed" && completedAnalysisIds.has(report.resultAnalysisId))
     .map((report) => report.id));
-  const publishCompleted = snapshot.publishPacks.some((pack) => pack.status === "ready" && completedReportIds.has(pack.reportId));
+  const publishCompleted = snapshot.publishPacks.some((pack) => pack.status === "ready" && (
+    (pack.findingsId !== null && confirmedFindingIds.has(pack.findingsId))
+    || (pack.reportId !== null && completedReportIds.has(pack.reportId))
+  ));
 
   const researchCompleted = completedResearch.length > 0;
   const protocolCompleted = lockedProtocolIds.size > 0;
   const testCompleted = completedTestProtocolIds.size > 0;
   const reviewCompleted = revealedReviewIds.size > 0;
-  const resultsCompleted = completedAnalysisIds.size > 0;
+  const resultsCompleted = confirmedFindingIds.size > 0;
   const reportCompleted = completedReportIds.size > 0;
   const protocolAllowedByResearch = researchCompleted && (
     snapshot.productCount === 1 || comparabilityStatus(latestCompletedResearch?.comparability) !== "not_comparable"
@@ -51,9 +57,9 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
         !researchCompleted ? "请先完成产品调研" : "当前产品不适合标准化横向测评"),
       test: stage(testCompleted, protocolCompleted, "请先锁定测评方案"),
       review: stage(reviewCompleted, testCompleted, "请先完成测试执行"),
-      results: stage(resultsCompleted, reviewCompleted, "请先锁定并揭晓最终评分"),
-      report: stage(reportCompleted, resultsCompleted, "请先生成最终结果分析"),
-      publish: stage(publishCompleted, reportCompleted, "请先生成深度报告"),
+      results: stage(resultsCompleted, testCompleted, "请先完成真实测试并保存原始证据"),
+      report: stage(reportCompleted, completedAnalysisIds.size > 0, "请先完成可选的专业评分与结果分析"),
+      publish: stage(publishCompleted, resultsCompleted || reportCompleted, "请先确认测评发现，或完成专业深度报告"),
     },
   };
 }
