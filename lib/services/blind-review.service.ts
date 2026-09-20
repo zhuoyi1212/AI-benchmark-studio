@@ -20,6 +20,24 @@ export class BlindReviewError extends Error {
   }
 }
 
+export async function startProfessionalReview(projectId: string, protocolId: string): Promise<void> {
+  const protocolWorkspace = await getProtocolWorkspace(projectId);
+  const protocol = protocolWorkspace?.protocol;
+  if (!protocolWorkspace || !protocol || protocol.status !== "locked" || protocol.id !== protocolId) {
+    throw new BlindReviewError("只能从当前锁定的测试计划启动专业评分。");
+  }
+
+  try {
+    await blindReviewRepository.assertProtocolSafe(projectId, protocolId);
+    await blindReviewRepository.initialize(projectId, protocolId);
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new BlindReviewError("专业评分启动失败，请确认全部真实测试结果已经完成。");
+    }
+    throw error;
+  }
+}
+
 export async function getBlindReviewWorkspace(projectId: string): Promise<BlindReviewWorkspace | null> {
   const protocolWorkspace = await getProtocolWorkspace(projectId);
   const protocol = protocolWorkspace?.protocol;
