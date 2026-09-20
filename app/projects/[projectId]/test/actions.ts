@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
+import { BlindReviewError, startProfessionalReview } from "@/lib/services/blind-review.service";
 import {
   finalizeTestExecution,
   TestExecutionError,
@@ -72,6 +74,27 @@ export async function finalizeTestExecutionAction(
   revalidatePath(`/projects/${projectId.data}/test`);
   revalidatePath("/projects");
   return { ok: true, message: "全部测试结果已就绪。" };
+}
+
+export async function startProfessionalReviewAction(
+  _previousState: TestExecutionActionState,
+  formData: FormData,
+): Promise<TestExecutionActionState> {
+  const projectId = idSchema.safeParse(formData.get("projectId"));
+  const protocolId = idSchema.safeParse(formData.get("protocolId"));
+  if (!projectId.success || !protocolId.success) return { ok: false, message: "项目或 Protocol 标识无效。" };
+
+  try {
+    await startProfessionalReview(projectId.data, protocolId.data);
+  } catch (error) {
+    if (error instanceof BlindReviewError) return { ok: false, message: error.message };
+    throw error;
+  }
+
+  revalidatePath(`/projects/${projectId.data}/test`);
+  revalidatePath(`/projects/${projectId.data}/review`);
+  revalidatePath("/projects");
+  redirect(`/projects/${projectId.data}/review`);
 }
 
 function parseInteger(value: FormDataEntryValue | null) {
