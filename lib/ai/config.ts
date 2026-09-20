@@ -107,7 +107,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "community-post.v2-complete.3",
+    promptVersion: "community-post.v3-editorial-factcheck",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
