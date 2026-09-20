@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { uploadTestArtifactAction } from "@/app/projects/[projectId]/test/actions";
-import { getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
+import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
 import { generateProtocol, getProtocolWorkspace, lockProtocol, ProtocolExecutionError } from "@/lib/services/protocols.service";
@@ -144,6 +144,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(artifactIds.length === testWorkspace.testRuns.length, "Every TestRun must retain one raw Artifact");
   assert(testWorkspace.testRuns.every((run) => run.projectId === projectId && run.protocolId === protocolId), "Artifact lineage left the current Project or Protocol");
   await finalizeTestExecution(projectId, protocolId);
+  await startProfessionalReview(projectId, protocolId);
 
   const blind = requireValue(await getBlindReviewWorkspace(projectId), "Single Blind workspace missing");
   assert(blind.samples.length === 1, "Single Project must retain one anonymous Sample");
