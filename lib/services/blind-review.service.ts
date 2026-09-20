@@ -29,7 +29,7 @@ export async function startProfessionalReview(projectId: string, protocolId: str
 
   try {
     await blindReviewRepository.assertProtocolSafe(projectId, protocolId);
-    await blindReviewRepository.initialize(projectId, protocolId);
+    await blindReviewRepository.startProfessional(projectId, protocolId);
   } catch (error) {
     if (error instanceof RepositoryError) {
       throw new BlindReviewError("专业评分启动失败，请确认全部真实测试结果已经完成。");
