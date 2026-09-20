@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { finalizeTestExecutionAction, uploadTestArtifactAction, type TestExecutionActionState } from "@/app/projects/[projectId]/test/actions";
+import { finalizeTestExecutionAction, startProfessionalReviewAction, uploadTestArtifactAction, type TestExecutionActionState } from "@/app/projects/[projectId]/test/actions";
 import type { TestRun } from "@/lib/types/test-run";
 
 const initialState: TestExecutionActionState = { ok: false, message: null };
@@ -60,6 +60,26 @@ export function FinalizeExecutionAction({ projectId, protocolId }: { projectId: 
   const [state, formAction, pending] = useActionState(finalizeTestExecutionAction, initialState);
   useEffect(() => { if (state.message && state.ok) toast.success(state.message); }, [state]);
   return <form action={formAction} className="flex flex-col items-end gap-2"><input type="hidden" name="projectId" value={projectId} /><input type="hidden" name="protocolId" value={protocolId} /><Button type="submit" size="lg" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在确认...</> : <><CheckCircle2 className="h-4 w-4" />确认全部测试结果</>}</Button>{state.message && !state.ok && <p role="alert" className="max-w-sm text-right text-xs text-red-600">{state.message}</p>}</form>;
+}
+
+export function ProfessionalReviewAction({
+  projectId,
+  protocolId,
+  label = "专业评分（可选）",
+}: {
+  projectId: string;
+  protocolId: string;
+  label?: string;
+}) {
+  const [state, formAction, pending] = useActionState(startProfessionalReviewAction, initialState);
+  return <form action={formAction} className="flex flex-col items-end gap-2">
+    <input type="hidden" name="projectId" value={projectId} />
+    <input type="hidden" name="protocolId" value={protocolId} />
+    <Button type="submit" variant="outline" disabled={pending}>
+      {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在进入专业模式...</> : label}
+    </Button>
+    {state.message && !state.ok && <p role="alert" className="max-w-sm text-right text-xs text-red-600">{state.message}</p>}
+  </form>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
