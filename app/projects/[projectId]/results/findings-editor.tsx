@@ -83,8 +83,8 @@ export function FindingsEditor({
       <label className="block text-xs font-medium">测试限制（每行一条）</label>
       <Textarea className="mt-2 min-h-24" value={limitations} onChange={(event) => setLimitations(event.target.value)} />
       <div className="mt-4 flex items-center justify-between gap-4">
-        <p className="text-xs text-muted-foreground">已保留 {selectedCount} 条发现。至少保留 2 条，确认后即可直接生成社区内容。</p>
-        <Button type="submit" size="lg" disabled={pending || selectedCount < 2}>
+        <p className="text-xs text-muted-foreground">已保留 {selectedCount} 条发现。至少保留 1 条，确认后即可直接生成社区内容。</p>
+        <Button type="submit" size="lg" disabled={pending || selectedCount < 1}>
           {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
           确认 Findings
         </Button>
