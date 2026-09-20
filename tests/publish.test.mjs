@@ -70,9 +70,16 @@ test("keeps community writing grounded in confirmed Findings instead of score-fi
   assert.match(service, /evidenceGroundedPostSchema/);
   assert.match(service, /atLeastThreeEvidenceGroundedIdeas/);
 });
-test("guards Publish by current completed Report and exposes explicit states", () => {
-  assert.match(migration, /PublishPack requires a current completed Report/); assert.match(migration, /private\.final_score_signature/);
-  assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/report`\)/); assert.match(editor, /上次内容发现未完成/); assert.match(editor, /正在从完整实验中发现观点/);
+test("enters Publish from confirmed Findings while retaining Report fallback", async () => {
+  const quickMigration = await read("supabase/migrations/20260920060000_quick_findings_flow.sql");
+  assert.match(quickMigration, /begin_findings_publish_pack/);
+  assert.match(quickMigration, /PublishPack requires confirmed Findings/);
+  assert.match(repository, /beginFromFindings/);
+  assert.match(repository, /beginFromReport/);
+  assert.match(service, /getExperienceFindingsWorkspace/);
+  assert.match(service, /sourceType: "confirmed_findings"/);
+  assert.match(page, /redirect\(\`\/projects\/\$\{projectId\}\/results\`\)/);
+  assert.match(editor, /当前来源：人工确认 Findings/);
 });
 test("keeps Publish mutations service-role only and ready evidence immutable", () => {
   assert.match(migration, /revoke all[\s\S]*from public, anon, authenticated/); assert.match(migration, /grant execute[\s\S]*to service_role/);
