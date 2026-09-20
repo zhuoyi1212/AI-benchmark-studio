@@ -22,7 +22,9 @@ test("persists Findings independently from Judge, Review, Result Analysis, and R
   assert.match(migration, /human_output jsonb/);
   assert.match(migration, /human_confirmed_at timestamptz/);
   assert.match(migration, /Findings requires a complete Artifact-backed TestRun matrix/);
-  assert.doesNotMatch(migration.slice(0, migration.indexOf("alter table public.publish_packs")), /review_sessions|judge_runs|result_analyses|reports/);
+  const findingsFunctions = migration.slice(migration.indexOf("create or replace function public.begin_experience_findings"), migration.indexOf("alter table public.publish_packs"));
+  assert.doesNotMatch(findingsFunctions, /review_sessions|result_analyses|reports/);
+  assert.match(migration, /Older builds initialized Blind Layer/);
 });
 
 test("Findings are evidence-backed observations rather than scores", () => {
@@ -72,7 +74,7 @@ test("PublishPack can bind either confirmed Findings or a professional Report", 
 });
 
 test("new public Findings functions remain service-role only", () => {
-  for (const fn of ["begin_experience_findings", "start_experience_findings", "complete_experience_findings", "confirm_experience_findings", "fail_experience_findings", "begin_findings_publish_pack"]) {
+  for (const fn of ["begin_experience_findings", "start_experience_findings", "complete_experience_findings", "confirm_experience_findings", "fail_experience_findings", "begin_findings_publish_pack", "start_professional_review"]) {
     assert.match(migration, new RegExp(`revoke all on function public\\.${fn}[^;]+from public, anon, authenticated`));
     assert.match(migration, new RegExp(`grant execute on function public\\.${fn}[^;]+to service_role`));
   }
