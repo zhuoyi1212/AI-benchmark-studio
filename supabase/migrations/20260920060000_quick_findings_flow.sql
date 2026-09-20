@@ -210,7 +210,7 @@ begin
   )
     and status = 'testing';
 end;
-$;
+$$;
 
 create or replace function public.confirm_experience_findings(
   p_findings_id uuid,
@@ -327,7 +327,7 @@ create or replace function private.validate_publish_artifact_relation()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 begin
   if not exists (
     select 1
@@ -361,7 +361,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 -- Keep text-only Publish support while making project status source-aware.
 create or replace function public.complete_publish_pack(
@@ -420,7 +420,7 @@ begin
       updated_at = now()
   where id = target_pack.project_id;
 end;
-$;
+$$;
 
 create or replace function public.start_professional_review(
   p_project_id uuid,
@@ -430,7 +430,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   current_status text;
 begin
@@ -457,7 +457,7 @@ begin
 
   perform public.initialize_blind_layer(p_project_id, p_protocol_id);
 end;
-$;
+$$;
 
 revoke all on function public.begin_experience_findings(uuid, uuid, jsonb, text) from public, anon, authenticated;
 revoke all on function public.start_experience_findings(uuid, text, text, text) from public, anon, authenticated;
