@@ -189,9 +189,9 @@ function buildSnapshot(test: TestExecutionWorkspace, research: NonNullable<Await
       version: test.protocol.version,
       title: test.protocol.title,
       goal: test.protocol.goal,
-      testCases: test.protocol.testCases.map((item) => ({
+      testCases: test.protocol.testCases.map((item, index) => ({
         id: item.id,
-        position: item.position,
+        position: index + 1,
         title: item.title,
         objective: item.objective,
         prompt: item.prompt,
