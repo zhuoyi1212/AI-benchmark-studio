@@ -13,7 +13,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     getPublishWorkspace(projectId),
     getProjectWorkflowState(projectId),
   ]);
-  if (!workspace) redirect(`/projects/${projectId}/report`);
+  if (!workspace) redirect(`/projects/${projectId}/results`);
   if (!workflowState) redirect("/projects");
   return <PublishEditor workspace={workspace} workflowState={workflowState} />;
 }
