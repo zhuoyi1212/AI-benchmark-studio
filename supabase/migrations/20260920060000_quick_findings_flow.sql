@@ -203,7 +203,7 @@ begin
   if not found then raise exception 'Findings is not running'; end if;
 
 end;
-$;
+$$;
 
 create or replace function public.confirm_experience_findings(
   p_findings_id uuid,
@@ -236,7 +236,7 @@ begin
   )
     and status = 'testing';
 end;
-$;
+$$;
 
 create or replace function public.fail_experience_findings(
   p_findings_id uuid,
