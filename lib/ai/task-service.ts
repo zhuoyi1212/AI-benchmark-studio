@@ -108,6 +108,7 @@ export const aiTaskService = {
     request: StructuredTaskRequest<Schema>,
   ) => runStructuredAITask(selectJudgeTaskForCase(testCaseId, artifacts), request),
   analyzeFinalResults: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("result_analysis", request),
+  generateFindings: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("findings", request),
   generateReport: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("report", request),
   discoverContentIdeas: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("content_discovery", request),
   generateCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post", request),
