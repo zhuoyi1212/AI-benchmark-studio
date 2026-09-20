@@ -30,6 +30,7 @@ test("persists Findings independently from Judge, Review, Result Analysis, and R
 test("Findings are evidence-backed observations rather than scores", () => {
   assert.match(schema, /z\.enum\(\["good", "neutral", "problem"\]\)/);
   assert.match(schema, /evidenceArtifactIds/);
+  assert.match(schema, /findings: z\.array\(experienceFindingItemSchema\)\.min\(1\)\.max\(12\)/);
   assert.doesNotMatch(schema, /score|ranking|winner/i);
   assert.match(service, /不是评分员/);
   assert.match(service, /不要生成分数、排名、冠军或总评等级/);
@@ -48,6 +49,7 @@ test("human review confirms or edits Findings instead of changing scores", () =>
   assert.match(editor, /好用/);
   assert.match(editor, /一般/);
   assert.match(editor, /问题/);
+  assert.match(editor, /至少保留 1 条/);
   assert.match(page, /FindingsEditor/);
 });
 
