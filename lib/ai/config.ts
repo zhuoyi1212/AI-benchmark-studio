@@ -122,6 +122,15 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuTextModel,
   },
+  community_post_evidence_check: {
+    provider: "zhipu",
+    capability: "multimodal",
+    promptVersion: "community-post-evidence-check.v1",
+    reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.zhipuVisionModel,
+  },
   screenshot_understanding: {
     provider: "zhipu",
     capability: "multimodal",
