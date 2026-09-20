@@ -322,3 +322,5 @@ Incremental Publish Regression ✅ 2026-09-08 仅复用现有豆包/智谱项目
 2026-09-18 产品库清理：按用户要求移除 /products 的 demo 产品卡片与无效搜索入口，显示简洁空状态；不删除真实产品实体、项目或历史证据。typecheck、3 项 Mock 边界测试、build、git diff --check 通过，浏览器确认“暂无产品”。秘塔 Research v7 复用，Protocol v1 已生成；用户选择仅保留学术引用核验任务，后续等待真实手动实测证据。保持已有混合工作区，不将无关改动打包提交。
 
 2026-09-20 秘塔真实测评继续：单学术引用核验任务已完成手动证据上传、Judge、append-only复核、Results与Report。智谱恢复版实际生成Publish v1–v5，保留失败、各次输入/输出/用量于工作区 outputs/metaso-review-20260920；根据实测只补完整正文校验、证据边界和取消固定第一人称模板，未重启观猹/短观察/Critic。v5在网站显示正常，891字，主要事实限定为HaluEval发表状态遗漏；仍有范围说明重复，上游Report/候选角度有过度概括，不能宣称内容全面验收。审计同时确认当前正文输入含Judge证据摘录而非完整文本Artifact，后续应优先补原文证据而非继续风格改写。Publish10/10、路由及Provider韧性16/16、typecheck、build、diff检查通过。原始记录和既有混合工作区保留，未提交。
+
+Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测试计划 → Test/Artifact → AI Findings → 人工确认 → Publish；新增 experience_findings 与 Findings-bound PublishPack，Blind Judge / Human Review / Result Analysis / Report 保留为显式专业模式，不再阻塞社区内容。Quick Publish 的最终事实核对重新读取完整原始 Artifact；不删除或覆盖既有专业测评历史。
