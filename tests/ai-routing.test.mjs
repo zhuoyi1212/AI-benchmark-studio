@@ -22,15 +22,17 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /judge_text:[\s\S]*provider: "deepseek"/);
   assert.match(config, /judge_multimodal:[\s\S]*provider: "zhipu"/);
   assert.match(config, /judge_multimodal:[\s\S]*reasoning: "standard"/);
+  assert.match(config, /findings:[\s\S]*provider: "zhipu"[\s\S]*capability: "multimodal"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
-  assert.match(config, /community_post:[\s\S]*provider: "zhipu"[\s\S]*promptVersion: "community-post\.v2-complete\.3"/);
+  assert.match(config, /community_post:[\s\S]*provider: "zhipu"[\s\S]*promptVersion: "community-post\.v3-editorial-factcheck"/);
   assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
   assert.doesNotMatch(taskService, /glm-|deepseek-v/);
   assert.match(taskService, /Product Research requires at least one source search/);
   assert.match(taskService, /Use only these retrieved sources for product facts/);
+  assert.match(taskService, /generateFindings/);
 });
 
 test("routes a whole TestCase by its complete artifact modality set", () => {
