@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, FileText, FlaskConical, ShieldCheck, Sparkles } from "lucide-react";
 import { FindingsEditor } from "@/app/projects/[projectId]/results/findings-editor";
 import { FindingsGenerationAction } from "@/app/projects/[projectId]/results/findings-generation-action";
+import { ProfessionalReviewAction } from "@/app/projects/[projectId]/test/test-actions";
 import { ResultAnalysisAction } from "@/app/projects/[projectId]/results/result-analysis-action";
 import { PageHeader } from "@/components/page-header";
 import { WorkflowSteps } from "@/components/workflow-steps";
@@ -56,7 +57,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
-    <ProfessionalMode projectId={projectId} professional={professional} />
+    <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} />
   </div>;
 }
 
@@ -147,7 +148,7 @@ function FindingCard({
   </Card>;
 }
 
-function ProfessionalMode({ projectId, professional }: { projectId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>> }) {
+function ProfessionalMode({ projectId, protocolId, professional }: { projectId: string; protocolId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>> }) {
   const analysis = professional?.latestAnalysis;
   const complete = analysis?.status === "completed" && !analysis.stale && analysis.output;
   return <section className="mt-10 rounded-lg border border-dashed bg-slate-50/50 p-5">
@@ -157,7 +158,7 @@ function ProfessionalMode({ projectId, professional }: { projectId: string; prof
         <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">需要结构化评分、Blind Judge、人工复核或深度报告时再进入。它不会阻塞 Findings 和社区内容。</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {!professional && <Button variant="outline" asChild><Link href={`/projects/${projectId}/review`}>进入专业评分</Link></Button>}
+        {!professional && <ProfessionalReviewAction projectId={projectId} protocolId={protocolId} label="进入专业评分" />}
         {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}
         {complete && <Button variant="outline" asChild><Link href={`/projects/${projectId}/report`}><FileText className="h-4 w-4" />生成深度报告</Link></Button>}
       </div>
