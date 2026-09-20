@@ -35,6 +35,22 @@ create table public.experience_findings (
 create index experience_findings_project_idx
   on public.experience_findings(project_id, protocol_id, version desc);
 
+-- Older builds initialized Blind Layer as soon as Test Execution was finalized.
+-- Restore those untouched projects to the quick-flow post-test state. Projects
+-- with any JudgeRun are left unchanged because professional evaluation actually started.
+update public.projects project
+set status = 'testing', updated_at = now()
+where project.status = 'reviewing'
+  and project.deleted_at is null
+  and not exists (
+    select 1 from public.judge_runs judge where judge.project_id = project.id
+  )
+  and exists (
+    select 1
+    from public.test_runs run
+    where run.project_id = project.id and run.status = 'ready_for_review'
+  );
+
 alter table public.experience_findings enable row level security;
 
 create policy experience_findings_owner_select
@@ -186,24 +202,13 @@ begin
 
   if not found then raise exception 'Findings is not running'; end if;
 
-  -- Quick Findings is now the primary post-test result. Keep an active
-  -- professional Judge run in reviewing state, but otherwise let the project
-  -- resume at Results instead of forcing users into Blind Review.
+  -- Quick Findings is now the primary post-test result.
   update public.projects
   set status = 'completed', updated_at = now()
   where id = (
     select project_id from public.experience_findings where id = p_findings_id
   )
-    and (
-      status = 'testing'
-      or (
-        status = 'reviewing'
-        and not exists (
-          select 1 from public.judge_runs judge
-          where judge.project_id = public.projects.id
-        )
-      )
-    );
+    and status = 'testing';
 end;
 $;
 
