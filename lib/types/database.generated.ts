@@ -114,6 +114,89 @@ export type Database = {
           },
         ]
       }
+      experience_findings: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          estimated_cost: number | null
+          human_confirmed_at: string | null
+          human_output: Json | null
+          id: string
+          input_signature: string
+          input_snapshot: Json
+          input_tokens: number | null
+          latency_ms: number | null
+          model: string | null
+          output: Json | null
+          output_tokens: number | null
+          project_id: string
+          prompt_version: string | null
+          protocol_id: string
+          provider: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost?: number | null
+          human_confirmed_at?: string | null
+          human_output?: Json | null
+          id?: string
+          input_signature: string
+          input_snapshot?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output?: Json | null
+          output_tokens?: number | null
+          project_id: string
+          prompt_version?: string | null
+          protocol_id: string
+          provider?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost?: number | null
+          human_confirmed_at?: string | null
+          human_output?: Json | null
+          id?: string
+          input_signature?: string
+          input_snapshot?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output?: Json | null
+          output_tokens?: number | null
+          project_id?: string
+          prompt_version?: string | null
+          protocol_id?: string
+          provider?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_findings_protocol_id_project_id_fkey"
+            columns: ["protocol_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "protocols"
+            referencedColumns: ["id", "project_id"]
+          },
+        ]
+      }
       human_review_events: {
         Row: {
           action: string
@@ -781,7 +864,8 @@ export type Database = {
           project_id: string
           prompt_version: string | null
           provider: string | null
-          report_id: string
+          report_id: string | null
+          findings_id: string | null
           selected_idea: Json | null
           status: string
           updated_at: string
@@ -815,7 +899,8 @@ export type Database = {
           project_id: string
           prompt_version?: string | null
           provider?: string | null
-          report_id: string
+          report_id?: string | null
+          findings_id?: string | null
           selected_idea?: Json | null
           status?: string
           updated_at?: string
@@ -849,13 +934,21 @@ export type Database = {
           project_id?: string
           prompt_version?: string | null
           provider?: string | null
-          report_id?: string
+          report_id?: string | null
+          findings_id?: string | null
           selected_idea?: Json | null
           status?: string
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "publish_packs_findings_project_fkey"
+            columns: ["findings_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "experience_findings"
+            referencedColumns: ["id", "project_id"]
+          },
           {
             foreignKeyName: "publish_packs_report_id_project_id_fkey"
             columns: ["report_id", "project_id"]
@@ -1518,6 +1611,19 @@ export type Database = {
         }
         Returns: string
       }
+      begin_experience_findings: {
+        Args: {
+          p_input_signature: string
+          p_input_snapshot: Json
+          p_project_id: string
+          p_protocol_id: string
+        }
+        Returns: string
+      }
+      begin_findings_publish_pack: {
+        Args: { p_findings_id: string; p_project_id: string }
+        Returns: string
+      }
       begin_publish_pack: {
         Args: { p_project_id: string; p_report_id: string }
         Returns: string
@@ -1529,6 +1635,14 @@ export type Database = {
       begin_result_analysis: {
         Args: { p_project_id: string; p_review_session_id: string }
         Returns: string
+      }
+      complete_experience_findings: {
+        Args: { p_findings_id: string; p_output: Json; p_usage: Json }
+        Returns: undefined
+      }
+      confirm_experience_findings: {
+        Args: { p_findings_id: string; p_human_output: Json }
+        Returns: undefined
       }
       complete_content_discovery: {
         Args: {
@@ -1616,6 +1730,10 @@ export type Database = {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
+      fail_experience_findings: {
+        Args: { p_error_message: string; p_findings_id: string }
+        Returns: undefined
+      }
       fail_judge_run: {
         Args: { p_error_message: string; p_judge_run_id: string }
         Returns: undefined
@@ -1687,6 +1805,15 @@ export type Database = {
       }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
+        Returns: undefined
+      }
+      start_experience_findings: {
+        Args: {
+          p_findings_id: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+        }
         Returns: undefined
       }
       start_community_post: {
