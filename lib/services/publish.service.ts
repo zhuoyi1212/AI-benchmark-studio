@@ -439,7 +439,7 @@ function assertIdeas(ideas: ContentIdea[], source: PublishSource) {
 
 function normalizeIdeas(ideas: ContentIdea[]): ContentIdea[] {
   const evidenceGroundedIdeas = ideas.filter((idea) => !unsupportedProcessInference.test(`${idea.angle}\n${idea.insight}\n${idea.whyInteresting}`));
-  if (evidenceGroundedIdeas.length < 2) throw new AIValidationError("content_discovery", "atLeastTwoEvidenceGroundedIdeas");
+  if (evidenceGroundedIdeas.length < 1) throw new AIValidationError("content_discovery", "atLeastOneEvidenceGroundedIdea");
   const recommendedIndex = evidenceGroundedIdeas.reduce((best, idea, index) => {
     const value = idea.informationValue + idea.discussionPotential + idea.confidence * 0.25;
     const bestIdea = evidenceGroundedIdeas[best]!;
