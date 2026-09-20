@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { ArrowLeft, ArrowRight, Award, Bot, Check, Crown, FileText, Scale, Sparkles, UserCheck, Users2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Award, Bot, Check, FileText, Scale, Sparkles, UserCheck, Users2, X } from "lucide-react";
 import { ResultAnalysisAction } from "@/app/projects/[projectId]/results/result-analysis-action";
 import { PageHeader } from "@/components/page-header";
 import { ProductLogo } from "@/components/product-logo";
@@ -50,7 +50,7 @@ function AnalysisState({ workspace, workflowState }: { workspace: ResultsWorkspa
   const analysis = workspace.latestAnalysis;
   const failed = analysis?.status === "failed";
   const running = analysis?.status === "pending" || analysis?.status === "running";
-  return <div className="page-shell"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /><PageHeader eyebrow={`Final Results / Protocol v${workspace.protocolVersion}`} title={workspace.projectMode === "single" ? "生成产品体验分析" : "生成最终结果分析"} description="产品身份已经揭晓。系统将使用锁定 Final Score、Judge Evidence、人工复核与 Artifact metadata 重新分析结论。" action={<Badge variant="success"><Scale className="h-3 w-3" />Final Score 已锁定</Badge>} /><Card className="mx-auto max-w-2xl p-8 text-center shadow-none"><Sparkles className="mx-auto h-6 w-6 text-blue-600" /><h2 className="mt-4 text-lg font-semibold">{failed ? "上次分析未完成" : running ? "最终分析进行中" : analysis?.stale ? "评分签名已变化，需要重新分析" : "准备生成真实分析"}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{workspace.projectMode === "single" ? "综合体验与各场景得分由当前 Final Score 确定；AI 只负责分析亮点、问题、用户适配与限制。" : "排名由当前 Final Score 确定；AI 只负责解释优势、弱点、用户适配、跨产品洞察与限制，不会重新判分。"}</p><div className="mt-6">{running ? <div className="text-sm text-blue-700">正在分析，请稍后刷新页面…</div> : <ResultAnalysisAction projectId={workspace.projectId} retry={failed || analysis?.stale} />}</div>{failed && analysis?.errorMessage && <p className="mt-3 text-xs text-amber-700">{analysis.errorMessage}</p>}</Card></div>;
+  return <div className="page-shell"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /><PageHeader eyebrow={`Final Results / Protocol v${workspace.protocolVersion}`} title="生成测评发现" description="系统会基于当前专业评分、Judge Evidence、人工复核与 Artifact metadata 提炼真实发现。评分只提供结构化参考，最终内容应回到具体测试证据。" action={<Badge variant="success"><Scale className="h-3 w-3" />Final Score 已锁定</Badge>} /><Card className="mx-auto max-w-2xl p-8 text-center shadow-none"><Sparkles className="mx-auto h-6 w-6 text-blue-600" /><h2 className="mt-4 text-lg font-semibold">{failed ? "上次分析未完成" : running ? "最终分析进行中" : analysis?.stale ? "评分签名已变化，需要重新分析" : "准备生成真实分析"}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{workspace.projectMode === "single" ? "AI 会优先提炼真实测试中的亮点、一般体验、问题、用户影响与限制；专业评分只作为辅助结构。" : "AI 会结合各产品真实 Case 证据提炼差异、优点、问题和限制；已有评分不会被重新判定。"}</p><div className="mt-6">{running ? <div className="text-sm text-blue-700">正在分析，请稍后刷新页面…</div> : <ResultAnalysisAction projectId={workspace.projectId} retry={failed || analysis?.stale} />}</div>{failed && analysis?.errorMessage && <p className="mt-3 text-xs text-amber-700">{analysis.errorMessage}</p>}</Card></div>;
 }
 
 function ScoreRow({ product, index, gridTemplate, showRank }: { product: FinalProductScore; index: number; gridTemplate: string; showRank: boolean }) {
