@@ -41,19 +41,19 @@ test("evidence requirements remain linked through Judge and ResultAnalysis", () 
   assert.match(databaseTypes, /kind: "image" \| "pdf" \| "text" \| "video"/);
 });
 
-test("single output stages end in evidence-aware community content while comparison remains available", () => {
+test("single-product quick flow can publish from confirmed Findings while professional analysis remains available", () => {
   assert.match(results, /projectMode === "single"/);
   assert.match(results, /不得使用排名、冠军或相对竞品措辞/);
   assert.match(report, /深度体验报告编辑/);
   assert.match(report, /深度测评报告编辑/);
-  assert.match(publish, /这是单产品社区内容/);
-  assert.match(publish, /没有真实体验 Evidence 时/);
-  assert.match(publish, /assertPostExperienceEligibility/);
-  assert.doesNotMatch(publish, /我真实体验了这个 AI 产品之后发现/);
+  assert.match(publish, /source\.kind === "findings"/);
+  assert.match(publish, /humanConfirmedFindings/);
+  assert.match(publish, /source\.kind === "findings"[\s\S]*publishRepository\.beginFromFindings/);
 });
 
-test("Publish candidates are restricted to current analysis and report evidence", () => {
-  assert.match(publish, /experimentArtifactIds/);
-  assert.match(publish, /report\.evidence\.filter/);
-  assert.doesNotMatch(publish, /listArtifacts\(runs/);
+test("quick Publish uses confirmed Findings and real image artifacts instead of requiring Report evidence", () => {
+  assert.match(publish, /getExperienceFindingsWorkspace/);
+  assert.match(publish, /quick\.artifacts/);
+  assert.match(publish, /mimeType\.startsWith\("image\/"\)/);
+  assert.match(publish, /事实判断以 humanConfirmedFindings 为主/);
 });
