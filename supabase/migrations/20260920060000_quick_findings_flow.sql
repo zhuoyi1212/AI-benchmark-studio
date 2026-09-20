@@ -299,6 +299,46 @@ begin
 end;
 $$;
 
+create or replace function private.validate_publish_artifact_relation()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if not exists (
+    select 1
+    from public.publish_packs pack
+    join public.test_artifacts artifact on artifact.id = new.artifact_id
+    join public.test_runs run on run.id = artifact.test_run_id
+    where pack.id = new.publish_pack_id
+      and run.project_id = pack.project_id
+      and artifact.kind = 'image'
+      and (
+        (pack.report_id is not null and exists (
+          select 1
+          from public.reports report
+          join public.result_analyses analysis on analysis.id = report.result_analysis_id
+          where report.id = pack.report_id
+            and analysis.protocol_id = run.protocol_id
+        ))
+        or
+        (pack.findings_id is not null and exists (
+          select 1
+          from public.experience_findings finding
+          where finding.id = pack.findings_id
+            and finding.project_id = pack.project_id
+            and finding.protocol_id = run.protocol_id
+            and finding.status = 'completed'
+            and finding.human_confirmed_at is not null
+        ))
+      )
+  ) then
+    raise exception 'Publish screenshot must reference an image TestArtifact from its source Protocol';
+  end if;
+  return new;
+end;
+$;
+
 -- Keep text-only Publish support while making project status source-aware.
 create or replace function public.complete_publish_pack(
   p_publish_pack_id uuid,
