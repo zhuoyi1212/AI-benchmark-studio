@@ -60,11 +60,10 @@ test("plans community content, applies a selected style, and fact-checks the fin
   assert.match(editor, /文章结构/);
 });
 
-test("keeps community writing grounded in test evidence instead of score-first summaries", () => {
-  assert.match(service, /judgeEvidence: buildJudgeEvidence\(source\)/);
-  assert.match(service, /humanReview: source\.report\.review/);
-  assert.match(service, /Final Score 仅可作为辅助背景/);
-  assert.match(service, /Research 只提供背景/);
+test("keeps community writing grounded in confirmed Findings instead of score-first summaries", () => {
+  assert.match(service, /humanConfirmedFindings/);
+  assert.match(service, /事实判断以 humanConfirmedFindings 为主/);
+  assert.match(service, /Final Score 只可作为辅助背景/);
   assert.match(service, /不得创造体验、数据、竞品对比或未测试能力/);
   assert.match(service, /将过度概括改成证据实际覆盖的范围/);
   assert.match(service, /缺少过程日志只能写本次未留存/);
