@@ -22,6 +22,7 @@
     "test:judge": "node --test tests/judge.test.mjs",
     "test:human-review": "node --test tests/human-review.test.mjs",
     "test:result-analysis": "node --test tests/result-analysis.test.mjs",
+    "test:findings": "node --test tests/findings.test.mjs",
     "test:report": "node --test tests/report.test.mjs",
     "test:publish": "node --test tests/publish.test.mjs",
     "test:mock-boundary": "node --test tests/mock-boundary.test.mjs",
