@@ -331,3 +331,5 @@ Publish 内容链改为一次选材判断、一次 Flash 写作、一次现有 C
 Quick 来源为 confirmed Findings；专业来源从 Case 的 Judge evidence 和 Human Review reason 投影为不含数值评分的观察。章节引用以观察 ID 和 Artifact ID 关联，readerBenefit 取已有 impact；正文与最终核对仍保留来源、任务与证据范围。原始 Artifact 最终读取逻辑不变。
 
 publish_packs.community_post JSON 新增可选 articleReview、generationTrace，editorialPlan 扩展核心问题、读者、范围、sections、materialGaps；每阶段记录 provider/model/promptVersion/inputSignature/usage，pack usage 聚合三次调用。历史 JSON 缺少新字段仍可读。无表结构改动。失败继续使用既有 failed/retry 生命周期，不回退 Mock。
+
+2026-09-21 语言编辑补充：CommunityPostDraft 后增加 `community_post_style_edit / CommunityStyleEdit`，只允许 title/body/interactionQuestion 三字段。既有多模态最终核对增加六项 stylePreservation，独立比较 originalDraft/draft，任一 false/缺失/有 issues 拒绝保存。community_post JSON 增加可选 styleEdit 原稿/改稿/changed 与 stylePreservation，generationTrace 扩展 style_edit，usage 聚合四阶段。段落重排后清空旧截图段号与引文，由最终核对重新建立。失败信息带阶段名，仍使用全流程新版本重试；无数据库迁移。

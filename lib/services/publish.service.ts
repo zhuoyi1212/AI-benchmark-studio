@@ -3,12 +3,15 @@ import "server-only";
 import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
 
 import { editorialPlanningRules, deepObservationRules, editorialReviewRules, editorialPlanIssues, editorialArticleIssues, type EditorialFinding } from "@/lib/community-editorial";
+import { languageEditingRules, stylePreservationRules, pickStyleCopy, styleEditIssues } from "@/lib/community-style-editor";
 
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
   communityEditorialPlanSchema,
   articleReviewSchema,
+  communityStyleEditSchema,
+  stylePreservationSchema,
   communityPostDraftSchema,
   communityPostGenerationSchema,
   communityPostOutputSchema,
@@ -194,6 +197,7 @@ export async function generateCommunityPost(
     for (const message of editorialPlanIssues(plan, source.editorialFindings)) context.addIssue({ code: "custom", message });
   });
 
+  let stage = "文章策划";
   try {
     const planningMessages: AIMessage[] = [
       { role: "system", content: [editorialPlanningRules, communityExpressionRules, config.stylePreset === "深度观察" ? deepObservationRules : "遵循所选写作风格。"].join("\n") },
@@ -211,12 +215,18 @@ export async function generateCommunityPost(
     const expressionSchema = evidenceGroundedPostSchema.safeExtend({
       editorialPlan: communityEditorialPlanSchema,
       articleReview: articleReviewSchema,
+      stylePreservation: stylePreservationSchema,
     }).superRefine((post, context) => {
       for (const message of [
         ...communityExpressionIssues(post, config, confirmedFindings),
         ...editorialArticleIssues(post, editorialPlan, source.editorialFindings, config),
       ]) context.addIssue({ code: "custom", message });
+      const preservation = post.stylePreservation;
+      if (!preservation.facts || !preservation.scope || !preservation.stance || !preservation.experience || !preservation.advice || !preservation.evidence || preservation.issues.length) {
+        context.addIssue({ code: "custom", message: "语言编辑改变了原稿含义，不能保存为可发布文章" });
+      }
     });
+    stage = "正文写作";
     const writingInput = { ...postInput, approvedEditorialPlan: editorialPlan };
     const draftResult = await aiTaskService.generateCommunityPost({
       schema: communityPostDraftSchema,
@@ -250,9 +260,33 @@ export async function generateCommunityPost(
       maxAttempts: 2,
     });
 
+    stage = "语言润色";
+    const originalCopy = pickStyleCopy(draftResult.data);
+    const styleMessages: AIMessage[] = [
+      { role: "system", content: languageEditingRules },
+      { role: "user", content: JSON.stringify({ config, original: originalCopy, lockedPlan: editorialPlan }) },
+    ];
+    const styleResult = await aiTaskService.editCommunityPostStyle({
+      schema: communityStyleEditSchema.superRefine((edited, context) => {
+        for (const message of styleEditIssues(originalCopy, edited, editorialPlan)) context.addIssue({ code: "custom", message });
+      }),
+      schemaName: "CommunityStyleEdit",
+      messages: styleMessages,
+      maxTokens: 10_000,
+      maxAttempts: 2,
+    });
+    const editedCopy = pickStyleCopy(styleResult.data);
+    stage = "最终证据核对";
     const factCheckInput = {
       source: postInput,
-      draft: { ...draftResult.data, editorialPlan },
+      originalDraft: originalCopy,
+      draft: {
+        ...editedCopy,
+        tags: draftResult.data.tags,
+        editorialPlan,
+        // Paragraph positions refer to the old body. Never carry them across edits.
+        screenshotRecommendations: draftResult.data.screenshotRecommendations.map(item => ({ ...item, supportsClaim: null, supportsParagraph: null })),
+      },
       factCheckRules: [
         "逐条检查标题和正文中的事实性描述是否能被输入证据直接支持。",
         "将过度概括改成证据实际覆盖的范围。例如只测试一个学校网站失败，不能写成所有非主流平台失败率高。",
@@ -269,6 +303,7 @@ export async function generateCommunityPost(
         content: [
           "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
           editorialReviewRules,
+          stylePreservationRules,
           config.stylePreset === "深度观察" ? deepObservationRules : "",
           communityExpressionRules,
           config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
@@ -299,13 +334,16 @@ export async function generateCommunityPost(
     post.generationTrace = [
       generationTrace("planning", planResult, createInputSignature(planningMessages)),
       generationTrace("writing", draftResult, createInputSignature(writingInput)),
+      generationTrace("style_edit", styleResult, createInputSignature(styleMessages)),
       generationTrace("fact_check", checkedResult, createInputSignature(factCheckMessages)),
     ];
-    await publishRepository.complete(pack.id, post, totalUsage([planResult.usage, draftResult.usage, checkedResult.usage]));
+    post.styleEdit = { original: originalCopy, edited: editedCopy, changed: JSON.stringify(originalCopy) !== JSON.stringify(editedCopy) };
+    stage = "保存文章";
+    await publishRepository.complete(pack.id, post, totalUsage([planResult.usage, draftResult.usage, styleResult.usage, checkedResult.usage]));
     return pack.id;
   } catch (error) {
-    try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
-    throw new PublishExecutionError(toUserFacingError(error));
+    try { await publishRepository.fail(pack.id, `${stage}：${safeFailureMessage(error)}`); } catch { /* preserve source error */ }
+    throw new PublishExecutionError(`${stage}：${toUserFacingError(error)}`);
   }
 }
 
@@ -314,7 +352,7 @@ function totalUsage(items: AIUsage[]): AIUsage {
   return { inputTokens: sum("inputTokens"), outputTokens: sum("outputTokens"), estimatedCost: sum("estimatedCost"), latencyMs: items.reduce((total, item) => total + item.latencyMs, 0) };
 }
 
-function generationTrace(stage: "planning" | "writing" | "fact_check", result: Pick<StructuredTaskResult<unknown>, "route" | "usage">, inputSignature: string) {
+function generationTrace(stage: "planning" | "writing" | "style_edit" | "fact_check", result: Pick<StructuredTaskResult<unknown>, "route" | "usage">, inputSignature: string) {
   return { stage, provider: result.route.provider, model: result.route.model, promptVersion: result.route.promptVersion, inputSignature, usage: result.usage };
 }
 

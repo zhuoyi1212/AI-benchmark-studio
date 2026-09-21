@@ -85,6 +85,7 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   const schemas = await import('../lib/ai/schemas/publish.schemas.ts');
   const expression = await import('../lib/community-experience.ts');
   const editorial = await import('../lib/community-editorial.ts');
+  const styleEditor = await import('../lib/community-style-editor.ts');
   const source = await readFile(new URL('../lib/services/publish.service.ts', import.meta.url), 'utf8');
   const code = ts.default.transpileModule(source, { compilerOptions: { module: ts.default.ModuleKind.CommonJS, target: ts.default.ScriptTarget.ES2022 } }).outputText;
   const id = '11111111-1111-4111-8111-111111111111';
@@ -97,16 +98,18 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   };
   const route = { provider: 'zhipu', model: 'test-model', promptVersion: 'test-v1' };
   const usage = { inputTokens: 10, outputTokens: 20, latencyMs: 100, estimatedCost: null };
-  let planningCalls = 0; let writingCalls = 0;
+  let planningCalls = 0; let writingCalls = 0; let styleCalls = 0;
   let rejectPlan = false;
-  let rejectOutput = false;
-  let saved; let rawReads = 0; let checks = 0; let startedConfig; let failure;
+  let rejectOutput = false; let rejectStyle = false; let preservationOverride = {}; let removeReview = false;
+  let saved; let rawReads = 0; let checks = 0; let startedConfig; let failure; let savedUsage;
   const forbidden = () => { throw new Error('Quick flow touched professional source'); };
-  const checked = { ...rated, editorialPlan: plan, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: 'revised', revisedClaimCount: 1, notes: ['收缩为本次学校网站'] }, screenshotRecommendations: [{ artifactId: id, reason: '定位证据', supportsClaim: '能定位视频时间点', supportsParagraph: 3, order: 1 }] };
+  const preserved = { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] };
+  const checked = { ...rated, stylePreservation: preserved, editorialPlan: plan, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: 'revised', revisedClaimCount: 1, notes: ['收缩为本次学校网站'] }, screenshotRecommendations: [{ artifactId: id, reason: '定位证据', supportsClaim: '能定位视频时间点', supportsParagraph: 3, order: 1 }] };
   const deps = {
     'server-only': {},
     '@/lib/community-experience': expression,
     '@/lib/community-editorial': editorial,
+    '@/lib/community-style-editor': styleEditor,
     '@/lib/ai/errors': { AIProviderError: class extends Error {}, AIValidationError: class extends Error {} },
     '@/lib/ai/schemas/publish.schemas': schemas,
     '@/lib/ai/schemas/result-analysis.schemas': {},
@@ -119,18 +122,30 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
         assert.deepEqual(JSON.parse(options.messages[1].content).approvedEditorialPlan, plan);
         return { data: options.schema.parse({ ...checked, body: checked.body.replace('我测的学校网站导入失败', '非主流平台失败率高') }), route, usage };
       },
+      editCommunityPostStyle: async options => {
+        styleCalls++;
+        const input = JSON.parse(options.messages[1].content);
+        assert.deepEqual(input.lockedPlan, plan);
+        assert.deepEqual(Object.keys(input.original).sort(), ['body', 'interactionQuestion', 'title']);
+        return { data: options.schema.parse({ ...input.original, title: '课程工具体验', body: input.original.body + (rejectStyle ? '\n\n成功率99%。' : '\n\n') }), route, usage };
+      },
       factCheckCommunityPost: async options => {
         checks++;
         assert.equal(options.messages.at(-1).content, 'RAW-ARTIFACT: only one school site failed');
         assert.match(options.messages[1].content, /humanConfirmedFindings/);
         assert.match(options.messages[1].content, /非主流平台失败率高/);
-        return { data: options.schema.parse(rejectOutput ? { ...checked, body: checked.body + "\n\n总体而言，这很好。" } : checked), route, usage };
+        const input = JSON.parse(options.messages[1].content);
+        assert.equal(input.originalDraft.title, checked.title);
+        assert.equal(input.draft.title, '课程工具体验');
+        assert.equal(input.draft.screenshotRecommendations[0].supportsParagraph, null);
+        assert.equal(input.draft.screenshotRecommendations[0].supportsClaim, null);
+        return { data: options.schema.parse(rejectOutput ? { ...checked, body: checked.body + "\n\n总体而言，这很好。" } : { ...checked, stylePreservation: removeReview ? undefined : { ...preserved, ...preservationOverride } }), route, usage };
       },
     } },
     '@/lib/repositories/publish.repository': { publishRepository: {
       listByFindings: async () => [{ id, status: 'draft', content_ideas: [idea] }],
       startPost: async (_id, _idea, value) => { startedConfig = value; },
-      complete: async (_id, value) => { saved = value; },
+      complete: async (_id, value, usage) => { saved = value; savedUsage = usage; },
       fail: async (_id, value) => { failure = value; },
     } },
     '@/lib/publish-config': { defaultPublishConfig: config },
@@ -149,10 +164,30 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   assert.equal(rawReads, 1); assert.equal(checks, 1);
   assert.equal(startedConfig.personalRatingEnabled, true);
   assert.equal(saved.editorialPlan.personalRating.score, 4);
-  assert.equal(planningCalls, 1); assert.equal(writingCalls, 1);
-  assert.deepEqual(saved.generationTrace.map(run => run.stage), ["planning", "writing", "fact_check"]);
+  assert.equal(planningCalls, 1); assert.equal(writingCalls, 1); assert.equal(styleCalls, 1);
+  assert.deepEqual(saved.generationTrace.map(run => run.stage), ["planning", "writing", "style_edit", "fact_check"]);
   assert.doesNotMatch(saved.body, /非主流平台失败率高/);
   assert.match(formatCommunityBody(saved.body, saved.body, [id], [id], saved.screenshotRecommendations), /（p1）/);
+  assert.equal(saved.styleEdit.changed, true);
+  assert.equal(saved.styleEdit.original.title, checked.title);
+  assert.equal(saved.styleEdit.edited.title, '课程工具体验');
+  assert.equal(savedUsage.inputTokens, 40);
+  for (const key of ['facts', 'scope', 'stance', 'experience', 'advice', 'evidence', 'issues']) {
+    preservationOverride = { [key]: key === 'issues' ? ['新增亲历'] : false };
+    saved = undefined;
+    await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config: { ...config, personalRatingEnabled: true } }));
+    assert.equal(saved, undefined, 'Meaning drift must not become ready');
+  }
+  preservationOverride = {};
+  removeReview = true;
+  await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config: { ...config, personalRatingEnabled: true } }));
+  removeReview = false;
+  rejectStyle = true;
+  const previousChecks = checks;
+  await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config: { ...config, personalRatingEnabled: true } }));
+  assert.equal(checks, previousChecks, 'Invalid style output stops before final checking');
+  assert.match(failure, /语言润色/);
+  rejectStyle = false;
   rejectOutput = true;
   saved = undefined;
   await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config: { ...config, personalRatingEnabled: true } }));

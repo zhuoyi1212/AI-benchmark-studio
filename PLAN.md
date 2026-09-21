@@ -331,3 +331,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 Evidence-backed Editorial Follow-up：按用户提供的体验清单、场景深度和多维度参考稿，新增三种一键写法，独立策划→正文→原始证据/文章质量核对。章节绑定 Findings/Artifact，使用收益从确认 impact 引用；无效证据、重复章节、未知方法依据及缺少具体观察均会失败。专业来源投影为不含数字评分的观察，专业功能不删除。保存各阶段 route/signature/usage；旧 JSON 兼容，无 migration。修复同一 pack 从 draft 变 ready 时编辑器状态未重置的问题。
 
 验证：162 项测试通过，typecheck、build、diff check 通过。包含策划失败不执行写作、最终质量失败不写 ready、两种深度稿结构和真实模型发现的虚构调色/补拍收益负例。真实模型探测曾出现一次格式合格但内容越界的样稿，人工审查后拒绝并收紧规则；随后场景稿与多维稿核对阶段连续网络失败，未保存合格最终稿。浏览器只读确认生产构建首页正常，当前真实项目尚无可用 Publish 数据，未补造用户实验。线上语言质量及完整 DB/Storage/浏览器生成 E2E 不标为全部验收通过。
+
+2026-09-21 Dedicated Language Editor：按用户要求在初稿后、最终证据核对前加入 community_post_style_edit。仅允许标题/正文/互动句，数值与已有观察锚点确定性校验；最终核对独立比较六类含义，缺失/false/issues 均拒绝 ready。保留原稿、改稿、changed、六项结果及四阶段实际 route/signature/usage，清空旧截图段号并重新核对；错误显示具体阶段。复用 publish_packs.community_post JSON，无 migration，不修改历史实验、Blind、Human Review、Final Score 或 Storage。
+
+验证：166/166 测试、typecheck、build、diff check 通过。覆盖编辑输出越权、数值漂移、六类含义漂移、缺失审查、编辑失败停止、旧三阶段记录兼容和仓储 RPC 参数。真实合成素材探测完成策划/初稿/润色，最终 glm-4.6v 两次 network 失败，明确失败且未保存 ready。对同一初稿再次单独验证细化的语言规则，删去了分类套壳和部分同义复述，仍有局部生硬句与重复限制；不宣称语言质量已验收。仅合成素材隔离探测，未运行真实 DB/Storage/浏览器生成 E2E。失败中间稿持久化、按阶段续跑与实际材料的人读验收仍待后续。

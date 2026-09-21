@@ -136,7 +136,7 @@ export const articleReviewSchema = z.object({
 });
 
 export const publishGenerationTraceSchema = z.array(z.object({
-  stage: z.enum(["planning", "writing", "fact_check"]),
+  stage: z.enum(["planning", "writing", "style_edit", "fact_check"]),
   provider: z.enum(["zhipu", "deepseek"]),
   model: text,
   promptVersion: text,
@@ -145,7 +145,31 @@ export const publishGenerationTraceSchema = z.array(z.object({
     inputTokens: z.number().nullable(), outputTokens: z.number().nullable(),
     latencyMs: z.number(), estimatedCost: z.number().nullable(),
   }),
-})).max(3);
+})).max(4);
+
+// Deliberately excludes evidence bindings, ratings, tags and approval metadata.
+export const communityStyleEditSchema = z.object({
+  title: text.max(240),
+  body: text.max(12_000),
+  interactionQuestion: z.string().trim().max(600),
+}).strict();
+export type CommunityStyleEdit = z.infer<typeof communityStyleEditSchema>;
+
+export const stylePreservationSchema = z.object({
+  facts: z.boolean(),
+  scope: z.boolean(),
+  stance: z.boolean(),
+  experience: z.boolean(),
+  advice: z.boolean(),
+  evidence: z.boolean(),
+  issues: z.array(text.max(800)).max(8),
+});
+
+export const styleEditAuditSchema = z.object({
+  original: communityStyleEditSchema,
+  edited: communityStyleEditSchema,
+  changed: z.boolean(),
+});
 
 export const factCheckSchema = z.object({
   status: z.enum(["passed", "revised"]),
@@ -162,6 +186,8 @@ export const communityPostContentSchema = z.object({
   factCheck: factCheckSchema.optional(),
   articleReview: articleReviewSchema.optional(),
   generationTrace: publishGenerationTraceSchema.optional(),
+  stylePreservation: stylePreservationSchema.optional(),
+  styleEdit: styleEditAuditSchema.optional(),
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({

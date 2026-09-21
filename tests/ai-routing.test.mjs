@@ -26,7 +26,9 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
   assert.match(config, /community_post:[\s\S]*provider: "zhipu"[\s\S]*promptVersion: "community-post\.v5-evidence-editorial"/);
-  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v3-article-review"/);
+  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v4-style-preservation"/);
+  assert.match(config, /community_post_style_edit:[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-style-edit\.v1"/);
+  assert.match(taskService, /editCommunityPostStyle/);
   assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);

@@ -1,4 +1,4 @@
-// Runs the real planning → writing → fact-check service against SYNTHETIC text evidence.
+// Runs planning → writing → style edit → fact-check against SYNTHETIC text evidence.
 // No database access, no screenshot creation, no production PublishPack writes.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -40,7 +40,7 @@ const load = createLoader(root, {
 const out = join(root, 'outputs', 'community-style-evaluation', `${Date.now()}-${dimension ? 'dimensions' : 'scene'}`);
 await mkdir(out, { recursive: true });
 const taskService = load('@/lib/ai/task-service').aiTaskService;
-for (const name of ['generateCommunityPost', 'factCheckCommunityPost']) {
+for (const name of ['generateCommunityPost', 'editCommunityPostStyle', 'factCheckCommunityPost']) {
   const invoke = taskService[name];
   taskService[name] = options => invoke({ ...options, onResponse: async event => {
     // Provider reasoning is already removed. Retain only structured answer text and safe metadata.

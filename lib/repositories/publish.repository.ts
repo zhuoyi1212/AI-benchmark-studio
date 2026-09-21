@@ -52,6 +52,8 @@ export const publishRepository = {
         ...(post.factCheck ? { factCheck: post.factCheck } : {}),
         ...(post.articleReview ? { articleReview: post.articleReview } : {}),
         ...(post.generationTrace ? { generationTrace: post.generationTrace } : {}),
+        ...(post.stylePreservation ? { stylePreservation: post.stylePreservation } : {}),
+        ...(post.styleEdit ? { styleEdit: post.styleEdit } : {}),
       } as unknown as Json,
       p_recommendations: post.screenshotRecommendations as unknown as Json,
       p_usage: usage as unknown as Json,
