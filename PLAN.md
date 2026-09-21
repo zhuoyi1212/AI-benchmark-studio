@@ -335,3 +335,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 Dedicated Language Editor：按用户要求在初稿后、最终证据核对前加入 community_post_style_edit。仅允许标题/正文/互动句，数值与已有观察锚点确定性校验；最终核对独立比较六类含义，缺失/false/issues 均拒绝 ready。保留原稿、改稿、changed、六项结果及四阶段实际 route/signature/usage，清空旧截图段号并重新核对；错误显示具体阶段。复用 publish_packs.community_post JSON，无 migration，不修改历史实验、Blind、Human Review、Final Score 或 Storage。
 
 验证：166/166 测试、typecheck、build、diff check 通过。覆盖编辑输出越权、数值漂移、六类含义漂移、缺失审查、编辑失败停止、旧三阶段记录兼容和仓储 RPC 参数。真实合成素材探测完成策划/初稿/润色，最终 glm-4.6v 两次 network 失败，明确失败且未保存 ready。对同一初稿再次单独验证细化的语言规则，删去了分类套壳和部分同义复述，仍有局部生硬句与重复限制；不宣称语言质量已验收。仅合成素材隔离探测，未运行真实 DB/Storage/浏览器生成 E2E。失败中间稿持久化、按阶段续跑与实际材料的人读验收仍待后续。
+
+2026-09-21 Test Artifact Multi-upload & Clipboard：上传文件选择器启用 multiple，弹窗内支持原生剪贴板图片粘贴；新增可追加/移除的队列和逐项状态。文件与粘贴文本在同次保存中逐个提交现有 Server Action，避免批量请求突破 51 MB 限制，也避免原逻辑文件优先导致文本被忽略。成功项不再重传，失败项保留；普通文本粘贴不被拦截，上传期间禁止关闭与编辑队列。复用原有文件签名、大小、Protocol 状态、Storage/DB 补偿机制，无 migration，不改 Blind/Human Review/Final Score。
+
+验证：169/169 测试、typecheck、build、diff check 通过。Chrome 隔离组件测试通过多选、追加、移除、原生 ⌘V 图片粘贴、原生文本粘贴、文件文本同时保存、部分失败及只重试失败项；保留截图于 /private/tmp/artifact-upload-browser/upload-dialog.png。浏览器测试使用真实组件与测试上传函数，未写生产实验/Storage，不等同于真实 DB 端到端验收。刷新不保留本地待上传队列；网络响应丢失时需要先核对已保存记录。
