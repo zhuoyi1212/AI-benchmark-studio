@@ -339,3 +339,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 Test Artifact Multi-upload & Clipboard：上传文件选择器启用 multiple，弹窗内支持原生剪贴板图片粘贴；新增可追加/移除的队列和逐项状态。文件与粘贴文本在同次保存中逐个提交现有 Server Action，避免批量请求突破 51 MB 限制，也避免原逻辑文件优先导致文本被忽略。成功项不再重传，失败项保留；普通文本粘贴不被拦截，上传期间禁止关闭与编辑队列。复用原有文件签名、大小、Protocol 状态、Storage/DB 补偿机制，无 migration，不改 Blind/Human Review/Final Score。
 
 验证：169/169 测试、typecheck、build、diff check 通过。Chrome 隔离组件测试通过多选、追加、移除、原生 ⌘V 图片粘贴、原生文本粘贴、文件文本同时保存、部分失败及只重试失败项；保留截图于 /private/tmp/artifact-upload-browser/upload-dialog.png。浏览器测试使用真实组件与测试上传函数，未写生产实验/Storage，不等同于真实 DB 端到端验收。刷新不保留本地待上传队列；网络响应丢失时需要先核对已保存记录。
+
+2026-09-21 LAN Test Page Interaction Fix：真实测试页“添加原始文件”和“复制 Prompt”无响应。复现发现从本机局域网 HTTP 地址访问时，Next dev 阻止客户端 JS 与 HMR，脚本请求返回 403。next.config 的 allowedDevOrigins 现在仅包含回环及本机网卡实际 IPv4 地址，无通配符，不放宽生产或 Server Action 来源校验。复制 Prompt 增加 Clipboard API 不可用/被拒绝时的兼容复制并恢复焦点；上传队列 ID 在非安全上下文改用 getRandomValues，修复 randomUUID 缺失造成的选文件/粘贴错误。
+
+验证：174/174 测试、typecheck、build、diff check 通过。直接在真实项目的局域网 HTTP 测试页验证：脚本无 403/浏览器无异常、复制的完整 Prompt 与剪贴板读取一致、添加文件弹窗可打开、多选和原生 ⌘V 截图粘贴正常、冷刷新后交互正常。环境确认 isSecureContext=false、navigator.clipboard 不可用、crypto.randomUUID 不可用，兼容路径已实际执行。未提交测试文件或改动现有实验、Storage、Blind/Review/Final Score。保留本轮前已有的 next-env.d.ts 开发类型引用改动。

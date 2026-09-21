@@ -62,6 +62,8 @@ npm install
 npm run dev
 ```
 
+开发服务支持通过终端显示的本机局域网地址访问；`allowedDevOrigins` 仅允许本机实际 IPv4 地址。切换网络后重启开发服务。局域网 HTTP 下，测试页复制 Prompt 和上传队列使用兼容路径，不依赖安全上下文限定的剪贴板 API 或 `randomUUID`。
+
 ## 检查
 
 ```bash

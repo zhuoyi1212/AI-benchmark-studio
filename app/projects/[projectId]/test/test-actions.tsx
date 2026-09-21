@@ -9,16 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { finalizeTestExecutionAction, startProfessionalReviewAction, uploadTestArtifactAction, type TestExecutionActionState } from "@/app/projects/[projectId]/test/actions";
 import { clipboardImageFiles, queueArtifact, uploadArtifactQueue, type ArtifactUploadEntry } from "@/lib/artifact-upload-queue";
+import { copyText } from "@/lib/copy-text";
 import type { TestRun } from "@/lib/types/test-run";
 
 const initialState: TestExecutionActionState = { ok: false, message: null };
 
 export function CopyPromptButton({ prompt }: { prompt: string }) {
   const copy = async () => {
-    try { await navigator.clipboard.writeText(prompt); toast.success("锁定 Prompt 已复制"); }
+    try { await copyText(prompt); toast.success("锁定 Prompt 已复制"); }
     catch { toast.error("复制失败，请手动选择 Prompt。"); }
   };
-  return <Button variant="ghost" size="sm" onClick={copy}><Clipboard className="h-3.5 w-3.5" />复制 Prompt</Button>;
+  return <Button type="button" variant="ghost" size="sm" onClick={copy}><Clipboard className="h-3.5 w-3.5" />复制 Prompt</Button>;
 }
 
 export function UploadArtifactAction({ projectId, run, productName }: { projectId: string; run: TestRun; productName: string }) {

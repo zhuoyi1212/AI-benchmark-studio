@@ -6,7 +6,13 @@ export type ArtifactUploadEntry = {
 };
 
 export function queueArtifact(file: File): ArtifactUploadEntry {
-  return { id: crypto.randomUUID(), file, status: "queued", error: null };
+  return { id: createUploadId(), file, status: "queued", error: null };
+}
+
+function createUploadId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // randomUUID is secure-context-only; getRandomValues also works on LAN HTTP.
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function clipboardImageFiles(data: Pick<DataTransfer, "items" | "files">): File[] {
@@ -18,7 +24,7 @@ export function clipboardImageFiles(data: Pick<DataTransfer, "items" | "files">)
   const images = items.length ? items : Array.from(data.files).filter(file => file.type.startsWith("image/"));
   return images.map(file => {
     const extension = file.type === "image/jpeg" ? "jpg" : file.type.split("/")[1] || "png";
-    return new File([file], `clipboard-${crypto.randomUUID()}.${extension}`, { type: file.type, lastModified: file.lastModified });
+    return new File([file], `clipboard-${createUploadId()}.${extension}`, { type: file.type, lastModified: file.lastModified });
   });
 }
 
