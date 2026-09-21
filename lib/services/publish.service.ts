@@ -2,9 +2,13 @@ import "server-only";
 
 import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
 
+import { editorialPlanningRules, deepObservationRules, editorialReviewRules, editorialPlanIssues, editorialArticleIssues, type EditorialFinding } from "@/lib/community-editorial";
+
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
+  communityEditorialPlanSchema,
+  articleReviewSchema,
   communityPostDraftSchema,
   communityPostGenerationSchema,
   communityPostOutputSchema,
@@ -19,7 +23,7 @@ import {
 } from "@/lib/ai/schemas/publish.schemas";
 import { resultAnalysisInputSchema } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
-import type { AIMessage } from "@/lib/ai/types";
+import type { AIMessage, AIUsage, StructuredTaskResult } from "@/lib/ai/types";
 import { publishRepository } from "@/lib/repositories/publish.repository";
 import { defaultPublishConfig } from "@/lib/publish-config";
 import { RepositoryError } from "@/lib/repositories/repository-error";
@@ -186,13 +190,34 @@ export async function generateCommunityPost(
   const postInput = buildPostInput(source, selectedIdea, config);
   const inputSignature = createInputSignature(postInput);
   const confirmedFindings = source.kind === "findings" ? source.confirmedFindings.findings : [];
-  const expressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
-    for (const message of communityExpressionIssues(post, config, confirmedFindings)) {
-      context.addIssue({ code: "custom", message });
-    }
+  const planSchema = communityEditorialPlanSchema.superRefine((plan, context) => {
+    for (const message of editorialPlanIssues(plan, source.editorialFindings)) context.addIssue({ code: "custom", message });
   });
 
   try {
+    const planningMessages: AIMessage[] = [
+      { role: "system", content: [editorialPlanningRules, communityExpressionRules, config.stylePreset === "深度观察" ? deepObservationRules : "遵循所选写作风格。"].join("\n") },
+      { role: "user", content: JSON.stringify(postInput) },
+    ];
+    const planResult = await aiTaskService.generateCommunityPost({
+      schema: planSchema,
+      schemaName: "CommunityEditorialPlan",
+      messages: planningMessages,
+      maxTokens: 6_000,
+      maxAttempts: 2,
+      beforeExecute: (route) => publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
+    });
+    const editorialPlan = planResult.data;
+    const expressionSchema = evidenceGroundedPostSchema.safeExtend({
+      editorialPlan: communityEditorialPlanSchema,
+      articleReview: articleReviewSchema,
+    }).superRefine((post, context) => {
+      for (const message of [
+        ...communityExpressionIssues(post, config, confirmedFindings),
+        ...editorialArticleIssues(post, editorialPlan, source.editorialFindings, config),
+      ]) context.addIssue({ code: "custom", message });
+    });
+    const writingInput = { ...postInput, approvedEditorialPlan: editorialPlan };
     const draftResult = await aiTaskService.generateCommunityPost({
       schema: communityPostDraftSchema,
       schemaName: "CommunityPostDraft",
@@ -200,14 +225,15 @@ export async function generateCommunityPost(
         {
           role: "system",
           content: [
-            "你是中文社区测评内容编辑。先做内容策划，再写完整草稿。",
+            "你是中文社区测评内容编辑。按照已经校验的 approvedEditorialPlan 写完整草稿，保留章节和证据归属。",
+            config.stylePreset === "深度观察" ? deepObservationRules : "",
             communityExpressionRules,
             config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
             "社区内容的中心是实际测到了什么、哪些功能好用、哪些一般、哪些难用，以及这些现象对使用者意味着什么。",
             source.kind === "findings"
               ? "事实判断以 humanConfirmedFindings 为主；Research 只提供背景。不得引入评分、Judge 或 Report 中不存在于本次快速链路的信息。"
               : "事实判断以真实 Case、Artifact、Judge Evidence 和 Human Review 为主；Final Score 只可作为辅助背景。",
-            "editorialPlan 必须先明确 coreConclusion、highlights、neutralPoints、painPoints、文章结构和禁止扩大的结论。",
+            "editorialPlan 直接保留 approvedEditorialPlan。body 各节标题使用 sections.heading；具体观察自然写进段落，不要逐项朗读策划字段。",
             "如果 config.stylePreset=真实体验：使用第一人称、短句、直接判断，可以写“我这次测试”“我的感受是”，但只能描述本项目真实留存的测试；不能虚构未发生的操作。",
             "如果 config.structure=好用 / 一般 / 难用：正文优先按“先给结论 → 好用的功能 → 体验一般的功能 → 不能用/用着难受的功能 → 个人感受”组织；没有真实发现的类别就省略。",
             "标题朴素直接，不做营销式悬念。每个功能段先说判断，再说具体测试现象和影响。",
@@ -218,16 +244,15 @@ export async function generateCommunityPost(
             "输出简体中文完整正文，不能只返回提纲。",
           ].join("\n"),
         },
-        { role: "user", content: JSON.stringify(postInput) },
+        { role: "user", content: JSON.stringify(writingInput) },
       ],
-      maxTokens: 8_000,
+      maxTokens: 12_000,
       maxAttempts: 2,
-      beforeExecute: (route) => publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
     });
 
     const factCheckInput = {
       source: postInput,
-      draft: draftResult.data,
+      draft: { ...draftResult.data, editorialPlan },
       factCheckRules: [
         "逐条检查标题和正文中的事实性描述是否能被输入证据直接支持。",
         "将过度概括改成证据实际覆盖的范围。例如只测试一个学校网站失败，不能写成所有非主流平台失败率高。",
@@ -243,12 +268,14 @@ export async function generateCommunityPost(
         role: "system",
         content: [
           "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
+          editorialReviewRules,
+          config.stylePreset === "深度观察" ? deepObservationRules : "",
           communityExpressionRules,
           config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
           source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
           "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
           "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
-          "editorialPlan 必须保留并可按核对结果微调。",
+          "editorialPlan 必须保留；可收缩结论、建议及理由，不得替换 sections 的标题、findingIds 或 evidenceArtifactIds。正文若重写，仍须在对应章节自然使用 observationQuote 的真实细节。",
           "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
           "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
         ].join("\n"),
@@ -263,18 +290,32 @@ export async function generateCommunityPost(
       schema: expressionSchema,
       schemaName: "EvidenceCheckedCommunityPost",
       messages: factCheckMessages,
-      maxTokens: 8_000,
+      maxTokens: 12_000,
       maxAttempts: 2,
     });
 
     const post = normalizeScreenshotRecommendations(checkedResult.data, imageArtifacts, config.imageCount);
     assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
-    await publishRepository.complete(pack.id, post, checkedResult.usage);
+    post.generationTrace = [
+      generationTrace("planning", planResult, createInputSignature(planningMessages)),
+      generationTrace("writing", draftResult, createInputSignature(writingInput)),
+      generationTrace("fact_check", checkedResult, createInputSignature(factCheckMessages)),
+    ];
+    await publishRepository.complete(pack.id, post, totalUsage([planResult.usage, draftResult.usage, checkedResult.usage]));
     return pack.id;
   } catch (error) {
     try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
     throw new PublishExecutionError(toUserFacingError(error));
   }
+}
+
+function totalUsage(items: AIUsage[]): AIUsage {
+  const sum = (key: "inputTokens" | "outputTokens" | "estimatedCost") => items.every(item => item[key] != null) ? items.reduce((total, item) => total + item[key]!, 0) : null;
+  return { inputTokens: sum("inputTokens"), outputTokens: sum("outputTokens"), estimatedCost: sum("estimatedCost"), latencyMs: items.reduce((total, item) => total + item.latencyMs, 0) };
+}
+
+function generationTrace(stage: "planning" | "writing" | "fact_check", result: Pick<StructuredTaskResult<unknown>, "route" | "usage">, inputSignature: string) {
+  return { stage, provider: result.route.provider, model: result.route.model, promptVersion: result.route.promptVersion, inputSignature, usage: result.usage };
 }
 
 async function getPublishSource(projectId: string) {
@@ -312,6 +353,7 @@ async function getPublishSource(projectId: string) {
       },
       research: research.completedResult,
       confirmedFindings: quick.latest.effectiveOutput,
+      editorialFindings: quick.latest.effectiveOutput.findings satisfies EditorialFinding[],
       screenshots,
     };
   }
@@ -348,6 +390,15 @@ async function getPublishSource(projectId: string) {
     caseScores: report.caseScores,
     humanReview: report.review,
     judgeEvidence: buildJudgeEvidence(experiment),
+    editorialFindings: experiment.products.flatMap((product, productIndex) => product.scores.map((score, index) => ({
+      id: `professional-${productIndex + 1}-${index + 1}`,
+      productId: product.productId,
+      testCaseId: score.testCaseId,
+      title: experiment.protocol.rubric.find(item => item.id === score.rubricDimensionId)?.name ?? "测试观察",
+      observation: score.evidence.join("\n"),
+      impact: score.humanOverrideReason ?? score.reason,
+      evidenceArtifactIds: product.artifacts.filter(item => item.testCaseId === score.testCaseId).map(item => item.artifactId),
+    }))) satisfies EditorialFinding[],
     screenshots,
   };
 }
@@ -387,26 +438,21 @@ function buildDiscoveryInput(source: PublishSource) {
 
 function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea, config: PublishConfig) {
   const common = {
+    sourceFindings: source.editorialFindings,
+    products: source.products,
     sourceType: source.kind,
     projectMode: source.projectMode,
     selectedIdea,
     config,
     research: source.research,
-    protocol: source.protocol,
+    protocol: { id: source.protocol.id, version: source.protocol.version, testCases: source.protocol.testCases.map(({ id, title, objective, prompt }) => ({ id, title, objective, prompt })) },
     imageArtifacts: source.screenshots,
   };
   if (source.kind === "findings") {
     return { ...common, humanConfirmedFindings: source.confirmedFindings, findingSections: buildFindingSections(source.confirmedFindings.findings) };
   }
-  return {
-    ...common,
-    report: source.reportContent,
-    ranking: source.ranking,
-    analysis: source.analysis,
-    caseScores: source.caseScores,
-    humanReview: source.humanReview,
-    judgeEvidence: source.judgeEvidence,
-  };
+  // Professional scoring remains available upstream; the author receives observations, not report prose or scores.
+  return { ...common, evidenceScope: "专业测评中留存的 Case 观察；不等同于作者采访或反复实测。" };
 }
 
 function buildJudgeEvidence(experiment: ReturnType<typeof resultAnalysisInputSchema.parse>) {

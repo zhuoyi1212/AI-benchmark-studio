@@ -15,5 +15,5 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
   ]);
   if (!workspace) redirect(`/projects/${projectId}/results`);
   if (!workflowState) redirect("/projects");
-  return <PublishEditor workspace={workspace} workflowState={workflowState} />;
+  return <PublishEditor key={workspace.pack ? `${workspace.pack.id}-${workspace.pack.status}` : projectId} workspace={workspace} workflowState={workflowState} />;
 }

@@ -84,30 +84,47 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   const ts = await import('typescript');
   const schemas = await import('../lib/ai/schemas/publish.schemas.ts');
   const expression = await import('../lib/community-experience.ts');
+  const editorial = await import('../lib/community-editorial.ts');
   const source = await readFile(new URL('../lib/services/publish.service.ts', import.meta.url), 'utf8');
   const code = ts.default.transpileModule(source, { compilerOptions: { module: ts.default.ModuleKind.CommonJS, target: ts.default.ScriptTarget.ES2022 } }).outputText;
   const id = '11111111-1111-4111-8111-111111111111';
   const grounded = findings.map(f => ({ ...f, productId: id, testCaseId: id, evidenceArtifactIds: [id], confidence: 0.9 }));
   const idea = { id: 'idea-1', title: '视频工具实测', type: '体验', angle: '课程整理', insight: '定位省事但学校课程导入失败', whyInteresting: '真实体验', supportingEvidence: ['留存课程测试'], relatedTestCaseIds: [id], relatedArtifactIds: [id], informationValue: 0.8, discussionPotential: 0.8, confidence: 0.9, recommended: true };
   const quick = { projectName: '课程整理', projectIntent: '测试', projectMode: 'single', products: [{ id, name: '视频工具' }], testCases: [{ id, title: '课程' }], protocolId: id, protocolVersion: 1, latest: { id, status: 'completed', humanConfirmedAt: '2026-09-21', effectiveOutput: { summary: '真实课程测试', findings: grounded, limitations: ['仅本次测试'] } }, artifacts: [{ artifactId: id, productId: id, testCaseId: id, fileName: 'course.png', mimeType: 'image/png', fileUrl: 'https://example.invalid/course.png', caption: '真实存档', productName: '视频工具', testCaseTitle: '课程' }] };
+  const plan = { ...rated.editorialPlan,
+    centralQuestion: '整理课程时哪里省事、哪里受限？', targetReader: '整理课程的学生', testScope: '本次课程测试', materialGaps: [],
+    sections: grounded.map(f => ({ heading: f.title, findingIds: [f.id], evidenceArtifactIds: [id], observationQuote: f.observation, readerBenefit: f.impact, boundary: '仅本次课程', advice: null })),
+  };
+  const route = { provider: 'zhipu', model: 'test-model', promptVersion: 'test-v1' };
+  const usage = { inputTokens: 10, outputTokens: 20, latencyMs: 100, estimatedCost: null };
+  let planningCalls = 0; let writingCalls = 0;
+  let rejectPlan = false;
   let rejectOutput = false;
   let saved; let rawReads = 0; let checks = 0; let startedConfig; let failure;
   const forbidden = () => { throw new Error('Quick flow touched professional source'); };
-  const checked = { ...rated, factCheck: { status: 'revised', revisedClaimCount: 1, notes: ['收缩为本次学校网站'] }, screenshotRecommendations: [{ artifactId: id, reason: '定位证据', supportsClaim: '能定位视频时间点', supportsParagraph: 3, order: 1 }] };
+  const checked = { ...rated, editorialPlan: plan, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: 'revised', revisedClaimCount: 1, notes: ['收缩为本次学校网站'] }, screenshotRecommendations: [{ artifactId: id, reason: '定位证据', supportsClaim: '能定位视频时间点', supportsParagraph: 3, order: 1 }] };
   const deps = {
     'server-only': {},
     '@/lib/community-experience': expression,
+    '@/lib/community-editorial': editorial,
     '@/lib/ai/errors': { AIProviderError: class extends Error {}, AIValidationError: class extends Error {} },
     '@/lib/ai/schemas/publish.schemas': schemas,
     '@/lib/ai/schemas/result-analysis.schemas': {},
     '@/lib/ai/task-service': { aiTaskService: {
-      generateCommunityPost: async options => { await options.beforeExecute({}); return { data: options.schema.parse({ ...checked, body: checked.body.replace('我测的学校网站导入失败', '非主流平台失败率高') }) }; },
+      generateCommunityPost: async options => {
+        await options.beforeExecute?.(route);
+        if (options.schemaName === 'CommunityEditorialPlan') { planningCalls++; return { data: options.schema.parse(rejectPlan ? { ...plan, sections: [{ ...plan.sections[0], findingIds: ["unknown"] }] } : plan), route, usage }; }
+        writingCalls++;
+        assert.ok(planningCalls > 0);
+        assert.deepEqual(JSON.parse(options.messages[1].content).approvedEditorialPlan, plan);
+        return { data: options.schema.parse({ ...checked, body: checked.body.replace('我测的学校网站导入失败', '非主流平台失败率高') }), route, usage };
+      },
       factCheckCommunityPost: async options => {
         checks++;
         assert.equal(options.messages.at(-1).content, 'RAW-ARTIFACT: only one school site failed');
         assert.match(options.messages[1].content, /humanConfirmedFindings/);
         assert.match(options.messages[1].content, /非主流平台失败率高/);
-        return { data: options.schema.parse(rejectOutput ? { ...checked, body: checked.body + "\n\n总体而言，这很好。" } : checked), usage: {} };
+        return { data: options.schema.parse(rejectOutput ? { ...checked, body: checked.body + "\n\n总体而言，这很好。" } : checked), route, usage };
       },
     } },
     '@/lib/repositories/publish.repository': { publishRepository: {
@@ -132,6 +149,8 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   assert.equal(rawReads, 1); assert.equal(checks, 1);
   assert.equal(startedConfig.personalRatingEnabled, true);
   assert.equal(saved.editorialPlan.personalRating.score, 4);
+  assert.equal(planningCalls, 1); assert.equal(writingCalls, 1);
+  assert.deepEqual(saved.generationTrace.map(run => run.stage), ["planning", "writing", "fact_check"]);
   assert.doesNotMatch(saved.body, /非主流平台失败率高/);
   assert.match(formatCommunityBody(saved.body, saved.body, [id], [id], saved.screenshotRecommendations), /（p1）/);
   rejectOutput = true;
@@ -139,4 +158,8 @@ test('Quick Publish service reaches ready using confirmed Findings and raw artif
   await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config: { ...config, personalRatingEnabled: true } }));
   assert.equal(saved, undefined);
   assert.ok(failure);
+  rejectPlan = true;
+  const oldWritingCalls = writingCalls;
+  await assert.rejects(module.exports.generateCommunityPost(id, { ideaId: idea.id, config }));
+  assert.equal(writingCalls, oldWritingCalls, 'An invalid plan must fail before writing');
 });

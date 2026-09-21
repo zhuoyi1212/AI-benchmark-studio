@@ -39,8 +39,8 @@ export type ContentIdea = z.infer<typeof contentIdeaSchema>;
 export const publishConfigSchema = z.object({
   channel: z.enum(["小红书", "站内社区", "知乎", "通用社区"]),
   goal: z.enum(["提供深度洞察", "分享真实体验", "帮助用户选型", "引发讨论", "分享踩坑经历", "提出反常识观点"]),
-  stylePreset: z.enum(["真实体验", "克制评测", "专业分析"]).default("真实体验"),
-  structure: z.enum(["好用 / 一般 / 难用", "优点 / 问题 / 结论", "自由结构"]).default("好用 / 一般 / 难用"),
+  stylePreset: z.enum(["真实体验", "克制评测", "专业分析", "深度观察"]).default("真实体验"),
+  structure: z.enum(["好用 / 一般 / 难用", "优点 / 问题 / 结论", "自由结构", "场景深度测评", "多维度测评"]).default("好用 / 一般 / 难用"),
   personalRatingEnabled: z.boolean().default(false),
   personalRatingScale: z.union([z.literal(5), z.literal(10)]).default(5),
   tone: text.max(500),
@@ -78,7 +78,26 @@ export const screenshotRecommendationSchema = z.object({
   order: z.number().int().min(1).max(9),
 });
 
+export const editorialSectionSchema = z.object({
+  heading: text.max(120),
+  findingIds: z.array(text.max(100)).min(1).max(12),
+  evidenceArtifactIds: z.array(z.string().uuid()).min(1).max(36),
+  observationQuote: text.max(1800),
+  readerBenefit: text.max(800),
+  boundary: text.max(800),
+  advice: z.object({
+    kind: z.enum(["tested", "suggestion"]),
+    text: text.max(800),
+    supportingFindingIds: z.array(text.max(100)).max(12),
+  }).nullable(),
+});
+
 export const editorialPlanSchema = z.object({
+  centralQuestion: text.max(600).optional(),
+  targetReader: text.max(400).optional(),
+  testScope: text.max(1200).optional(),
+  sections: z.array(editorialSectionSchema).min(1).max(8).optional(),
+  materialGaps: z.array(text.max(800)).max(8).optional(),
   openingAngle: text.max(1200).optional(),
   closingTakeaway: text.max(1200).optional(),
   personalRating: z.object({
@@ -96,6 +115,38 @@ export const editorialPlanSchema = z.object({
   avoidClaims: z.array(text.max(800)).max(8),
 });
 
+// Required only for new planning calls; historical editorial plans remain readable.
+export const communityEditorialPlanSchema = editorialPlanSchema.extend({
+  openingAngle: text.max(1200),
+  closingTakeaway: text.max(1200),
+  centralQuestion: text.max(600),
+  targetReader: text.max(400),
+  testScope: text.max(1200),
+  sections: z.array(editorialSectionSchema).min(1).max(8),
+  materialGaps: z.array(text.max(800)).max(8),
+});
+export type CommunityEditorialPlan = z.infer<typeof communityEditorialPlanSchema>;
+
+export const articleReviewSchema = z.object({
+  concreteScenes: z.boolean(),
+  boundedInterpretation: z.boolean(),
+  nonRepetitive: z.boolean(),
+  usefulConclusion: z.boolean(),
+  issues: z.array(text.max(800)).max(8),
+});
+
+export const publishGenerationTraceSchema = z.array(z.object({
+  stage: z.enum(["planning", "writing", "fact_check"]),
+  provider: z.enum(["zhipu", "deepseek"]),
+  model: text,
+  promptVersion: text,
+  inputSignature: text,
+  usage: z.object({
+    inputTokens: z.number().nullable(), outputTokens: z.number().nullable(),
+    latencyMs: z.number(), estimatedCost: z.number().nullable(),
+  }),
+})).max(3);
+
 export const factCheckSchema = z.object({
   status: z.enum(["passed", "revised"]),
   revisedClaimCount: z.number().int().nonnegative().max(50),
@@ -106,9 +157,11 @@ export const communityPostContentSchema = z.object({
   title: text.max(240),
   body: text.max(12_000),
   tags: z.array(text.max(40)).min(1).max(12),
-  interactionQuestion: text.max(600),
+  interactionQuestion: z.string().trim().max(600),
   editorialPlan: editorialPlanSchema.optional(),
   factCheck: factCheckSchema.optional(),
+  articleReview: articleReviewSchema.optional(),
+  generationTrace: publishGenerationTraceSchema.optional(),
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({

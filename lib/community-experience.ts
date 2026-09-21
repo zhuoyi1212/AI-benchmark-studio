@@ -10,7 +10,7 @@ export const experienceWritingRules = [
 ].join("\n");
 
 export const communityExpressionRules = [
-  "editorialPlan 必须包含 openingAngle（有证据的开头个人结论）、closingTakeaway（适用边界与个人感受）。",
+  "editorialPlan 必须包含 openingAngle（有证据的开头切入角度或个人结论）、closingTakeaway（适用边界与个人感受）。",
   "personalRating 是个人主观评分建议，仅在 config.personalRatingEnabled 且存在人工确认 Findings 的充分证据时 enabled=true，填写 score、scale、reason 和支持评分的 findingIds；否则 enabled=false，省略分数。",
   "评分只能属于 Community Content，不能混入 Final Score / AI Judge，禁止官方评分、综合评分、专业得分、Benchmark Score、AI Judge Score。score 不得超过 config.personalRatingScale。",
   "正文不自行写评分句；程序在结尾渲染‘如果满分…分，我个人会给…分’和 reason。事实核对必须同时核验评分理由及 findingIds；不足则禁用。",
@@ -34,8 +34,8 @@ export function communityExpressionIssues(post: CommunityPostOutput, config: Pub
   const plan = post.editorialPlan;
   const copy = [post.title, post.body, post.interactionQuestion, ...post.tags].join("\n");
   if (!plan?.openingAngle || !plan.closingTakeaway) issues.push("补齐 openingAngle 与 closingTakeaway");
+  if ((config.stylePreset === "真实体验" || config.stylePreset === "深度观察") && reportVoice.test(copy)) issues.push("删除报告腔，改为事实紧接具体判断");
   if (config.stylePreset === "真实体验") {
-    if (reportVoice.test(copy)) issues.push("删除报告腔，改为事实紧接个人判断");
     if (!/我这次|我的感受是|实际用下来|我.*(?:测|试|觉得|感受)/.test(post.body.split(/\n\s*\n/)[0] ?? "")) issues.push("开头须先说个人结论");
   }
   if (config.structure === "好用 / 一般 / 难用" && findings.length) {

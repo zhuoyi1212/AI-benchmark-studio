@@ -50,6 +50,8 @@ export const publishRepository = {
         interactionQuestion: post.interactionQuestion,
         ...(post.editorialPlan ? { editorialPlan: post.editorialPlan } : {}),
         ...(post.factCheck ? { factCheck: post.factCheck } : {}),
+        ...(post.articleReview ? { articleReview: post.articleReview } : {}),
+        ...(post.generationTrace ? { generationTrace: post.generationTrace } : {}),
       } as unknown as Json,
       p_recommendations: post.screenshotRecommendations as unknown as Json,
       p_usage: usage as unknown as Json,

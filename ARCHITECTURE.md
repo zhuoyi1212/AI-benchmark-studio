@@ -323,3 +323,11 @@ Publish 内容链改为一次选材判断、一次 Flash 写作、一次现有 C
 既有 Task Service / Router / Provider / append-only attemptAudit 继续使用。community-review.ts 校验五类事实依据与具体问题；communityReviewDecision 由问题类别导出 pass/rewrite/stop，不使用新分数。事实/背景/价值问题停止，语言/重复问题最多一次改写并复核含义。问题引文须属于 draft，避免修改历史任务。旧 review 通过旧字段读取；新 review 的 totalScore 为 null，页面不显示虚构分数。正文输出不含 coreOpinion/contentType，服务从已选选题补回并执行原有验证。无数据库迁移。
 
 2026-09-11 Publish 输入修正：editorialBrief优先taskContext与completeAnswer，answerIsComplete说明是否使用完整存档；没有全文时保留摘录，额外证据仍保留。Critic不再在brief之外重复传同份任务/全文。自定义角度保留rawQuote而不拼入whatHappened；生成所需材料及配置先校验再begin。无数据库迁移。
+
+### Evidence-backed Editorial Plan（2026-09-21）
+
+现有 Publish Service 内顺序执行：community_post / CommunityEditorialPlan → community_post / CommunityPostDraft → community_post_evidence_check / EvidenceCheckedCommunityPost。两次写作调用共享现有集中 Provider 配置，策划 schema 先校验引用才允许正文调用；不新增并行 Publish 系统。
+
+Quick 来源为 confirmed Findings；专业来源从 Case 的 Judge evidence 和 Human Review reason 投影为不含数值评分的观察。章节引用以观察 ID 和 Artifact ID 关联，readerBenefit 取已有 impact；正文与最终核对仍保留来源、任务与证据范围。原始 Artifact 最终读取逻辑不变。
+
+publish_packs.community_post JSON 新增可选 articleReview、generationTrace，editorialPlan 扩展核心问题、读者、范围、sections、materialGaps；每阶段记录 provider/model/promptVersion/inputSignature/usage，pack usage 聚合三次调用。历史 JSON 缺少新字段仍可读。无表结构改动。失败继续使用既有 failed/retry 生命周期，不回退 Mock。

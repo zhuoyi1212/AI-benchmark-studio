@@ -116,7 +116,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "community-post.v4-personal-experience",
+    promptVersion: "community-post.v5-evidence-editorial",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -125,7 +125,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v2-expression",
+    promptVersion: "community-post-evidence-check.v3-article-review",
     reasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
