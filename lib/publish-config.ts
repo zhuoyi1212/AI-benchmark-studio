@@ -12,5 +12,7 @@ export const defaultPublishConfig: PublishConfig = {
   tone: "第一人称、直接、短句。先说结论，再讲具体功能和真实问题；像真实测试记录，不写成媒体稿或 AI 总结。",
   length: "800 字左右",
   imageCount: 6,
+  personalRatingEnabled: false,
+  personalRatingScale: 5,
   interactionGoal: "用一句自然的问题邀请读者补充自己的真实使用体验。",
 };

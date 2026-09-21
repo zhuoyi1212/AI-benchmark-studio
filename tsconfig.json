@@ -40,6 +40,7 @@
     ".next-auto-demo/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "outputs/publish-rollback-20260918/dormant-community-pipeline"
   ]
 }

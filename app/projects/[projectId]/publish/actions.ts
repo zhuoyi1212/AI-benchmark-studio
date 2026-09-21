@@ -25,6 +25,8 @@ export async function generatePostAction(_state: PublishActionState, formData: F
     goal: formData.get("goal"),
     stylePreset: formData.get("stylePreset"),
     structure: formData.get("structure"),
+    personalRatingEnabled: formData.get("personalRatingEnabled") === "true",
+    personalRatingScale: Number(formData.get("personalRatingScale") ?? 5),
     tone: formData.get("tone"),
     length: formData.get("length"),
     imageCount: formData.get("imageCount"),

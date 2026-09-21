@@ -41,6 +41,8 @@ export const publishConfigSchema = z.object({
   goal: z.enum(["提供深度洞察", "分享真实体验", "帮助用户选型", "引发讨论", "分享踩坑经历", "提出反常识观点"]),
   stylePreset: z.enum(["真实体验", "克制评测", "专业分析"]).default("真实体验"),
   structure: z.enum(["好用 / 一般 / 难用", "优点 / 问题 / 结论", "自由结构"]).default("好用 / 一般 / 难用"),
+  personalRatingEnabled: z.boolean().default(false),
+  personalRatingScale: z.union([z.literal(5), z.literal(10)]).default(5),
   tone: text.max(500),
   length: text.max(80),
   imageCount: z.coerce.number().int().min(0).max(9),
@@ -77,11 +79,20 @@ export const screenshotRecommendationSchema = z.object({
 });
 
 export const editorialPlanSchema = z.object({
+  openingAngle: text.max(1200).optional(),
+  closingTakeaway: text.max(1200).optional(),
+  personalRating: z.object({
+    enabled: z.boolean(),
+    score: z.number().min(0).max(10).optional(),
+    scale: z.union([z.literal(5), z.literal(10)]).optional(),
+    reason: text.max(800).optional(),
+    findingIds: z.array(text).min(1).max(12).optional(),
+  }).optional(),
   coreConclusion: text.max(1200),
-  highlights: z.array(text.max(800)).min(1).max(6),
+  highlights: z.array(text.max(800)).max(6),
   neutralPoints: z.array(text.max(800)).max(6),
   painPoints: z.array(text.max(800)).max(6),
-  structure: z.array(text.max(120)).min(3).max(8),
+  structure: z.array(text.max(120)).min(2).max(8),
   avoidClaims: z.array(text.max(800)).max(8),
 });
 

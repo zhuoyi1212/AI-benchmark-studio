@@ -1,5 +1,7 @@
 import "server-only";
 
+import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
+
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
@@ -183,6 +185,12 @@ export async function generateCommunityPost(
   const config = withAvailableImageCount(publishConfigSchema.parse(input.config), imageArtifacts.length);
   const postInput = buildPostInput(source, selectedIdea, config);
   const inputSignature = createInputSignature(postInput);
+  const confirmedFindings = source.kind === "findings" ? source.confirmedFindings.findings : [];
+  const expressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
+    for (const message of communityExpressionIssues(post, config, confirmedFindings)) {
+      context.addIssue({ code: "custom", message });
+    }
+  });
 
   try {
     const draftResult = await aiTaskService.generateCommunityPost({
@@ -193,6 +201,8 @@ export async function generateCommunityPost(
           role: "system",
           content: [
             "你是中文社区测评内容编辑。先做内容策划，再写完整草稿。",
+            communityExpressionRules,
+            config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
             "社区内容的中心是实际测到了什么、哪些功能好用、哪些一般、哪些难用，以及这些现象对使用者意味着什么。",
             source.kind === "findings"
               ? "事实判断以 humanConfirmedFindings 为主；Research 只提供背景。不得引入评分、Judge 或 Report 中不存在于本次快速链路的信息。"
@@ -233,6 +243,8 @@ export async function generateCommunityPost(
         role: "system",
         content: [
           "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
+          communityExpressionRules,
+          config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
           source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
           "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
           "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
@@ -248,14 +260,14 @@ export async function generateCommunityPost(
     }
 
     const checkedResult = await aiTaskService.factCheckCommunityPost({
-      schema: evidenceGroundedPostSchema,
+      schema: expressionSchema,
       schemaName: "EvidenceCheckedCommunityPost",
       messages: factCheckMessages,
       maxTokens: 8_000,
       maxAttempts: 2,
     });
 
-    const post = normalizeScreenshotRecommendations(checkedResult.data, selectedIdea, imageArtifacts, config.imageCount);
+    const post = normalizeScreenshotRecommendations(checkedResult.data, imageArtifacts, config.imageCount);
     assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
     await publishRepository.complete(pack.id, post, checkedResult.usage);
     return pack.id;
@@ -384,7 +396,7 @@ function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea
     imageArtifacts: source.screenshots,
   };
   if (source.kind === "findings") {
-    return { ...common, humanConfirmedFindings: source.confirmedFindings };
+    return { ...common, humanConfirmedFindings: source.confirmedFindings, findingSections: buildFindingSections(source.confirmedFindings.findings) };
   }
   return {
     ...common,
@@ -465,29 +477,12 @@ function assertPost(post: CommunityPostOutput, artifactIds: string[], imageCount
 
 function normalizeScreenshotRecommendations(
   post: CommunityPostOutput,
-  idea: SelectedContentIdea,
   artifacts: ReportEvidence[],
   imageCount: number,
 ): CommunityPostOutput {
   const allowed = new Set(artifacts.map((artifact) => artifact.artifactId));
   const seen = new Set<string>();
-  const valid = post.screenshotRecommendations.filter((item) => allowed.has(item.artifactId) && !seen.has(item.artifactId) && seen.add(item.artifactId));
-  const preferredIds = [
-    ...idea.relatedArtifactIds,
-    ...artifacts.filter((artifact) => idea.relatedTestCaseIds.includes(artifact.testCaseId)).map((artifact) => artifact.artifactId),
-    ...artifacts.map((artifact) => artifact.artifactId),
-  ];
-  for (const artifactId of preferredIds) {
-    if (valid.length >= imageCount || seen.has(artifactId) || !allowed.has(artifactId)) continue;
-    seen.add(artifactId);
-    valid.push({
-      artifactId,
-      reason: `支持“${idea.title}”这一观点的原始测试截图。`,
-      supportsClaim: idea.insight,
-      supportsParagraph: null,
-      order: valid.length + 1,
-    });
-  }
+  const valid = [...post.screenshotRecommendations].sort((a, b) => a.order - b.order).filter((item) => allowed.has(item.artifactId) && !seen.has(item.artifactId) && seen.add(item.artifactId));
   return { ...post, screenshotRecommendations: valid.slice(0, imageCount).map((item, index) => ({ ...item, order: index + 1 })) };
 }
 
