@@ -28,7 +28,7 @@ test("keeps dynamic ContentIdeas and real rediscovery", () => {
 });
 test("persists selected or custom angle and validated publish config", () => {
   assert.match(schema, /id: z\.literal\("custom"\)/); assert.match(schema, /imageCount: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.max\(9\)/);
-  assert.match(migration, /Selected ContentIdea does not belong/); assert.match(editor, /自定义内容角度/);
+  assert.match(migration, /Selected ContentIdea does not belong/); assert.match(editor, /自定义核心观点/);
 });
 test("only recommends and persists real image TestArtifacts", () => {
   assert.match(service, /mimeType\.startsWith\("image\/"\)/); assert.match(service, /orderedRealScreenshotReferences/);
