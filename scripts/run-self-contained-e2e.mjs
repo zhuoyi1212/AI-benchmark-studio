@@ -15,7 +15,7 @@ const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 const protocolOnly = process.env.E2E_PROTOCOL_ONLY === "1";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 const realAiQuickPublish = process.env.E2E_REAL_AI_FINDINGS_PUBLISH === "1";
-const realAiTasks = ["ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "EvidenceCheckedCommunityPost"];
+const realAiTasks = ["ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost"];
 const liveProviderKeys = {
   zhipu: process.env.ZAI_API_KEY || localEnvironment.ZAI_API_KEY,
   deepseek: process.env.DEEPSEEK_API_KEY || localEnvironment.DEEPSEEK_API_KEY,
@@ -103,7 +103,7 @@ try {
   const providerStats = providerMock.stats();
   const expectedTasks = protocolOnly
     ? ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent"]
-    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "EvidenceCheckedCommunityPost", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport"];
+    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport"];
   for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
@@ -116,6 +116,7 @@ try {
       assert.equal(providerStats.taskCounts.ExperienceFindings, 1, "Quick Findings must run once");
       assert.equal(providerStats.taskCounts.ContentIdeas, 1, "Quick Content Discovery must run once");
       assert.equal(providerStats.taskCounts.CommunityPostDraft, 1, "Quick Community Post must generate one initial draft");
+      assert.equal(providerStats.taskCounts.HumanizedCommunityPost, 1, "Quick Community Post must run one language naturalization pass");
       assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 1, "Quick Community Post must run one evidence check");
     }
     if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
