@@ -324,13 +324,30 @@ function buildStructuredOutput(schemaName, messages) {
       tags: ["AI产品", "真实体验", "产品观察"],
       interactionQuestion: "你更在意 AI 少让你操作几步，还是更在意结果方便核对？",
       screenshotRecommendations: [],
-      editorialPlan: {
-        coreConclusion: idea.insight,
-        highlights: [observation],
-        neutralPoints: [],
-        painPoints: [],
-        structure: ["先给具体判断", "还原测试现象", "说明使用影响", "保留测试边界"],
-        avoidClaims: ["不能把一次真实测试外推成所有场景的结论。"],
+      contentBrief: {
+        coreViewpoint: idea.insight,
+        opening: "先从这次真实测试里最明显的一件事讲起。",
+        supportingPoints: [
+          { finding: observation, userMeaning: "用户能直接看到任务有没有推进到可核对的结果。" },
+          { finding: "结果仍需要回到原始证据确认。", userMeaning: "省掉操作不等于省掉判断。" },
+        ],
+        ending: "最后只给当前测试范围内的使用判断。",
+        voice: "第一人称、短句、具体，不写成测评报告。",
+        avoidPhrases: ["总体而言", "值得注意的是", "综上所述"],
+      },
+    };
+  }
+  if (schemaName === "HumanizedCommunityPost") {
+    const input = findJsonMessage(messages, (value) => value.source && value.draft);
+    return {
+      ...input.draft,
+      body: input.draft.body
+        .replace("本次测试先聚焦一个具体问题：", "我这次主要想看一件事：")
+        .replace("从真实体验看，", "实际用下来，"),
+      languagePass: {
+        status: "polished",
+        changedSentenceCount: 2,
+        notes: ["删掉报告式开场", "把抽象连接词换成更自然的体验表达"],
       },
     };
   }
