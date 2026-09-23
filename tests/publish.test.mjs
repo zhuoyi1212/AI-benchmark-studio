@@ -13,7 +13,7 @@ test("separates Content Discovery and Community Post AI runs", () => {
   assert.match(migration, /start_content_discovery/); assert.match(migration, /complete_content_discovery/);
   assert.match(migration, /start_community_post/); assert.match(migration, /complete_publish_pack/);
   assert.match(migration, /discovery_provider/); assert.match(migration, /generation_started_at/);
-  assert.match(service, /aiTaskService\.discoverContentIdeas/); assert.match(service, /aiTaskService\.generateCommunityPost/);
+  assert.match(service, /aiTaskService\.discoverContentIdeas/); assert.match(service, /aiTaskService\.generateCommunityPost/); assert.match(service, /aiTaskService\.humanizeCommunityPost/);
   assert.doesNotMatch(service + page + editor + actions, /glm-|deepseek-v|provider:\s*["']/);
 });
 test("keeps dynamic ContentIdeas and real rediscovery", () => {
@@ -23,7 +23,7 @@ test("keeps dynamic ContentIdeas and real rediscovery", () => {
   assert.match(service, /UUID 和内部字段标识只能放入对应 ID 数组；严禁复制到 title、type、angle、insight、whyInteresting 或 supportingEvidence/);
   assert.doesNotMatch(service, /humanOverrideReason:/);
   assert.match(service, /humanReviewAdjustment:/);
-  assert.match(service, /uniqueIdeasAndSingleRecommendation/); assert.match(editor, /重新发现选题/);
+  assert.match(service, /uniqueIdeasAndSingleRecommendation/); assert.match(editor, /重新提炼发现/);
   assert.doesNotMatch(service + page + editor + actions, /createMockContentIdeas|mockCommunityPost|@\/lib\/mock/);
 });
 test("persists selected or custom angle and validated publish config", () => {
@@ -47,18 +47,24 @@ test("allows evidence-backed text-only posts without fabricated screenshots", ()
   assert.match(editor, /没有截图证据，文章仍会使用已保存的测试发现与文本证据/);
   assert.match(editor, /readOnly=\{maxImages === 0\}/);
 });
-test("plans community content, applies a selected style, and fact-checks the final post", () => {
+test("plans community content, humanizes the draft, and fact-checks the final post", () => {
   assert.match(schema, /stylePreset/);
   assert.match(schema, /structure/);
-  assert.match(schema, /editorialPlanSchema/);
+  assert.match(schema, /contentBriefSchema/);
+  assert.match(schema, /languagePassSchema/);
   assert.match(schema, /factCheckSchema/);
   assert.match(service, /CommunityPostDraft/);
+  assert.match(service, /HumanizedCommunityPost/);
   assert.match(service, /EvidenceCheckedCommunityPost/);
+  assert.match(service, /只做语言自然化，不改事实/);
   assert.match(service, /逐句事实核验/);
   assert.match(service, /评分不是社区文章主线/);
   assert.match(service, /好用 \/ 一般 \/ 难用/);
   assert.match(editor, /写作风格/);
   assert.match(editor, /文章结构/);
+  assert.match(editor, /内容简报/);
+  assert.match(editor, /语言优化/);
+  assert.doesNotMatch(editor, /信息价值|讨论潜力/);
 });
 
 test("keeps community writing grounded in confirmed Findings instead of score-first summaries", () => {
@@ -93,12 +99,23 @@ test("preserves Content Discovery provenance across Community Post retries", () 
   assert.match(lineageMigration, /grant execute[\s\S]*to service_role/);
 });
 
-test("requires editorial planning and fact-check metadata for new generations while preserving historical posts", async () => {
+test("requires content brief, language pass, and fact-check metadata for new generations while preserving historical posts", async () => {
   const { communityPostGenerationSchema, communityPostOutputSchema } = await import("../lib/ai/schemas/publish.schemas.ts");
   const post = { title: "测试结果", body: "本次回答提供了文献列表。".repeat(30), tags: ["测评"], interactionQuestion: "你如何核验引用？", screenshotRecommendations: [] };
   assert.equal(communityPostOutputSchema.safeParse(post).success, true);
   const metadata = {
-    editorialPlan: { coreConclusion: "有明确优点，也有具体限制。", highlights: ["优点有真实证据"], neutralPoints: [], painPoints: ["限制有真实证据"], structure: ["结论", "好用", "问题", "个人感受"], avoidClaims: ["不扩大到未测试场景"] },
+    contentBrief: {
+      coreViewpoint: "有明确优点，也有具体限制。",
+      opening: "先讲最直接的使用感受。",
+      supportingPoints: [
+        { finding: "优点有真实证据", userMeaning: "用户能更快判断结果是否可用。" },
+        { finding: "限制有真实证据", userMeaning: "用户仍需要保留核对步骤。" },
+      ],
+      ending: "只给当前测试范围内的判断。",
+      voice: "第一人称、短句、具体。",
+      avoidPhrases: ["总体而言"],
+    },
+    languagePass: { status: "polished", changedSentenceCount: 3, notes: ["删除报告式连接词"] },
     factCheck: { status: "passed", revisedClaimCount: 0, notes: [] },
   };
   const incomplete = communityPostGenerationSchema.safeParse({ ...post, ...metadata });
