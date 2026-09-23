@@ -3,20 +3,29 @@ import { z } from "zod";
 const text = z.string().trim().min(1);
 const internalIdentifierPattern = /(?:\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b|\b(?:blindSampleId|TestRun|artifactId|productId|testCaseId|rubricDimensionId|dimensionId|finalScoreSignature|humanOverrideReason)\b)/i;
 
+const normalizedScore = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() !== "") value = Number(value);
+  if (typeof value === "number" && Number.isFinite(value) && value > 1 && value <= 100) return value / 100;
+  return value;
+}, z.number().min(0).max(1));
+
 export const contentIdeaSchema = z.object({
-  id: z.string().trim().min(2).max(80).regex(/^[a-z0-9][a-z0-9-]*$/),
+  // The provider-facing id is permissive because the service rewrites it
+  // to a stable idea-N id before persistence.
+  id: z.string().trim().min(1).max(120),
   title: text.max(240),
   type: text.max(60),
   angle: text.max(600),
   insight: text.max(1200),
   whyInteresting: text.max(1600),
   supportingEvidence: z.array(text.max(800)).min(1).max(8),
-  relatedTestCaseIds: z.array(z.string().uuid()).min(1),
-  relatedArtifactIds: z.array(z.string().uuid()).max(9),
-  informationValue: z.number().min(0).max(1),
-  discussionPotential: z.number().min(0).max(1),
-  confidence: z.number().min(0).max(1),
-  recommended: z.boolean(),
+  // Evidence references are checked against the actual source after generation.
+  relatedTestCaseIds: z.array(z.string().trim().min(1)).max(20).default([]),
+  relatedArtifactIds: z.array(z.string().trim().min(1)).max(9).default([]),
+  informationValue: normalizedScore.default(0.5),
+  discussionPotential: normalizedScore.default(0.5),
+  confidence: normalizedScore.default(0.5),
+  recommended: z.boolean().default(false),
 });
 
 export const contentIdeasOutputSchema = z.object({
