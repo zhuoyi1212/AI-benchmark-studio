@@ -138,11 +138,13 @@ test("full route E2E verifies Quick Findings and Findings Publish before optiona
   assert.match(e2eRoute, /quickPublishReady: publish\.pack\?\.status === "ready"/);
   assert.match(e2eRunner, /ExperienceFindings/);
   assert.match(e2eRunner, /CommunityPostDraft/);
+  assert.match(e2eRunner, /HumanizedCommunityPost/);
   assert.match(e2eRunner, /EvidenceCheckedCommunityPost/);
   assert.doesNotMatch(e2eRunner, /taskCounts\.MicroFindingDiscovery/);
   assert.match(providerMock, /schemaName === "ExperienceFindings"/);
   assert.match(providerMock, /schemaName === "ContentIdeas"/);
   assert.match(providerMock, /schemaName === "CommunityPostDraft"/);
+  assert.match(providerMock, /schemaName === "HumanizedCommunityPost"/);
   assert.match(providerMock, /schemaName === "EvidenceCheckedCommunityPost"/);
 });
 
