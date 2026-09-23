@@ -76,6 +76,25 @@ export const screenshotRecommendationSchema = z.object({
   order: z.number().int().min(1).max(9),
 });
 
+export const contentBriefSchema = z.object({
+  coreViewpoint: text.max(1200),
+  opening: text.max(800),
+  supportingPoints: z.array(z.object({
+    finding: text.max(800),
+    userMeaning: text.max(800),
+  })).min(2).max(5),
+  ending: text.max(800),
+  voice: text.max(400),
+  avoidPhrases: z.array(text.max(200)).max(12),
+});
+
+export const languagePassSchema = z.object({
+  status: z.enum(["polished", "unchanged"]),
+  changedSentenceCount: z.number().int().nonnegative().max(100),
+  notes: z.array(text.max(500)).max(8),
+});
+
+// Kept optional so historical generated posts remain readable.
 export const editorialPlanSchema = z.object({
   coreConclusion: text.max(1200),
   highlights: z.array(text.max(800)).min(1).max(6),
@@ -96,6 +115,8 @@ export const communityPostContentSchema = z.object({
   body: text.max(12_000),
   tags: z.array(text.max(40)).min(1).max(12),
   interactionQuestion: text.max(600),
+  contentBrief: contentBriefSchema.optional(),
+  languagePass: languagePassSchema.optional(),
   editorialPlan: editorialPlanSchema.optional(),
   factCheck: factCheckSchema.optional(),
 });
@@ -111,13 +132,20 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
 export type CommunityPostOutput = z.infer<typeof communityPostOutputSchema>;
 
 export const communityPostDraftSchema = communityPostOutputSchema.safeExtend({
-  editorialPlan: editorialPlanSchema,
+  contentBrief: contentBriefSchema,
 });
 export type CommunityPostDraft = z.infer<typeof communityPostDraftSchema>;
 
-// Apply completeness and evidence-check metadata to new generations only; historical posts stay readable.
+export const communityPostHumanizedSchema = communityPostOutputSchema.safeExtend({
+  contentBrief: contentBriefSchema,
+  languagePass: languagePassSchema,
+});
+export type HumanizedCommunityPost = z.infer<typeof communityPostHumanizedSchema>;
+
+// Apply completeness, language-pass and evidence-check metadata to new generations only; historical posts stay readable.
 export const communityPostGenerationSchema = communityPostOutputSchema.safeExtend({
-  editorialPlan: editorialPlanSchema,
+  contentBrief: contentBriefSchema,
+  languagePass: languagePassSchema,
   factCheck: factCheckSchema,
 }).refine(
   (post) => post.body.trim().length >= 200 && post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length >= 4,
