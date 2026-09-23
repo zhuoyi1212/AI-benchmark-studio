@@ -152,7 +152,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
       maxAttempts: 2,
       beforeExecute: (route) => publishRepository.startDiscovery(packId!, route, inputSignature),
     });
-    const ideas = normalizeIdeas(result.data.ideas);
+    const ideas = normalizeIdeas(result.data.ideas, source);
     assertIdeas(ideas, source);
     await publishRepository.completeDiscovery(packId, ideas, result.usage);
     return packId;
@@ -466,8 +466,22 @@ function assertIdeas(ideas: ContentIdea[], source: PublishSource) {
   }
 }
 
-function normalizeIdeas(ideas: ContentIdea[]): ContentIdea[] {
-  const evidenceGroundedIdeas = ideas.filter((idea) => !unsupportedProcessInference.test(`${idea.angle}\n${idea.insight}\n${idea.whyInteresting}`));
+function normalizeIdeas(ideas: ContentIdea[], source: PublishSource): ContentIdea[] {
+  const caseIds = new Set(source.testCases.map((item) => item.id));
+  const artifactIds = new Set(source.screenshots.map((item) => item.artifactId));
+  const artifactCaseIds = new Map(source.screenshots.map((item) => [item.artifactId, item.testCaseId] as const));
+
+  const evidenceGroundedIdeas = ideas
+    .filter((idea) => !unsupportedProcessInference.test(`${idea.angle}\n${idea.insight}\n${idea.whyInteresting}`))
+    .map((idea) => {
+      const relatedArtifactIds = idea.relatedArtifactIds.filter((id) => artifactIds.has(id));
+      const relatedTestCaseIds = [...new Set([
+        ...idea.relatedTestCaseIds.filter((id) => caseIds.has(id)),
+        ...relatedArtifactIds.map((id) => artifactCaseIds.get(id)).filter((id): id is string => Boolean(id)),
+      ])];
+      return { ...idea, relatedArtifactIds, relatedTestCaseIds };
+    });
+
   if (evidenceGroundedIdeas.length < 1) throw new AIValidationError("content_discovery", "atLeastOneEvidenceGroundedIdea");
   const recommendedIndex = evidenceGroundedIdeas.reduce((best, idea, index) => {
     const value = idea.informationValue + idea.discussionPotential + idea.confidence * 0.25;
@@ -475,7 +489,12 @@ function normalizeIdeas(ideas: ContentIdea[]): ContentIdea[] {
     const bestValue = bestIdea.informationValue + bestIdea.discussionPotential + bestIdea.confidence * 0.25;
     return value > bestValue ? index : best;
   }, 0);
-  return evidenceGroundedIdeas.map((idea, index) => ({ ...idea, id: `idea-${index + 1}`, recommended: index === recommendedIndex }));
+
+  return evidenceGroundedIdeas.map((idea, index) => ({
+    ...idea,
+    id: `idea-${index + 1}`,
+    recommended: index === recommendedIndex,
+  }));
 }
 
 function assertPost(post: CommunityPostOutput, artifactIds: string[], imageCount: number) {
