@@ -116,7 +116,16 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "community-post.v3-editorial-factcheck",
+    promptVersion: "community-post.v4-content-brief-draft",
+    reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.zhipuTextModel,
+  },
+  community_post_humanize: {
+    provider: "zhipu",
+    capability: "structured_text",
+    promptVersion: "community-post-humanize.v1",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
