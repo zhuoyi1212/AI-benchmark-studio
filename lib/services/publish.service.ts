@@ -588,15 +588,42 @@ function combineUsage(...usages: AIUsage[]): AIUsage {
 
 function safeFailureMessage(error: unknown) {
   if (error instanceof AIValidationError) return `PublishPack validation failed: ${error.schemaName}`;
-  if (error instanceof AIProviderError) return "AI Provider request failed";
+  if (error instanceof AIProviderError) return providerFailureMessage(error, true);
   if (error instanceof RepositoryError) return `PublishPack persistence failed at ${error.operation}`;
   if (error instanceof PublishExecutionError) return error.message;
   return "PublishPack generation failed";
 }
+
 function toUserFacingError(error: unknown) {
   if (error instanceof PublishExecutionError) return error.message;
   if (error instanceof AIValidationError) return "社区内容返回的数据未通过结构校验，请重试。";
-  if (error instanceof AIProviderError) return "AI Provider 暂时无法完成社区内容，请稍后重试。";
+  if (error instanceof AIProviderError) return providerFailureMessage(error, false);
   if (error instanceof RepositoryError) return "社区发布包保存失败，请刷新后重试。";
   return "社区发布包生成失败，请稍后重试。";
+}
+
+function providerFailureMessage(error: AIProviderError, technical: boolean) {
+  const provider = error.provider === "zhipu" ? "Z.AI" : error.provider === "deepseek" ? "DeepSeek" : error.provider;
+  const status = error.status ? ` HTTP ${error.status}` : "";
+  const detail = error.providerMessage ? `：${error.providerMessage}` : "";
+  if (technical) return `${provider} ${error.task} failed (${error.category}${status})${detail}`;
+
+  switch (error.category) {
+    case "authentication":
+      return `${provider} 鉴权失败${status}，请检查对应 API Key。`;
+    case "payment_required":
+      return `${provider} 账户余额或模型权限不足${status}。`;
+    case "rate_limit":
+      return `${provider} 当前请求过多${status}，已重试仍失败，请稍后再试。`;
+    case "timeout":
+      return `${provider} 生成社区内容超时，请重试。`;
+    case "network":
+      return `${provider} 网络请求失败，请检查网络或 API 服务状态后重试。`;
+    case "provider_5xx":
+      return `${provider} 服务端异常${status}，已重试仍失败，请稍后再试。`;
+    case "bad_request":
+      return `${provider} 拒绝了本次生成请求${status}${detail}`;
+    default:
+      return `${provider} 暂时无法完成社区内容${status}${detail}`;
+  }
 }
