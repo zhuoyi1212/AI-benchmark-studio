@@ -5,6 +5,7 @@ import {
   communityPostContentSchema,
   communityPostDraftSchema,
   communityPostGenerationSchema,
+  communityPostHumanizedSchema,
   communityPostOutputSchema,
   contentIdeaSchema,
   contentIdeasOutputSchema,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/ai/schemas/publish.schemas";
 import { resultAnalysisInputSchema } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
-import type { AIMessage } from "@/lib/ai/types";
+import type { AIMessage, AIUsage } from "@/lib/ai/types";
 import { publishRepository } from "@/lib/repositories/publish.repository";
 import { defaultPublishConfig } from "@/lib/publish-config";
 import { RepositoryError } from "@/lib/repositories/repository-error";
@@ -193,15 +194,17 @@ export async function generateCommunityPost(
         {
           role: "system",
           content: [
-            "你是中文社区测评内容编辑。先做内容策划，再写完整草稿。",
+            "你是中文社区内容策划与初稿编辑。先生成 contentBrief，再严格按 brief 写完整草稿。",
             "社区内容的中心是实际测到了什么、哪些功能好用、哪些一般、哪些难用，以及这些现象对使用者意味着什么。",
             source.kind === "findings"
               ? "事实判断以 humanConfirmedFindings 为主；Research 只提供背景。不得引入评分、Judge 或 Report 中不存在于本次快速链路的信息。"
               : "事实判断以真实 Case、Artifact、Judge Evidence 和 Human Review 为主；Final Score 只可作为辅助背景。",
-            "editorialPlan 必须先明确 coreConclusion、highlights、neutralPoints、painPoints、文章结构和禁止扩大的结论。",
+            "contentBrief 必须先明确 coreViewpoint、opening、supportingPoints、ending、voice 和 avoidPhrases；supportingPoints 要把“观察到什么”和“这对用户意味着什么”分开。",
             "如果 config.stylePreset=真实体验：使用第一人称、短句、直接判断，可以写“我这次测试”“我的感受是”，但只能描述本项目真实留存的测试；不能虚构未发生的操作。",
             "如果 config.structure=好用 / 一般 / 难用：正文优先按“先给结论 → 好用的功能 → 体验一般的功能 → 不能用/用着难受的功能 → 个人感受”组织；没有真实发现的类别就省略。",
             "标题朴素直接，不做营销式悬念。每个功能段先说判断，再说具体测试现象和影响。",
+            "不要在开头解释 Test Protocol、AI Judge、Blind、Final Score、Rubric 等内部流程，除非当前选题本身就是方法论。",
+            "优先写具体体验和使用影响，不要把评分、流程或字段名翻译成社区语言后继续当正文主线。",
             "避免媒体稿和 AI 总结腔，不要使用“总体而言、值得注意的是、从这个角度来看、这一表现说明”等空泛连接词。",
             "不要为了显得严谨反复写免责声明。范围限制只在必要位置简短说明一次。",
             "不得创造体验、数据、竞品对比或未测试能力。证据不完整时必须收缩说法。",
@@ -216,9 +219,34 @@ export async function generateCommunityPost(
       beforeExecute: (route) => publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
     });
 
+    const humanizedResult = await aiTaskService.humanizeCommunityPost({
+      schema: communityPostHumanizedSchema,
+      schemaName: "HumanizedCommunityPost",
+      messages: [
+        {
+          role: "system",
+          content: [
+            "你是中文社区内容语言编辑。只做语言自然化，不改事实、不增加结论、不扩大适用范围。",
+            "完整保留 contentBrief 的核心观点和结构；正文事实只能来自 draft 与 source。",
+            "删除或改写报告腔和常见 AI 连接词，例如“首先、其次、此外、总体而言、值得注意的是、综上所述、从这个角度来看、这一表现说明”。",
+            "减少过度工整的排比和每段相同句式；长句拆短，允许段落长短不完全一致。",
+            "把抽象评价改成已有证据支持的具体体验，但不能补充 source 中没有发生的操作。",
+            "第一人称只能描述本次真实测试，不得虚构“我长期使用”“我日常一直在用”等经历。",
+            "不要为了口语化加入夸张词、营销词或网络梗。标题、正文、互动问题都要自然、直接。",
+            "截图推荐只允许保留 draft 中已有的 artifactId，不要新增证据引用。",
+            "languagePass.status=polished 表示确实进行了语言改写；changedSentenceCount 记录明显重写的句子数量；notes 只写 1-3 条简短改写说明。",
+            "输出完整可发布正文，不要返回改写建议或前后对照。",
+          ].join("\n"),
+        },
+        { role: "user", content: JSON.stringify({ source: postInput, draft: draftResult.data }) },
+      ],
+      maxTokens: 8_000,
+      maxAttempts: 2,
+    });
+
     const factCheckInput = {
       source: postInput,
-      draft: draftResult.data,
+      draft: humanizedResult.data,
       factCheckRules: [
         "逐条检查标题和正文中的事实性描述是否能被输入证据直接支持。",
         "将过度概括改成证据实际覆盖的范围。例如只测试一个学校网站失败，不能写成所有非主流平台失败率高。",
@@ -237,7 +265,7 @@ export async function generateCommunityPost(
           source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
           "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
           "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
-          "editorialPlan 必须保留并可按核对结果微调。",
+          "contentBrief 和 languagePass 必须保留；事实核对只能收缩或修正事实表述，不得把文章改回报告体。",
           "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
           "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
         ].join("\n"),
@@ -258,7 +286,7 @@ export async function generateCommunityPost(
 
     const post = normalizeScreenshotRecommendations(checkedResult.data, selectedIdea, imageArtifacts, config.imageCount);
     assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
-    await publishRepository.complete(pack.id, post, checkedResult.usage);
+    await publishRepository.complete(pack.id, post, combineUsage(draftResult.usage, humanizedResult.usage, checkedResult.usage));
     return pack.id;
   } catch (error) {
     try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
@@ -526,6 +554,19 @@ function storedPostSchema(value: Json) {
 function hasKeys(value: Json) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0);
 }
+function combineUsage(...usages: AIUsage[]): AIUsage {
+  const sumNullable = (values: Array<number | null>) => {
+    const known = values.filter((value): value is number => value !== null);
+    return known.length > 0 ? known.reduce((total, value) => total + value, 0) : null;
+  };
+  return {
+    inputTokens: sumNullable(usages.map((usage) => usage.inputTokens)),
+    outputTokens: sumNullable(usages.map((usage) => usage.outputTokens)),
+    latencyMs: usages.reduce((total, usage) => total + usage.latencyMs, 0),
+    estimatedCost: sumNullable(usages.map((usage) => usage.estimatedCost)),
+  };
+}
+
 function safeFailureMessage(error: unknown) {
   if (error instanceof AIValidationError) return `PublishPack validation failed: ${error.schemaName}`;
   if (error instanceof AIProviderError) return "AI Provider request failed";
