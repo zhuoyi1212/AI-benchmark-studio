@@ -126,3 +126,27 @@ test("full route E2E uses real services and mocks only the local external AI bou
   assert.match(providerEndpoints, /localhost|127\.0\.0\.1/);
   assert.match(providerMock, /Search context: \$\{query\}/);
 });
+
+test("full route E2E verifies Quick Findings and Findings Publish before optional Professional Review", () => {
+  const flow = e2eRoute.slice(e2eRoute.indexOf("async function runSingleProductFlow"));
+  const findings = flow.indexOf("generateExperienceFindings");
+  const confirmation = flow.indexOf("confirmExperienceFindings");
+  const quickPublish = flow.indexOf('quickPublish.sourceType === "findings"');
+  const professional = flow.indexOf("startProfessionalReview");
+  assert.ok(findings >= 0 && confirmation > findings && quickPublish > confirmation && professional > quickPublish);
+  assert.match(e2eRoute, /Quick Findings must not initialize Blind Samples/);
+  assert.match(e2eRoute, /quickPublishReady: publish\.pack\?\.status === "ready"/);
+  assert.match(e2eRunner, /ExperienceFindings/);
+  assert.match(e2eRunner, /CommunityPostDraft/);
+  assert.match(e2eRunner, /EvidenceCheckedCommunityPost/);
+  assert.doesNotMatch(e2eRunner, /taskCounts\.MicroFindingDiscovery/);
+  assert.match(providerMock, /schemaName === "ExperienceFindings"/);
+  assert.match(providerMock, /schemaName === "ContentIdeas"/);
+  assert.match(providerMock, /schemaName === "CommunityPostDraft"/);
+  assert.match(providerMock, /schemaName === "EvidenceCheckedCommunityPost"/);
+});
+
+test("full E2E client allows the route to finish its bounded cleanup and response", () => {
+  assert.match(e2eRunner, /AbortSignal\.timeout\(360_000\)/);
+  assert.match(e2eRunner, /allowing server-side cleanup 30 seconds to finish/);
+});

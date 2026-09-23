@@ -122,6 +122,7 @@ erDiagram
 - AI 生成完成不等于快速测评完成；只有用户确认或修改 Findings 后，项目才进入快速测评完成态。
 - 人工确认稿作为社区内容的编辑主线，不覆盖 AI 原始 Findings；已确认记录不原地改写。
 - PublishPack 可直接绑定 `findings_id`；最终社区内容事实核对会重新读取原始 Artifact，避免二次摘要持续放大错误。
+- PublishPack source trigger 按 `report_id` 或已人工确认的 `findings_id` 校验来源，并拒绝原地修改来源及版本。
 
 ### Review
 

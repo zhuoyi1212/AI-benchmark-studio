@@ -135,6 +135,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
                 "优先寻找：最好用的功能、体验一般但有价值的功能、最影响使用的问题、意外发现和明确适用边界。",
                 "不要机械复述所有 Findings；选题要有一个清晰主线，并保留证据实际覆盖范围。",
                 "relatedTestCaseIds 只能引用给定 testCases；relatedArtifactIds 只能引用 imageArtifacts。",
+                "UUID 和内部字段标识只能放入对应 ID 数组；严禁复制到 title、type、angle、insight、whyInteresting 或 supportingEvidence 等公开文案。",
                 "输出简体中文。",
               ].join("\n")
             : [

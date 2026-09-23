@@ -3,6 +3,7 @@ import "server-only";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { blindReviewRepository } from "@/lib/repositories/blind-review.repository";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
+import { SupabaseRequestTimeoutError, withSupabaseRequestTimeout } from "@/lib/supabase/server";
 import type { BlindSample } from "@/lib/types/review";
 
 export type BlindReviewWorkspace = {
@@ -20,20 +21,54 @@ export class BlindReviewError extends Error {
   }
 }
 
-export async function startProfessionalReview(projectId: string, protocolId: string): Promise<void> {
-  const protocolWorkspace = await getProtocolWorkspace(projectId);
+const workspaceQueryTimeoutMs = 45_000;
+const blindReviewRpcTimeoutMs = 15_000;
+
+export async function startProfessionalReview(
+  projectId: string,
+  expectedProtocolId?: string,
+): Promise<{ protocolId: string; blindSampleCount: number }> {
+  const protocolWorkspace = await runSupabaseStep("workspace query", workspaceQueryTimeoutMs, () =>
+    getProtocolWorkspace(projectId),
+  );
   const protocol = protocolWorkspace?.protocol;
-  if (!protocolWorkspace || !protocol || protocol.status !== "locked" || protocol.id !== protocolId) {
+  if (!protocolWorkspace || !protocol || protocol.status !== "locked"
+    || (expectedProtocolId && protocol.id !== expectedProtocolId)) {
     throw new BlindReviewError("只能从当前锁定的测试计划启动专业评分。");
   }
 
   try {
-    await blindReviewRepository.assertProtocolSafe(projectId, protocolId);
-    await blindReviewRepository.startProfessional(projectId, protocolId);
+    await runSupabaseStep("assert_blind_protocol_safe", blindReviewRpcTimeoutMs, () =>
+      blindReviewRepository.assertProtocolSafe(projectId, protocol.id),
+    );
+    await runSupabaseStep("start_professional_review", blindReviewRpcTimeoutMs, () =>
+      blindReviewRepository.startProfessional(projectId, protocol.id),
+    );
+    const samples = await runSupabaseStep("Blind Sample verification", blindReviewRpcTimeoutMs, () =>
+      blindReviewRepository.listSamples(protocol.id),
+    );
+    if (samples.length === 0) throw new BlindReviewError("Professional Review started without creating Blind Samples.");
+    return { protocolId: protocol.id, blindSampleCount: samples.length };
   } catch (error) {
     if (error instanceof RepositoryError) {
       throw new BlindReviewError("专业评分启动失败，请确认全部真实测试结果已经完成。");
     }
+    throw error;
+  }
+}
+
+async function runSupabaseStep<T>(name: string, timeoutMs: number, run: () => Promise<T>): Promise<T> {
+  const startedAt = performance.now();
+  console.info(`[Professional Review] ${name} → 开始`);
+  try {
+    const result = await withSupabaseRequestTimeout(name, timeoutMs, run);
+    console.info(`[Professional Review] ${name} → 成功 + ${Math.round(performance.now() - startedAt)} ms`);
+    return result;
+  } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    const outcome = error instanceof SupabaseRequestTimeoutError ? "超时" : "失败";
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.error(`[Professional Review] ${name} → ${outcome} + ${elapsedMs} ms: ${reason}`);
     throw error;
   }
 }

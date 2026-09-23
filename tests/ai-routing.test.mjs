@@ -6,12 +6,13 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [config, router, taskService, deepSeek, zhipu, serverEnv, envExample] = await Promise.all([
+const [config, router, taskService, deepSeek, zhipu, providerHttp, serverEnv, envExample] = await Promise.all([
   read("lib/ai/config.ts"),
   read("lib/ai/router.ts"),
   read("lib/ai/task-service.ts"),
   read("lib/ai/providers/deepseek.provider.ts"),
   read("lib/ai/providers/zhipu.provider.ts"),
+  read("lib/ai/providers/http.ts"),
   read("lib/env/server.ts"),
   read(".env.example"),
 ]);
@@ -80,4 +81,14 @@ test("keeps provider credentials server-only", () => {
   assert.match(serverEnv, /^import "server-only";/);
   assert.match(deepSeek, /^import "server-only";/);
   assert.match(zhipu, /^import "server-only";/);
+});
+
+test("keeps useful provider error details while redacting credentials and signed URLs", () => {
+  assert.match(providerHttp, /extractProviderError\(responseBody, apiKey\)/);
+  assert.match(providerHttp, /message\.split\(apiKey\)\.join\("\[redacted\]"\)/);
+  assert.match(providerHttp, /URL redacted/);
+  assert.match(providerHttp, /requestImageCount/);
+  assert.match(providerHttp, /requestFileCount/);
+  assert.match(router, /providerCode: error\.providerCode/);
+  assert.match(router, /providerMessage: error\.providerMessage/);
 });

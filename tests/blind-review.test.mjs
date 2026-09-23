@@ -17,6 +17,13 @@ const [migration, quickMigration, identityGuard, initialSchema, repository, serv
   read("app/projects/[projectId]/review/page.tsx"),
   read("app/projects/[projectId]/test/page.tsx"),
 ]);
+const [supabaseServer, startupRoute, startupVerifier, providerMock, e2eRunner] = await Promise.all([
+  read("lib/supabase/server.ts"),
+  read("app/api/_e2e/blind-review-start/route.ts"),
+  read("scripts/verify-blind-review-start.mjs"),
+  read("scripts/e2e-provider-mock.mjs"),
+  read("scripts/run-self-contained-e2e.mjs"),
+]);
 
 test("creates a complete randomized Blind Layer exactly once", () => {
   assert.match(migration, /status in \('testing', 'reviewing'\)/);
@@ -77,4 +84,31 @@ test("Blind Review UI never serializes project or product identity", () => {
   assert.match(page, /workspace\.testCases\.map/);
   assert.doesNotMatch(page, /project\.name|product\.name|productId|productName|workspace\.products/);
   assert.match(testPage, /ProfessionalReviewAction/);
+});
+
+test("Professional Review startup logs and bounds each Supabase step", () => {
+  assert.match(service, /runSupabaseStep\("workspace query", workspaceQueryTimeoutMs/);
+  assert.match(service, /runSupabaseStep\("assert_blind_protocol_safe", blindReviewRpcTimeoutMs/);
+  assert.match(service, /runSupabaseStep\("start_professional_review", blindReviewRpcTimeoutMs/);
+  assert.match(service, /performance\.now\(\)/);
+  assert.match(service, /→ \$\{outcome\} \+ \$\{elapsedMs\} ms/);
+  assert.match(supabaseServer, /AbortSignal\.any\(signals\)/);
+  assert.match(supabaseServer, /defaultRequestTimeoutMs = 30_000/);
+  assert.match(supabaseServer, /withSupabaseRequestTimeout/);
+});
+
+test("the focused startup verifier reuses an existing project without running AI or deleting it", () => {
+  assert.match(startupRoute, /startProfessionalReview\(projectId\)/);
+  assert.match(service, /blindSampleCount: samples\.length/);
+  assert.match(startupRoute, /\.\.\.result/);
+  assert.doesNotMatch(startupRoute, /softDeleteProject|runBlindJudge|generateExperienceFindings|discoverContentIdeas/);
+  assert.match(startupVerifier, /api\/e2e-test\/blind-review-start/);
+  assert.match(startupVerifier, /no AI Provider calls/);
+});
+
+test("full E2E logs live and bounds child-process and provider mock teardown", () => {
+  assert.match(e2eRunner, /destination\.write\(chunk\)/);
+  assert.match(e2eRunner, /await waitForExit\(child, 5_000\)/);
+  assert.match(e2eRunner, /server-side cleanup 30 seconds/);
+  assert.match(providerMock, /server\.closeAllConnections\(\)/);
 });

@@ -27,13 +27,15 @@ const categoryMeta = {
 export default async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
-  const [workspace, workflowState, professional] = await Promise.all([
+  const [workspace, workflowState] = await Promise.all([
     getExperienceFindingsWorkspace(projectId),
     getProjectWorkflowState(projectId),
-    getResultsWorkspace(projectId),
   ]);
   if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
+  const professional = workflowState.stages.review.completed
+    ? await readOptionalProfessionalResults(projectId)
+    : null;
 
   const run = workspace.latest;
   const ready = run?.status === "completed" && run.effectiveOutput;
@@ -59,6 +61,18 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
 
     <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} />
   </div>;
+}
+
+async function readOptionalProfessionalResults(projectId: string): Promise<Awaited<ReturnType<typeof getResultsWorkspace>>> {
+  try {
+    return await getResultsWorkspace(projectId);
+  } catch (error) {
+    console.error("[OptionalProfessionalResultsReadError]", {
+      projectId,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return null;
+  }
 }
 
 function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace }) {

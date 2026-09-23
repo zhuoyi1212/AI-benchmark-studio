@@ -20,6 +20,7 @@ test("keeps dynamic ContentIdeas and real rediscovery", () => {
   assert.match(schema, /ideas: z\.array\(contentIdeaSchema\)\.min\(1\)\.max\(6\)/);
   assert.match(schema, /Content Idea contains an internal identifier/);
   assert.match(schema, /internalIdentifierPattern\.test\(publicCopy\)/);
+  assert.match(service, /UUID 和内部字段标识只能放入对应 ID 数组；严禁复制到 title、type、angle、insight、whyInteresting 或 supportingEvidence/);
   assert.doesNotMatch(service, /humanOverrideReason:/);
   assert.match(service, /humanReviewAdjustment:/);
   assert.match(service, /uniqueIdeasAndSingleRecommendation/); assert.match(editor, /重新发现选题/);
