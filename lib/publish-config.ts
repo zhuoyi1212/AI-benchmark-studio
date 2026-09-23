@@ -9,7 +9,7 @@ export const defaultPublishConfig: PublishConfig = {
   goal: "分享真实体验",
   stylePreset: "真实体验",
   structure: "好用 / 一般 / 难用",
-  tone: "第一人称、直接、短句。先说结论，再讲具体功能和真实问题；像真实测试记录，不写成媒体稿或 AI 总结。",
+  tone: "第一人称、直接、短句、具体。像真的测试过产品后在分享：先说感受，再讲现象和影响；避免媒体稿、报告腔和 AI 总结式连接词。",
   length: "800 字左右",
   imageCount: 6,
   interactionGoal: "用一句自然的问题邀请读者补充自己的真实使用体验。",
