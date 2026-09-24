@@ -10,7 +10,7 @@ import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact } 
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
-export const maxDuration = 1800;
+export const maxDuration = 300;
 
 const simulationDisclosure = "模拟体验数据，仅用于 AI Benchmark Studio 产品流程测试，不代表真实第三方产品实测结果。";
 

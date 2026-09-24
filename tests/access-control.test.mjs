@@ -6,10 +6,12 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [proxy, envExample, readme] = await Promise.all([
+const [proxy, envExample, readme, autoDemoRoute, publicAutoDemoRoute] = await Promise.all([
   read("proxy.ts"),
   read(".env.example"),
   read("README.md"),
+  read("app/api/_e2e/auto-demos/route.ts"),
+  read("app/api/e2e-test/auto-demos/route.ts"),
 ]);
 
 test("protects deployed pages, route handlers, and Server Actions behind one access gate", () => {
@@ -28,4 +30,11 @@ test("documents access credentials without committing a value", () => {
   assert.match(envExample, /^APP_ACCESS_PASSWORD=$/m);
   assert.match(readme, /Vercel Project Settings/);
   assert.match(readme, /生产环境缺少 `APP_ACCESS_PASSWORD` 时整站返回 503/);
+});
+
+test("keeps deployable route durations within the Vercel Hobby limit", () => {
+  for (const route of [autoDemoRoute, publicAutoDemoRoute]) {
+    const duration = Number(route.match(/maxDuration = (\d+)/)?.[1]);
+    assert.ok(Number.isInteger(duration) && duration >= 1 && duration <= 300);
+  }
 });
