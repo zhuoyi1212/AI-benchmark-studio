@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+const { createRequire } = require('node:module');
 module.exports = function createLoader(root, overrides = {}) {
   const cache = new Map();
   return function load(specifier, parent = path.join(root, 'index.ts')) {
@@ -14,7 +15,9 @@ module.exports = function createLoader(root, overrides = {}) {
     const module = { exports: {} };
     cache.set(file, module);
     const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-    new Function('require', 'module', 'exports', '__filename', '__dirname', code)(name => load(name, file), module, module.exports, file, path.dirname(file));
+    const localRequire = name => load(name, file);
+    localRequire.resolve = createRequire(file).resolve;
+    new Function('require', 'module', 'exports', '__filename', '__dirname', code)(localRequire, module, module.exports, file, path.dirname(file));
     return module.exports;
   };
 };

@@ -35,6 +35,8 @@ export type AIProviderErrorDetails = {
   outputTokens?: number | null;
   responseContentType?: string | null;
   responseBodyLength?: number | null;
+  providerCode?: string | null;
+  inputIssue?: "mixed_media" | null;
 };
 
 export class AIProviderError extends Error {
@@ -52,6 +54,8 @@ export class AIProviderError extends Error {
   readonly outputTokens: number | null;
   readonly responseContentType: string | null;
   readonly responseBodyLength: number | null;
+  readonly providerCode: string | null;
+  readonly inputIssue: "mixed_media" | null;
 
   constructor(message: string, details: AIProviderErrorDetails) {
     super(message);
@@ -70,6 +74,8 @@ export class AIProviderError extends Error {
     this.outputTokens = details.outputTokens ?? null;
     this.responseContentType = details.responseContentType ?? null;
     this.responseBodyLength = details.responseBodyLength ?? null;
+    this.providerCode = details.providerCode ?? null;
+    this.inputIssue = details.inputIssue ?? null;
   }
 }
 

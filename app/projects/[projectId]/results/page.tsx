@@ -27,13 +27,21 @@ const categoryMeta = {
 export default async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
-  const [workspace, workflowState, professional] = await Promise.all([
+  const [workspace, workflowState] = await Promise.all([
     getExperienceFindingsWorkspace(projectId),
     getProjectWorkflowState(projectId),
-    getResultsWorkspace(projectId),
   ]);
   if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
+
+  // Quick Findings never require Blind/Judge/Review. Only read professional
+  // results after reveal, and isolate failures in this optional panel.
+  let professional: Awaited<ReturnType<typeof getResultsWorkspace>> = null;
+  let professionalUnavailable = false;
+  if (workflowState.stages.review.completed) {
+    try { professional = await getResultsWorkspace(projectId); }
+    catch { professionalUnavailable = true; }
+  }
 
   const run = workspace.latest;
   const ready = run?.status === "completed" && run.effectiveOutput;
@@ -57,7 +65,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
-    <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} />
+    <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} unavailable={professionalUnavailable} />
   </div>;
 }
 
@@ -148,7 +156,7 @@ function FindingCard({
   </Card>;
 }
 
-function ProfessionalMode({ projectId, protocolId, professional }: { projectId: string; protocolId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>> }) {
+function ProfessionalMode({ projectId, protocolId, professional, unavailable }: { projectId: string; protocolId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>>; unavailable: boolean }) {
   const analysis = professional?.latestAnalysis;
   const complete = analysis?.status === "completed" && !analysis.stale && analysis.output;
   return <section className="mt-10 rounded-lg border border-dashed bg-slate-50/50 p-5">
@@ -158,7 +166,8 @@ function ProfessionalMode({ projectId, protocolId, professional }: { projectId: 
         <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">需要结构化评分、Blind Judge、人工复核或深度报告时再进入。它不会阻塞 Findings 和社区内容。</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {!professional && <ProfessionalReviewAction projectId={projectId} protocolId={protocolId} label="进入专业评分" />}
+        {unavailable ? <div className="text-xs text-red-600"><p role="alert">专业评分暂时无法读取，测评发现仍可继续。</p><Link className="mt-1 inline-block underline" href={`/projects/${projectId}/review`}>查看专业评分</Link></div>
+          : !professional && <ProfessionalReviewAction projectId={projectId} protocolId={protocolId} label="进入专业评分" />}
         {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}
         {complete && <Button variant="outline" asChild><Link href={`/projects/${projectId}/report`}><FileText className="h-4 w-4" />生成深度报告</Link></Button>}
       </div>

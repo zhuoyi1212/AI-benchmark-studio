@@ -88,7 +88,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   findings: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "findings.v1",
+    promptVersion: "findings.v2-pdf-pages",
     reasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

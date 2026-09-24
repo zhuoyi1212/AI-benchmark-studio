@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   expectedOutputTypes,
-  generatedProtocolContentSchema,
+  generatedProtocolDraftContentSchema,
   generatedProtocolSchema,
   mandatoryProtocolRuleIds,
   type GeneratedProtocolContent,
@@ -25,7 +25,12 @@ import type { RubricDimension, TestCase, TestProtocol, TestRule } from "@/lib/ty
 const storedRuleSchema = z.array(z.object({ id: z.enum(mandatoryProtocolRuleIds), text: z.string().trim().min(1) })).length(mandatoryProtocolRuleIds.length);
 const storedTextListSchema = z.array(z.string().trim().min(1));
 const storedExpectedOutputTypesSchema = z.array(z.enum(expectedOutputTypes)).min(1);
-const storedInputArtifactsSchema = z.array(z.object({ name: z.string().trim().min(1), type: z.string().trim().min(1), description: z.string().nullable().optional() }));
+const storedInputArtifactsSchema = z.array(z.object({
+  name: z.string().trim().min(1),
+  type: z.string().trim().min(1),
+  description: z.string().trim().nullable().optional(),
+  content: z.string().min(1).optional(),
+}));
 const storedScoringStandardSchema = z.object({ excellent: z.string().trim().min(1), good: z.string().trim().min(1), acceptable: z.string().trim().min(1), poor: z.string().trim().min(1) });
 
 const capabilityModelingSequence = [
@@ -145,7 +150,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
   try {
     const generationStartedAt = performance.now();
     const isAutoDemo = research.project.name.startsWith("AUTO DEMO ·");
-    const protocolContentSchema = generatedProtocolContentSchema.superRefine((protocol, context) => {
+    const protocolContentSchema = generatedProtocolDraftContentSchema.superRefine((protocol, context) => {
       const serialized = JSON.stringify(protocol).toLocaleLowerCase("zh-CN");
       if (research.project.products.some((product) => product.name.trim().length >= 3
         && serialized.includes(product.name.trim().toLocaleLowerCase("zh-CN")))) {
@@ -165,8 +170,8 @@ export async function generateProtocol(projectId: string): Promise<string> {
         {
           role: "system",
           content: projectMode === "single"
-            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时在 inputArtifacts 声明，不得虚构内容。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。"
-            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。",
+            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备；PDF 的 description 与正文使用可打印英文和数字。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。"
+            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。需要真实输入时必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备；PDF 的 description 与正文使用可打印英文和数字。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。",
         },
         {
           role: "user",
@@ -182,14 +187,14 @@ export async function generateProtocol(projectId: string): Promise<string> {
                 defaultCasesUsingNativeOrDifferentiatingWorkflow: 2,
               },
               eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
-              caseOutput: { selfContainedPrompt: true, declareRequiredRealInputsInInputArtifacts: true, doNotInventInputContents: true, expectedOutputTypes, evidenceMustSupportScoring: true },
-              rubricOutput: { dynamicForProductAndTasks: true, everyDimensionApplicableToEveryTestCase: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
+              caseOutput: { selfContainedPrompt: true, attachEveryRequiredInput: true, allowedInputArtifactTypes: ["application/pdf", "text/plain", "text/csv"], pdfContentLanguage: "printable English and numbers", expectedOutputTypes, evidenceMustSupportScoring: true },
+              rubricOutput: { dynamicForProductAndTasks: true, concise: true, everyDimensionApplicableToEveryTestCase: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
               comparison: projectMode === "comparison" ? { sharedCoreCapabilitiesOnly: true, samePromptInputAndConditions: true, excludeExclusiveCapabilities: true } : undefined,
             },
           }),
         },
       ],
-      maxTokens: 10000,
+      maxTokens: 6500,
     });
     const protocol = normalizeGeneratedProtocol(generated.data);
     assertProtocolFitsMode(protocol.testCases.length, projectMode);
@@ -211,6 +216,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
 }
 
 function normalizeGeneratedProtocol(content: GeneratedProtocolContent) {
+  const rubric = normalizeRubricWeights(content.rubric);
   return generatedProtocolSchema.parse({
     ...content,
     testMode: "standardized",
@@ -220,8 +226,17 @@ function normalizeGeneratedProtocol(content: GeneratedProtocolContent) {
       position: index + 1,
       executionRules: standardizedExecutionRules,
     })),
-    rubric: content.rubric.map((rubric, index) => ({ ...rubric, position: index + 1 })),
+    rubric: rubric.map((dimension, index) => ({ ...dimension, position: index + 1 })),
   });
+}
+
+function normalizeRubricWeights(rubric: GeneratedProtocolContent["rubric"]): GeneratedProtocolContent["rubric"] {
+  const total = rubric.reduce((sum, dimension) => sum + dimension.weight, 0);
+  if (Math.abs(total - 100) <= 0.0001) return rubric;
+  const normalized = rubric.map((dimension) => ({ ...dimension, weight: Number((dimension.weight / total * 100).toFixed(2)) }));
+  const precedingTotal = normalized.slice(0, -1).reduce((sum, dimension) => sum + dimension.weight, 0);
+  normalized[normalized.length - 1] = { ...normalized.at(-1)!, weight: Number((100 - precedingTotal).toFixed(2)) };
+  return normalized;
 }
 
 function logProtocolPerformance(
@@ -300,14 +315,14 @@ async function readProtocol(row: ProtocolRow): Promise<TestProtocol> {
     status: row.status,
     testMode: row.test_mode,
     rules,
-    testCases: testCaseRows.map(mapTestCase),
+    testCases: testCaseRows.map((testCase) => mapTestCase(testCase, row.project_id)),
     rubric: rubricRows.map(mapRubricDimension),
     createdAt: row.created_at,
     lockedAt: row.locked_at ?? undefined,
   };
 }
 
-function mapTestCase(row: ProtocolTestCaseRow): TestCase {
+function mapTestCase(row: ProtocolTestCaseRow, projectId: string): TestCase {
   const expectedOutputParse = storedExpectedOutputTypesSchema.safeParse(row.expected_output_types);
   const evidenceParse = storedTextListSchema.safeParse(row.evidence_requirements);
   return {
@@ -316,12 +331,28 @@ function mapTestCase(row: ProtocolTestCaseRow): TestCase {
     objective: row.objective,
     prompt: row.prompt,
     inputDescription: row.input_description ?? undefined,
-    inputArtifacts: storedInputArtifactsSchema.parse(row.input_artifacts).map((artifact, index) => ({ id: `${row.id}-input-${index + 1}`, name: artifact.name, type: artifact.type })),
+    inputArtifacts: storedInputArtifactsSchema.parse(row.input_artifacts).map((artifact, index) => {
+      const type = normalizeInputArtifactType(artifact.type);
+      return {
+        id: `${row.id}-input-${index + 1}`,
+        name: artifact.name,
+        type,
+        description: artifact.description ?? "完成任务所需的标准化输入材料。",
+        downloadUrl: artifact.content ? `/api/projects/${projectId}/protocol-inputs/${row.id}/${index + 1}` : undefined,
+      };
+    }),
     expectedOutputTypes: expectedOutputParse.success ? expectedOutputParse.data : ["mixed"],
     evidenceRequirements: evidenceParse.success ? evidenceParse.data : ["上传该测试项未经后期编辑的原始输出"],
     observationFocus: storedTextListSchema.parse(row.observation_focus),
     executionRules: storedTextListSchema.parse(row.execution_rules),
   };
+}
+
+function normalizeInputArtifactType(type: string): "application/pdf" | "text/plain" | "text/csv" {
+  const normalized = type.toLowerCase();
+  if (normalized.includes("pdf")) return "application/pdf";
+  if (normalized.includes("csv")) return "text/csv";
+  return "text/plain";
 }
 
 function mapRubricDimension(row: RubricDimensionRow): RubricDimension {

@@ -343,3 +343,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 LAN Test Page Interaction Fix：真实测试页“添加原始文件”和“复制 Prompt”无响应。复现发现从本机局域网 HTTP 地址访问时，Next dev 阻止客户端 JS 与 HMR，脚本请求返回 403。next.config 的 allowedDevOrigins 现在仅包含回环及本机网卡实际 IPv4 地址，无通配符，不放宽生产或 Server Action 来源校验。复制 Prompt 增加 Clipboard API 不可用/被拒绝时的兼容复制并恢复焦点；上传队列 ID 在非安全上下文改用 getRandomValues，修复 randomUUID 缺失造成的选文件/粘贴错误。
 
 验证：174/174 测试、typecheck、build、diff check 通过。直接在真实项目的局域网 HTTP 测试页验证：脚本无 403/浏览器无异常、复制的完整 Prompt 与剪贴板读取一致、添加文件弹窗可打开、多选和原生 ⌘V 截图粘贴正常、冷刷新后交互正常。环境确认 isSecureContext=false、navigator.clipboard 不可用、crypto.randomUUID 不可用，兼容路径已实际执行。未提交测试文件或改动现有实验、Storage、Blind/Review/Final Score。保留本轮前已有的 next-env.d.ts 开发类型引用改动。
+
+2026-09-21 Quick Findings Entry Fix：真实项目点击“提炼测评发现”报 JudgeExecutionError: Blind Samples 尚未建立。根因是 ResultsPage 把可选 getResultsWorkspace 与 Quick Findings 放在同一个无条件 Promise.all 中。改为先加载 Quick Findings 与导航状态，仅在专业 Review 已揭晓后读取专业结果；可选模块读取异常只在该模块显示错误与专业评分入口，不阻塞快速主流程，也不自动创建 Blind/Judge/Review。
+
+验证：179/179 测试、typecheck、build、diff check 通过。新增真实页面函数的隔离运行测试，覆盖未启动专业流程不读取专业结果、揭晓后正常加载、可选读取失败不阻塞、主数据缺失重定向、完成 Findings 后显示人工确认编辑器。真实局域网项目从测试页点击入口已成功显示测评发现页面与生成按钮，无浏览器异常；未执行实际 AI 生成。自动审批拒绝真实生成验证，理由是向外部 AI 发送现有证据并持久化新 Findings 需要明确授权；待用户允许后继续，未冒充全链路验收完成。

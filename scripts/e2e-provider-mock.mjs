@@ -406,7 +406,7 @@ function createProtocolScenarioResponse(scenario, attempt, schemaName, messages)
   if (scenario === "invalid-json-then-success" && attempt === 2) requireRepairInstruction(messages, "Previous response was not valid JSON");
   if (scenario === "schema-invalid-then-success" && attempt === 1) {
     const invalid = buildStructuredOutput(schemaName, messages);
-    invalid.rubric[0].weight -= 10;
+    invalid.rubric[0].description = "";
     return { outcome: "schema_validation", body: createCompletionResponse(invalid) };
   }
   if (scenario === "schema-invalid-then-success" && attempt === 2) requireRepairInstruction(messages, "rubric");

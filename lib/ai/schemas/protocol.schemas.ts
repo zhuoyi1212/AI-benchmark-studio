@@ -13,17 +13,40 @@ export const expectedOutputTypes = ["text", "image", "document", "video", "code"
 const conciseText = z.string().trim().min(1).max(1000);
 const detailedText = z.string().trim().min(1).max(8000);
 const textList = z.array(z.string().trim().min(1).max(500)).min(1).max(20);
+const printableDocumentText = z.string().trim().min(200).max(8000).refine(
+  (value) => /^[\x09\x0A\x0D\x20-\x7E]+$/.test(value),
+  "Generated PDF source text must use printable ASCII so it renders consistently",
+);
+const printableDocumentDescription = z.string().trim().min(1).max(500).refine(
+  (value) => /^[\x20-\x7E]+$/.test(value),
+  "Generated PDF descriptions must use printable ASCII so they render consistently",
+);
 
 const protocolRuleSchema = z.object({
   id: z.enum(mandatoryProtocolRuleIds),
   text: z.string().trim().min(1).max(300),
 });
 
-const inputArtifactSpecSchema = z.object({
-  name: z.string().trim().min(1).max(300),
-  type: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).nullable(),
-});
+const inputArtifactSpecSchema = z.discriminatedUnion("type", [
+  z.object({
+    name: z.string().trim().min(1).max(180),
+    type: z.literal("application/pdf"),
+    description: printableDocumentDescription,
+    content: printableDocumentText,
+  }),
+  z.object({
+    name: z.string().trim().min(1).max(180),
+    type: z.literal("text/plain"),
+    description: z.string().trim().min(1).max(500),
+    content: z.string().trim().min(100).max(8000),
+  }),
+  z.object({
+    name: z.string().trim().min(1).max(180),
+    type: z.literal("text/csv"),
+    description: z.string().trim().min(1).max(500),
+    content: z.string().trim().min(40).max(8000),
+  }),
+]);
 
 const scoringStandardSchema = z.object({
   excellent: conciseText,
@@ -57,12 +80,15 @@ const intelligentRubricSchema = z.object({
 
 const aiRubricSchema = intelligentRubricSchema.omit({ position: true });
 
-export const generatedProtocolContentSchema = z.object({
+const generatedProtocolContentShape = z.object({
   title: z.string().trim().min(1).max(200),
   goal: detailedText,
   testCases: z.array(aiTestCaseSchema).min(2).max(4),
   rubric: z.array(aiRubricSchema).min(3).max(5),
-}).superRefine(validateProtocolSemantics);
+});
+
+export const generatedProtocolDraftContentSchema = generatedProtocolContentShape.superRefine(validateProtocolIdentity);
+export const generatedProtocolContentSchema = generatedProtocolContentShape.superRefine(validateProtocolSemantics);
 
 export const generatedProtocolSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -86,12 +112,19 @@ function validateProtocolSemantics(
   protocol: { testCases: Array<{ title: string }>; rubric: Array<{ name: string; weight: number }> },
   context: z.RefinementCtx,
 ) {
-  validateUniqueText(protocol.testCases.map((item) => item.title), "testCases", context);
-  validateUniqueText(protocol.rubric.map((item) => item.name), "rubric", context);
+  validateProtocolIdentity(protocol, context);
   const totalWeight = protocol.rubric.reduce((total, item) => total + item.weight, 0);
   if (Math.abs(totalWeight - 100) > 0.0001) {
     context.addIssue({ code: "custom", path: ["rubric"], message: "Rubric weights must total exactly 100" });
   }
+}
+
+function validateProtocolIdentity(
+  protocol: { testCases: Array<{ title: string }>; rubric: Array<{ name: string }> },
+  context: z.RefinementCtx,
+) {
+  validateUniqueText(protocol.testCases.map((item) => item.title), "testCases", context);
+  validateUniqueText(protocol.rubric.map((item) => item.name), "rubric", context);
 }
 
 function validateUniquePositions(

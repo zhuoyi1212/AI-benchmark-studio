@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
 import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { experienceFindingsOutputSchema, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
@@ -183,6 +184,7 @@ export async function confirmExperienceFindings(projectId: string, findingsId: s
 
 function buildSnapshot(test: TestExecutionWorkspace, research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"]): Json {
   return JSON.parse(JSON.stringify({
+    evidenceTransport: "mixed-pdf-pages.v1",
     project: { id: test.project.id, name: test.project.name },
     protocol: {
       id: test.protocol.id,
@@ -228,6 +230,11 @@ async function buildArtifactContent(
   test: TestExecutionWorkspace,
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
 ): Promise<AIMessageContent> {
+  const artifacts = test.testRuns.flatMap((run) => run.artifacts);
+  const renderPdfs = artifacts.some((artifact) => artifact.fileType.startsWith("image/"))
+    && artifacts.some((artifact) => artifact.fileType === "application/pdf");
+  let remainingPages = maxPdfEvidencePages;
+  let remainingBytes = maxPdfEvidenceBytes;
   const content: Exclude<AIMessageContent, string> = [{
     type: "text",
     text: JSON.stringify({
@@ -270,6 +277,14 @@ async function buildArtifactContent(
         content.push({ type: "text", text: await readTextArtifact(artifact) });
       } else if (artifact.fileType.startsWith("image/")) {
         content.push({ type: "image_url", image_url: { url: artifact.fileUrl } });
+      } else if (renderPdfs && artifact.fileType === "application/pdf") {
+        const pages = await renderPdfEvidence(await readArtifactBytes(artifact), remainingPages, remainingBytes);
+        remainingPages -= pages.length;
+        remainingBytes -= pages.reduce((sum, page) => sum + page.length, 0);
+        for (const [index, url] of pages.entries()) {
+          content.push({ type: "text", text: `artifactId: ${artifact.id}; original PDF page ${index + 1}/${pages.length}` });
+          content.push({ type: "image_url", image_url: { url } });
+        }
       } else {
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
       }
@@ -278,14 +293,19 @@ async function buildArtifactContent(
   return content;
 }
 
-async function readTextArtifact(artifact: TestArtifact) {
-  const response = await fetch(artifact.fileUrl!);
-  if (!response.ok) throw new FindingsExecutionError("无法读取原始文本 Artifact。");
+async function readArtifactBytes(artifact: TestArtifact) {
+  const response = await fetch(artifact.fileUrl!, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new FindingsExecutionError("无法读取原始 Artifact，请刷新后重试。");
   const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.length !== artifact.sizeBytes) throw new FindingsExecutionError("原始文本 Artifact 大小校验失败。");
+  if (bytes.length !== artifact.sizeBytes) throw new FindingsExecutionError("原始 Artifact 大小校验失败。");
   if (artifact.sha256 && createHash("sha256").update(bytes).digest("hex") !== artifact.sha256) {
-    throw new FindingsExecutionError("原始文本 Artifact 完整性校验失败。");
+    throw new FindingsExecutionError("原始 Artifact 完整性校验失败。");
   }
+  return bytes;
+}
+
+async function readTextArtifact(artifact: TestArtifact) {
+  const bytes = await readArtifactBytes(artifact);
   let text: string;
   try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
   catch { throw new FindingsExecutionError("原始文本 Artifact 不是有效 UTF-8。"); }
@@ -345,15 +365,33 @@ function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["
 
 function safeFailureMessage(error: unknown) {
   if (error instanceof AIValidationError) return `Findings validation failed: ${error.schemaName}`;
-  if (error instanceof AIProviderError) return "AI Provider request failed";
+  if (error instanceof AIProviderError || error instanceof PdfEvidenceError) return toUserFacingError(error);
   if (error instanceof RepositoryError) return `Findings persistence failed at ${error.operation}`;
   if (error instanceof FindingsExecutionError) return error.message;
   return "Findings generation failed";
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIValidationError) return "AI 提炼的 Findings 未通过真实证据引用校验，请重试。";
-  if (error instanceof AIProviderError) return "AI Provider 暂时无法提炼测试发现，请稍后重试。";
+  if (error instanceof AIProviderError) {
+    const reference = error.providerCode ? `（接口代码 ${error.providerCode}）` : error.status ? `（HTTP ${error.status}）` : "";
+    if (error.inputIssue === "mixed_media") return `AI 接口不接受 PDF、视频与图片混合输入，请检查证据转换配置。${reference}`;
+    const messages: Record<typeof error.category, string> = {
+      timeout: "AI 提炼超时，请重试。",
+      network: "连接 AI 服务失败，请稍后重试。",
+      rate_limit: "AI 服务请求过多，请稍后重试。",
+      provider_5xx: "AI 服务暂时异常，请稍后重试。",
+      authentication: "AI 服务认证失败，请检查服务端密钥和权限。",
+      payment_required: "AI 服务余额或额度不足，请检查账户。",
+      bad_request: "AI 接口拒绝了请求，请检查输入文件和模型参数。",
+      invalid_json_body: "AI 服务返回了无法解析的响应，请重试。",
+      invalid_envelope: "AI 服务返回格式异常，请重试。",
+      empty_response: "AI 未返回测评发现，请重试。",
+      truncated_response: "AI 返回内容被截断，请重试。",
+    };
+    return messages[error.category] + reference;
+  }
   if (error instanceof RepositoryError) return "Findings 保存失败，请刷新后重试。";
   return "测试发现生成失败，请稍后重试。";
 }

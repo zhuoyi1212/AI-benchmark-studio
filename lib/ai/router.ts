@@ -169,6 +169,8 @@ function logAIProviderError(error: AIProviderError, reasoning: AIAttemptPerforma
     maxAttempts,
     latencyMs: error.latencyMs,
     errorCategory: error.category,
+    providerCode: error.providerCode,
+    inputIssue: error.inputIssue,
     finishReason: error.finishReason,
     inputTokens: error.inputTokens,
     outputTokens: error.outputTokens,
