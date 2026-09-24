@@ -347,3 +347,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 Quick Findings Entry Fix：真实项目点击“提炼测评发现”报 JudgeExecutionError: Blind Samples 尚未建立。根因是 ResultsPage 把可选 getResultsWorkspace 与 Quick Findings 放在同一个无条件 Promise.all 中。改为先加载 Quick Findings 与导航状态，仅在专业 Review 已揭晓后读取专业结果；可选模块读取异常只在该模块显示错误与专业评分入口，不阻塞快速主流程，也不自动创建 Blind/Judge/Review。
 
 验证：179/179 测试、typecheck、build、diff check 通过。新增真实页面函数的隔离运行测试，覆盖未启动专业流程不读取专业结果、揭晓后正常加载、可选读取失败不阻塞、主数据缺失重定向、完成 Findings 后显示人工确认编辑器。真实局域网项目从测试页点击入口已成功显示测评发现页面与生成按钮，无浏览器异常；未执行实际 AI 生成。自动审批拒绝真实生成验证，理由是向外部 AI 发送现有证据并持久化新 Findings 需要明确授权；待用户允许后继续，未冒充全链路验收完成。
+
+2026-09-24 Private Deployment Gate：为公开 Vercel 部署增加整站 Basic Auth 门禁，统一覆盖页面、Route Handlers、Server Actions 与上传/AI 入口；生产环境未配置访问密码时 fail closed 返回 503，本地开发保持原行为。共享密码仅用于当前内部测试，正式多用户访问仍需 Supabase Auth；平台限流待产生部署与流量后按 log → preview → production 分阶段配置。203/203 测试、typecheck、build 与 diff check 通过；生产启动实测无配置返回 503、无凭据返回 401、正确凭据进入应用。
