@@ -323,3 +323,21 @@ Publish 内容链改为一次选材判断、一次 Flash 写作、一次现有 C
 既有 Task Service / Router / Provider / append-only attemptAudit 继续使用。community-review.ts 校验五类事实依据与具体问题；communityReviewDecision 由问题类别导出 pass/rewrite/stop，不使用新分数。事实/背景/价值问题停止，语言/重复问题最多一次改写并复核含义。问题引文须属于 draft，避免修改历史任务。旧 review 通过旧字段读取；新 review 的 totalScore 为 null，页面不显示虚构分数。正文输出不含 coreOpinion/contentType，服务从已选选题补回并执行原有验证。无数据库迁移。
 
 2026-09-11 Publish 输入修正：editorialBrief优先taskContext与completeAnswer，answerIsComplete说明是否使用完整存档；没有全文时保留摘录，额外证据仍保留。Critic不再在brief之外重复传同份任务/全文。自定义角度保留rawQuote而不拼入whatHappened；生成所需材料及配置先校验再begin。无数据库迁移。
+
+### Evidence-backed Editorial Plan（2026-09-21）
+
+现有 Publish Service 内顺序执行：community_post / CommunityEditorialPlan → community_post / CommunityPostDraft → community_post_evidence_check / EvidenceCheckedCommunityPost。两次写作调用共享现有集中 Provider 配置，策划 schema 先校验引用才允许正文调用；不新增并行 Publish 系统。
+
+Quick 来源为 confirmed Findings；专业来源从 Case 的 Judge evidence 和 Human Review reason 投影为不含数值评分的观察。章节引用以观察 ID 和 Artifact ID 关联，readerBenefit 取已有 impact；正文与最终核对仍保留来源、任务与证据范围。原始 Artifact 最终读取逻辑不变。
+
+publish_packs.community_post JSON 新增可选 articleReview、generationTrace，editorialPlan 扩展核心问题、读者、范围、sections、materialGaps；每阶段记录 provider/model/promptVersion/inputSignature/usage，pack usage 聚合三次调用。历史 JSON 缺少新字段仍可读。无表结构改动。失败继续使用既有 failed/retry 生命周期，不回退 Mock。
+
+2026-09-21 语言编辑补充：CommunityPostDraft 后增加 `community_post_style_edit / CommunityStyleEdit`，只允许 title/body/interactionQuestion 三字段。既有多模态最终核对增加六项 stylePreservation，独立比较 originalDraft/draft，任一 false/缺失/有 issues 拒绝保存。community_post JSON 增加可选 styleEdit 原稿/改稿/changed 与 stylePreservation，generationTrace 扩展 style_edit，usage 聚合四阶段。段落重排后清空旧截图段号与引文，由最终核对重新建立。失败信息带阶段名，仍使用全流程新版本重试；无数据库迁移。
+
+### Mixed PDF / Screenshot Evidence（2026-09-23）
+
+智谱实测拒绝同一请求同时包含 PDF file_url 与 image_url（HTTP 400 / 1214）。Quick Findings 与 Quick Publish 原始证据核对复用的 buildArtifactContent 在混合输入时校验 PDF 大小与 SHA-256，使用服务端 PDF.js / Node Canvas 将全部页面渲染为 PNG，在内存中发送，每页仍绑定原 Artifact ID 与页码。PDF 单独输入保持原文件 URL，文本仍逐字读取；原始 Storage、Artifact 元数据和历史记录不变，页面渲染不是新实验图片，也不进入截图推荐。
+
+每次混合分析最多 32 页 PDF、页面图片编码总量 20 MiB；超限、损坏或加密明确失败，不截页或用 OCR 摘要替代。输入快照标记 mixed-pdf-pages.v1，Findings promptVersion 更新。Next 服务端依赖保留 native Canvas、worker、字体、CMap 与 WASM 追踪。Provider 错误仅保留数字业务码和已知混合输入错误分类，不记录供应商原始报错中可能回显的证据、签名 URL 或密钥；Findings 持久化可操作的中文错误。无数据库迁移。
+
+同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。

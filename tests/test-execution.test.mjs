@@ -51,11 +51,14 @@ test("records immutable Artifact and execution metadata in one database transact
   assert.match(repository, /\.rpc\("record_test_artifact"/);
 });
 
-test("finalizes only a complete Artifact-backed matrix", () => {
+test("finalizes only a complete Artifact-backed matrix without auto-starting scoring", () => {
   assert.match(migration, /create function public\.finalize_test_execution/);
   assert.match(migration, /Every TestRun needs at least one raw Artifact before finalization/);
   assert.match(migration, /set status = 'ready_for_review'/);
   assert.match(repository, /\.rpc\("finalize_test_execution"/);
+  assert.doesNotMatch(service, /blindReviewRepository/);
+  assert.match(actions, /startProfessionalReviewAction/);
+  assert.match(actionComponent, /ProfessionalReviewAction/);
 });
 
 test("real Test Execution route validates actions and never imports demo data", () => {
@@ -68,6 +71,9 @@ test("real Test Execution route validates actions and never imports demo data", 
   assert.match(actionComponent, /name="rawText"/);
   assert.match(actions, /TestExecutionError/);
   assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain,text\/markdown,application\/json,text\/csv,video\/mp4,video\/webm,video\/quicktime/);
+  assert.match(page, /提炼测评发现/);
+  assert.match(page, /专业评分（可选）/);
+  assert.match(page, /\/results/);
   assert.doesNotMatch(page + actions + actionComponent + service + repository, /@\/lib\/mock|mockTestRuns|\/projects\/demo/);
 });
 

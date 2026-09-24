@@ -322,3 +322,28 @@ Incremental Publish Regression ✅ 2026-09-08 仅复用现有豆包/智谱项目
 2026-09-18 产品库清理：按用户要求移除 /products 的 demo 产品卡片与无效搜索入口，显示简洁空状态；不删除真实产品实体、项目或历史证据。typecheck、3 项 Mock 边界测试、build、git diff --check 通过，浏览器确认“暂无产品”。秘塔 Research v7 复用，Protocol v1 已生成；用户选择仅保留学术引用核验任务，后续等待真实手动实测证据。保持已有混合工作区，不将无关改动打包提交。
 
 2026-09-20 秘塔真实测评继续：单学术引用核验任务已完成手动证据上传、Judge、append-only复核、Results与Report。智谱恢复版实际生成Publish v1–v5，保留失败、各次输入/输出/用量于工作区 outputs/metaso-review-20260920；根据实测只补完整正文校验、证据边界和取消固定第一人称模板，未重启观猹/短观察/Critic。v5在网站显示正常，891字，主要事实限定为HaluEval发表状态遗漏；仍有范围说明重复，上游Report/候选角度有过度概括，不能宣称内容全面验收。审计同时确认当前正文输入含Judge证据摘录而非完整文本Artifact，后续应优先补原文证据而非继续风格改写。Publish10/10、路由及Provider韧性16/16、typecheck、build、diff检查通过。原始记录和既有混合工作区保留，未提交。
+
+Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测试计划 → Test/Artifact → AI Findings → 人工确认 → Publish；新增 experience_findings 与 Findings-bound PublishPack，Blind Judge / Human Review / Result Analysis / Report 保留为显式专业模式，不再阻塞社区内容。Quick Publish 的最终事实核对重新读取完整原始 Artifact；不删除或覆盖既有专业测评历史。
+
+2026-09-21 Community Experience Expression：在 chatgpt/content-flow-refactor 延续 Quick Findings Publish，新增内容分类规划、开头/结尾字段、真实体验风格运行时校验、默认关闭的个人评分及 Findings 来源校验；复用 screenshotRecommendations，以原段落锚点在预览/复制时生成 p1/p2，删图/换图/编辑不继承错误引用。保留原始 Artifact 最终核对、专业测评与历史 JSON 兼容，无 migration。新增 golden/style/formatter 回归及实际 Publish Service 的隔离集成测试，验证无 Judge/Report 依赖与失败不保存 ready。TypeScript 仅排除工作区原有未跟踪 dormant-community-pipeline 归档，严格检查实际源码。该轮验证不代表真实在线模型语言质量或完整外部 DB/Storage E2E 已验收。
+验证结果：npm test 155/155、npm run typecheck、npm run build、git diff --check 全部通过。真实供应商在线生成、浏览器视觉验证和外部 DB/Storage E2E 本轮未运行；不能将本轮标为全部产品 Acceptance Criteria 完成。
+
+2026-09-21 Evidence-backed Editorial Follow-up：按用户提供的体验清单、场景深度和多维度参考稿，新增三种一键写法，独立策划→正文→原始证据/文章质量核对。章节绑定 Findings/Artifact，使用收益从确认 impact 引用；无效证据、重复章节、未知方法依据及缺少具体观察均会失败。专业来源投影为不含数字评分的观察，专业功能不删除。保存各阶段 route/signature/usage；旧 JSON 兼容，无 migration。修复同一 pack 从 draft 变 ready 时编辑器状态未重置的问题。
+
+验证：162 项测试通过，typecheck、build、diff check 通过。包含策划失败不执行写作、最终质量失败不写 ready、两种深度稿结构和真实模型发现的虚构调色/补拍收益负例。真实模型探测曾出现一次格式合格但内容越界的样稿，人工审查后拒绝并收紧规则；随后场景稿与多维稿核对阶段连续网络失败，未保存合格最终稿。浏览器只读确认生产构建首页正常，当前真实项目尚无可用 Publish 数据，未补造用户实验。线上语言质量及完整 DB/Storage/浏览器生成 E2E 不标为全部验收通过。
+
+2026-09-21 Dedicated Language Editor：按用户要求在初稿后、最终证据核对前加入 community_post_style_edit。仅允许标题/正文/互动句，数值与已有观察锚点确定性校验；最终核对独立比较六类含义，缺失/false/issues 均拒绝 ready。保留原稿、改稿、changed、六项结果及四阶段实际 route/signature/usage，清空旧截图段号并重新核对；错误显示具体阶段。复用 publish_packs.community_post JSON，无 migration，不修改历史实验、Blind、Human Review、Final Score 或 Storage。
+
+验证：166/166 测试、typecheck、build、diff check 通过。覆盖编辑输出越权、数值漂移、六类含义漂移、缺失审查、编辑失败停止、旧三阶段记录兼容和仓储 RPC 参数。真实合成素材探测完成策划/初稿/润色，最终 glm-4.6v 两次 network 失败，明确失败且未保存 ready。对同一初稿再次单独验证细化的语言规则，删去了分类套壳和部分同义复述，仍有局部生硬句与重复限制；不宣称语言质量已验收。仅合成素材隔离探测，未运行真实 DB/Storage/浏览器生成 E2E。失败中间稿持久化、按阶段续跑与实际材料的人读验收仍待后续。
+
+2026-09-21 Test Artifact Multi-upload & Clipboard：上传文件选择器启用 multiple，弹窗内支持原生剪贴板图片粘贴；新增可追加/移除的队列和逐项状态。文件与粘贴文本在同次保存中逐个提交现有 Server Action，避免批量请求突破 51 MB 限制，也避免原逻辑文件优先导致文本被忽略。成功项不再重传，失败项保留；普通文本粘贴不被拦截，上传期间禁止关闭与编辑队列。复用原有文件签名、大小、Protocol 状态、Storage/DB 补偿机制，无 migration，不改 Blind/Human Review/Final Score。
+
+验证：169/169 测试、typecheck、build、diff check 通过。Chrome 隔离组件测试通过多选、追加、移除、原生 ⌘V 图片粘贴、原生文本粘贴、文件文本同时保存、部分失败及只重试失败项；保留截图于 /private/tmp/artifact-upload-browser/upload-dialog.png。浏览器测试使用真实组件与测试上传函数，未写生产实验/Storage，不等同于真实 DB 端到端验收。刷新不保留本地待上传队列；网络响应丢失时需要先核对已保存记录。
+
+2026-09-21 LAN Test Page Interaction Fix：真实测试页“添加原始文件”和“复制 Prompt”无响应。复现发现从本机局域网 HTTP 地址访问时，Next dev 阻止客户端 JS 与 HMR，脚本请求返回 403。next.config 的 allowedDevOrigins 现在仅包含回环及本机网卡实际 IPv4 地址，无通配符，不放宽生产或 Server Action 来源校验。复制 Prompt 增加 Clipboard API 不可用/被拒绝时的兼容复制并恢复焦点；上传队列 ID 在非安全上下文改用 getRandomValues，修复 randomUUID 缺失造成的选文件/粘贴错误。
+
+验证：174/174 测试、typecheck、build、diff check 通过。直接在真实项目的局域网 HTTP 测试页验证：脚本无 403/浏览器无异常、复制的完整 Prompt 与剪贴板读取一致、添加文件弹窗可打开、多选和原生 ⌘V 截图粘贴正常、冷刷新后交互正常。环境确认 isSecureContext=false、navigator.clipboard 不可用、crypto.randomUUID 不可用，兼容路径已实际执行。未提交测试文件或改动现有实验、Storage、Blind/Review/Final Score。保留本轮前已有的 next-env.d.ts 开发类型引用改动。
+
+2026-09-21 Quick Findings Entry Fix：真实项目点击“提炼测评发现”报 JudgeExecutionError: Blind Samples 尚未建立。根因是 ResultsPage 把可选 getResultsWorkspace 与 Quick Findings 放在同一个无条件 Promise.all 中。改为先加载 Quick Findings 与导航状态，仅在专业 Review 已揭晓后读取专业结果；可选模块读取异常只在该模块显示错误与专业评分入口，不阻塞快速主流程，也不自动创建 Blind/Judge/Review。
+
+验证：179/179 测试、typecheck、build、diff check 通过。新增真实页面函数的隔离运行测试，覆盖未启动专业流程不读取专业结果、揭晓后正常加载、可选读取失败不阻塞、主数据缺失重定向、完成 Findings 后显示人工确认编辑器。真实局域网项目从测试页点击入口已成功显示测评发现页面与生成按钮，无浏览器异常；未执行实际 AI 生成。自动审批拒绝真实生成验证，理由是向外部 AI 发送现有证据并持久化新 Findings 需要明确授权；待用户允许后继续，未冒充全链路验收完成。

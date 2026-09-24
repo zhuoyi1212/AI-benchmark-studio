@@ -6,7 +6,7 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, schema, repository, service, aiConfig, page, actions, actionComponent, researchPage] = await Promise.all([
+const [migration, schema, repository, service, aiConfig, page, actions, actionComponent, researchPage, protocolView, testPage, inputRoute] = await Promise.all([
   read("supabase/migrations/202608170007_protocol_lifecycle.sql"),
   read("lib/ai/schemas/protocol.schemas.ts"),
   read("lib/repositories/protocols.repository.ts"),
@@ -16,7 +16,22 @@ const [migration, schema, repository, service, aiConfig, page, actions, actionCo
   read("app/projects/[projectId]/protocol/actions.ts"),
   read("app/projects/[projectId]/protocol/protocol-actions.tsx"),
   read("app/projects/[projectId]/research/page.tsx"),
+  read("app/projects/[projectId]/protocol/protocol-view.tsx"),
+  read("app/projects/[projectId]/test/page.tsx"),
+  read("app/api/projects/[projectId]/protocol-inputs/[testCaseId]/[artifactNumber]/route.ts"),
 ]);
+
+test("creates and exposes every required Protocol input instead of returning filename-only metadata", () => {
+  assert.match(schema, /content: printableDocumentText/);
+  assert.match(schema, /z\.literal\("application\/pdf"\)/);
+  assert.match(service, /attachEveryRequiredInput: true/);
+  assert.match(service, /不得只写文件名或要求用户自行准备/);
+  assert.match(service, /maxTokens: 6500/);
+  assert.match(protocolView, /artifact\.downloadUrl/);
+  assert.match(testPage, /任务输入/);
+  assert.match(inputRoute, /renderProtocolInputArtifact/);
+  assert.match(inputRoute, /Content-Disposition/);
+});
 
 test("persists one complete dynamic Protocol draft atomically", () => {
   assert.match(migration, /create function public\.create_protocol_draft/);
@@ -91,6 +106,7 @@ test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", ()
   assert.match(schema, /testCases:[\s\S]*\.min\(2\)\.max\(4\)/);
   assert.match(schema, /rubric:[\s\S]*\.min\(3\)\.max\(5\)/);
   assert.match(schema, /Rubric weights must total exactly 100/);
+  assert.match(schema, /generatedProtocolDraftContentSchema/);
   assert.match(schema, /mandatoryProtocolRuleIds/);
   assert.match(schema, /same-input/);
   assert.match(schema, /same-prompt/);
@@ -100,6 +116,7 @@ test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", ()
   assert.match(schema, /generatedProtocolContentSchema/);
   assert.match(schema, /omit\(\{ position: true, executionRules: true \}\)/);
   assert.match(service, /normalizeGeneratedProtocol/);
+  assert.match(service, /normalizeRubricWeights/);
   assert.match(service, /Protocol must use blind-neutral wording and omit every tested product name/);
   assert.match(service, /testMode: "standardized"/);
   assert.match(service, /position: index \+ 1/);

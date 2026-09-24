@@ -18,6 +18,7 @@ function snapshot(overrides = {}) {
     artifactRunIds: [],
     judgeRuns: [],
     reviewSessions: [],
+    experienceFindings: [],
     resultAnalyses: [],
     reports: [],
     publishPacks: [],
@@ -58,9 +59,10 @@ test("Case C: an Artifact-backed complete Test matrix remains completed while br
     testRuns: [1, 2, 3, 4].map((index) => ({ id: `run-${index}`, protocolId: "protocol-1", status: "ready_for_review" })),
     artifactRunIds: ["run-1", "run-2", "run-3", "run-4"],
   }));
-  assertOnlyAccessible(state, ["research", "protocol", "test", "review"]);
+  assertOnlyAccessible(state, ["research", "protocol", "test", "review", "results"]);
   assert.equal(state.stages.protocol.completed, true);
   assert.equal(state.stages.test.completed, true);
+  assert.equal(state.stages.results.completed, false);
   assert.equal(state.stages.review.completed, false);
 });
 
@@ -73,9 +75,10 @@ test("Case D: a completed Publish lineage keeps all seven stages completed and a
     artifactRunIds: ["run-1"],
     judgeRuns: [{ id: "judge-1", protocolId: "protocol-1", status: "completed" }],
     reviewSessions: [{ id: "review-1", protocolId: "protocol-1", judgeRunId: "judge-1", status: "revealed" }],
+    experienceFindings: [{ id: "findings-1", protocolId: "protocol-1", status: "completed", humanConfirmedAt: "2026-09-20T00:00:00Z" }],
     resultAnalyses: [{ id: "analysis-1", reviewSessionId: "review-1", status: "completed" }],
     reports: [{ id: "report-1", resultAnalysisId: "analysis-1", status: "completed" }],
-    publishPacks: [{ id: "publish-1", reportId: "report-1", status: "ready" }],
+    publishPacks: [{ id: "publish-1", reportId: null, findingsId: "findings-1", status: "ready" }],
   }));
   assertOnlyAccessible(state, ["research", "protocol", "test", "review", "results", "report", "publish"]);
   assert.ok(Object.values(state.stages).every((stage) => stage.completed));
@@ -98,12 +101,28 @@ test("Case E: regeneration history stays reachable while new versions do not ove
   assert.equal(state.stages.protocol.completed, true);
   assert.equal(state.stages.test.completed, true);
   assert.equal(state.stages.review.accessible, true);
+  assert.equal(state.stages.results.accessible, true);
 });
 
 test("single-product Research is never blocked by comparison comparability", () => {
   const researchRuns = [{ id: "research-1", version: 1, status: "completed", comparability: { status: "not_comparable" } }];
   assert.equal(deriveWorkflowState(snapshot({ productCount: 1, researchRuns })).stages.protocol.accessible, true);
   assert.equal(deriveWorkflowState(snapshot({ productCount: 2, researchRuns })).stages.protocol.accessible, false);
+});
+
+test("confirmed Findings unlock Publish without Judge, Review, Result Analysis, or Report", () => {
+  const state = deriveWorkflowState(snapshot({
+    researchRuns: [{ id: "research-1", version: 1, status: "completed", comparability: { status: "not_applicable" } }],
+    protocols: [{ id: "protocol-1", researchRunId: "research-1", version: 1, status: "locked" }],
+    testCases: [{ id: "case-1", protocolId: "protocol-1" }],
+    testRuns: [{ id: "run-1", protocolId: "protocol-1", status: "ready_for_review" }],
+    artifactRunIds: ["run-1"],
+    experienceFindings: [{ id: "findings-1", protocolId: "protocol-1", status: "completed", humanConfirmedAt: "2026-09-20T00:00:00Z" }],
+  }));
+  assert.equal(state.stages.results.completed, true);
+  assert.equal(state.stages.publish.accessible, true);
+  assert.equal(state.stages.review.completed, false);
+  assert.equal(state.stages.report.completed, false);
 });
 
 test("the shared component derives active stage from pathname and never links locked stages", async () => {
@@ -114,6 +133,8 @@ test("the shared component derives active stage from pathname and never links lo
   assert.match(component, /aria-disabled="true"/);
   assert.doesNotMatch(component, /\bcurrent\s*:/);
   assert.doesNotMatch(component, /index < activeStep/);
+  assert.doesNotMatch(component, /\["review", "专业评分"\]/);
+  assert.doesNotMatch(component, /\["report", "深度报告"\]/);
 });
 
 test("all seven real routes use the same persisted workflow state", async () => {
@@ -141,6 +162,7 @@ test("workspace reads are side-effect free and explicit transitions create depen
   assert.doesNotMatch(blindService, /\.initialize\(/);
   assert.doesNotMatch(humanGetter, /\.ensure\(/);
   assert.match(protocolService, /lockProtocol[\s\S]*testExecutionRepository\.ensureMatrix/);
-  assert.match(testService, /finalizeTestExecution[\s\S]*blindReviewRepository\.initialize/);
+  assert.doesNotMatch(testService, /blindReviewRepository/);
+  assert.match(blindService, /startProfessionalReview[\s\S]*blindReviewRepository\.startProfessional/);
   assert.match(judgeService, /runBlindJudge[\s\S]*humanReviewRepository\.ensure/);
 });

@@ -289,6 +289,31 @@ export type HumanReviewEventRow = {
   created_at: string;
 };
 
+export type ExperienceFindingRow = {
+  id: string;
+  project_id: string;
+  protocol_id: string;
+  version: number;
+  status: RunStatus;
+  input_snapshot: Json;
+  input_signature: string;
+  output: Json | null;
+  human_output: Json | null;
+  provider: AIProviderName | null;
+  model: string | null;
+  prompt_version: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  human_confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  estimated_cost: number | null;
+};
+
 export type ResultAnalysisRow = {
   id: string;
   project_id: string;
@@ -347,7 +372,8 @@ export type ReportArtifactRow = {
 export type PublishPackRow = {
   id: string;
   project_id: string;
-  report_id: string;
+  report_id: string | null;
+  findings_id: string | null;
   version: number;
   status: "draft" | "discovering" | "generating" | "ready" | "failed";
   config: Json;
@@ -419,6 +445,7 @@ export type DatabaseTableRows = {
   judge_scores: JudgeScoreRow;
   review_sessions: ReviewSessionRow;
   human_review_events: HumanReviewEventRow;
+  experience_findings: ExperienceFindingRow;
   result_analyses: ResultAnalysisRow;
   reports: ReportRow;
   report_artifacts: ReportArtifactRow;

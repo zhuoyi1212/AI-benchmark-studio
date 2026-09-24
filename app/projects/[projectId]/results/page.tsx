@@ -1,64 +1,188 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { ArrowLeft, ArrowRight, Award, Bot, Check, Crown, FileText, Scale, Sparkles, UserCheck, Users2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ExternalLink, FileText, FlaskConical, ShieldCheck, Sparkles } from "lucide-react";
+import { FindingsEditor } from "@/app/projects/[projectId]/results/findings-editor";
+import { FindingsGenerationAction } from "@/app/projects/[projectId]/results/findings-generation-action";
+import { ProfessionalReviewAction } from "@/app/projects/[projectId]/test/test-actions";
 import { ResultAnalysisAction } from "@/app/projects/[projectId]/results/result-analysis-action";
 import { PageHeader } from "@/components/page-header";
-import { ProductLogo } from "@/components/product-logo";
 import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getResultsWorkspace, type FinalProductScore, type ResultsWorkspace } from "@/lib/services/result-analysis.service";
+import type { ExperienceFindingItem } from "@/lib/ai/schemas/findings.schemas";
+import { getExperienceFindingsWorkspace, type ExperienceFindingsWorkspace } from "@/lib/services/findings.service";
+import { getResultsWorkspace } from "@/lib/services/result-analysis.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
-import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 
 export const maxDuration = 300;
-type ResultsPageProps = { params: Promise<{ projectId: string }> };
 
-export default async function ResultsPage({ params }: ResultsPageProps) {
+const categoryMeta = {
+  good: { label: "好用", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  neutral: { label: "体验一般", className: "border-slate-200 bg-slate-50 text-slate-700" },
+  problem: { label: "问题 / 难用", className: "border-red-200 bg-red-50 text-red-700" },
+} as const;
+
+export default async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
   const [workspace, workflowState] = await Promise.all([
-    getResultsWorkspace(projectId),
+    getExperienceFindingsWorkspace(projectId),
     getProjectWorkflowState(projectId),
   ]);
-  if (!workspace) redirect(`/projects/${projectId}/review`);
+  if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
-  const analysis = workspace.latestAnalysis;
-  if (!analysis || analysis.stale || analysis.status !== "completed" || !analysis.output) {
-    return <AnalysisState workspace={workspace} workflowState={workflowState} />;
-  }
+  const professionalResult = workflowState.stages.review.completed
+    ? await readOptionalProfessionalResults(projectId)
+    : null;
+  const professional = professionalResult?.workspace ?? null;
+  const professionalUnavailable = professionalResult?.unavailable ?? false;
 
-  const champion = workspace.productScores[0];
-  const singleProduct = workspace.projectMode === "single";
-  const gridTemplate = `160px repeat(${workspace.rubric.length}, minmax(82px, 1fr))`;
-  return <div className="page-shell"><WorkflowSteps projectId={projectId} workflowState={workflowState} /><Link href={`/projects/${projectId}/review`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回评分复核</Link><PageHeader eyebrow={`Final Results / Protocol v${workspace.protocolVersion}`} title={singleProduct ? "产品体验结果" : "最终结果"} description={singleProduct ? "综合体验得分来自锁定 Final Score；分析基于真实 Artifact、Judge Evidence 与人工复核。" : "排名来自锁定 Final Score；分析基于 Judge Evidence、人工复核与真实 Artifact metadata。"} action={<Badge variant="success"><Check className="h-3 w-3" />分析已绑定当前评分</Badge>} />
-    {champion && <section className="rounded-xl border border-blue-200 bg-white p-7 shadow-soft"><div className="flex flex-col justify-between gap-7 sm:flex-row sm:items-end"><div><div className="eyebrow text-blue-600">{singleProduct ? "综合体验得分" : "综合冠军"}</div><div className="mt-4 flex items-center gap-4"><ProductLogo initials={initials(champion.productName)} name={champion.productName} className="h-14 w-14 rounded-xl text-xl" /><div><h2 className="text-3xl font-semibold tracking-[-.04em]">{champion.productName}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{analysis.output.winnerReason}</p></div></div></div><div className="flex items-end gap-3">{!singleProduct && <Crown className="mb-2 h-6 w-6 text-amber-500" />}<div className="text-6xl font-semibold tracking-[-.06em] text-blue-700">{champion.finalScore.toFixed(1)}</div><div className="mb-2 text-xs text-muted-foreground">/ 10</div></div></div></section>}
-    <section className="mt-4 flex flex-col justify-between gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:items-center"><div className="flex items-center gap-4"><div className="flex -space-x-1"><span className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-slate-100 text-slate-600"><Bot className="h-4 w-4" /></span><span className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-blue-100 text-blue-700"><UserCheck className="h-4 w-4" /></span></div><div><div className="text-xs font-semibold">评分来源 · AI Judge + 人工复核</div><p className="mt-1 text-[11px] text-muted-foreground">{workspace.reviewSummary.total} 个评分项中，{workspace.reviewSummary.adjusted} 项经过人工调整，{workspace.reviewSummary.accepted} 项接受 AI 评分；分析签名 {workspace.finalScoreSignature.slice(0, 10)}…</p></div></div></section>
-    <section className="mt-8"><div className="mb-4 flex items-center justify-between"><h2 className="section-title">维度表现</h2><span className="text-xs text-muted-foreground">Final Score · 满分 10</span></div><Card className="overflow-x-auto p-5 shadow-none"><div style={{ minWidth: `${160 + workspace.rubric.length * 98}px` }}><div className="grid gap-4 border-b pb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: gridTemplate }}><span>产品 / 综合分</span>{workspace.rubric.map((item) => <span key={item.id} className="text-center">{item.name}</span>)}</div>{workspace.productScores.map((product, index) => <ScoreRow key={product.productId} product={product} index={index} gridTemplate={gridTemplate} showRank={!singleProduct} />)}</div></Card></section>
-    <section className="mt-8 rounded-lg border bg-white p-5"><div className="eyebrow">{singleProduct ? "关键发现" : "跨产品发现"}</div><div className="mt-3 grid gap-2 md:grid-cols-2">{analysis.output.crossProductInsights.map((insight) => <div key={insight} className="rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-700">{insight}</div>)}</div>{analysis.output.counterintuitiveFindings.length > 0 && <><div className="mt-5 eyebrow">反直觉发现</div><div className="mt-3 space-y-2">{analysis.output.counterintuitiveFindings.map((item) => <p key={item} className="text-xs leading-5 text-slate-700">{item}</p>)}</div></>}</section>
-    <section className="mt-8 grid gap-4 xl:grid-cols-3">{workspace.productScores.map((score, index) => { const item = analysis.output!.products.find((entry) => entry.productId === score.productId)!; return <Card key={item.productId} className="p-5 shadow-none"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><ProductLogo initials={initials(score.productName)} name={score.productName} className="h-9 w-9" /><div><h3 className="text-sm font-semibold">{score.productName}</h3><span className="text-xs text-muted-foreground">{singleProduct ? "综合体验" : `#${index + 1}`} · {score.finalScore.toFixed(1)}{score.adjustedCount > 0 && ` · ${score.adjustedCount} 项调整`}</span></div></div>{!singleProduct && index === 0 && <Award className="h-5 w-5 text-amber-500" />}</div><p className="mt-4 border-y py-3 text-xs font-medium leading-5">{item.headline}</p><InfoList label="优势" items={item.strengths} positive /><InfoList label="劣势" items={item.weaknesses} /><FindingList items={item.keyFindings} /><div className="mt-4 space-y-3 rounded-md bg-slate-50 p-3"><Audience label="最适合" items={item.bestFor} /><Audience label="不适合" items={item.notIdealFor} /></div></Card>; })}</section>
-    {singleProduct && champion && <section className="mt-8 rounded-lg border bg-white p-5"><div className="eyebrow">各体验场景</div><div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{workspace.caseScores.map((testCase) => <div key={testCase.testCaseId} className="rounded-md border bg-slate-50 p-4"><div className="text-xs font-semibold">{testCase.title}</div><div className="mt-2 text-2xl font-semibold text-blue-700">{testCase.products.find((item) => item.productId === champion.productId)?.score.toFixed(1) ?? "-"}</div></div>)}</div></section>}
-    <section className="mt-8 rounded-lg border bg-white p-5"><div className="eyebrow">证据化 Case 素材</div><p className="mt-2 text-xs leading-5 text-muted-foreground">以下内容直接来自锁定 Judge reason、Evidence 与人工复核，可作为文章中的实测依据。</p><div className="mt-4 space-y-4">{workspace.caseEvidence.map((testCase) => <div key={testCase.testCaseId} className="rounded-md border p-4"><h3 className="text-sm font-semibold">{testCase.title}</h3><div className="mt-3 grid gap-3 lg:grid-cols-3">{testCase.products.map((product) => <div key={product.productId} className="rounded-md bg-slate-50 p-3"><div className="text-xs font-semibold">{product.productName}</div><div className="mt-3 space-y-3">{product.findings.map((finding) => <div key={finding.dimensionName} className="border-t pt-2 first:border-0 first:pt-0"><div className="flex items-center justify-between text-[11px] font-semibold"><span>{finding.dimensionName}</span><span className="text-blue-700">{finding.finalScore.toFixed(1)}</span></div><p className="mt-1 text-[11px] leading-5 text-slate-600">{finding.reason}</p><ul className="mt-1 space-y-1">{finding.evidence.map((item) => <li key={item} className="text-[10px] leading-4 text-muted-foreground">· {item}</li>)}</ul>{finding.humanAdjustment && <p className="mt-1 text-[10px] leading-4 text-blue-700">人工复核：{finding.humanAdjustment}</p>}</div>)}</div></div>)}</div></div>)}</div></section>
-    <section className="mt-8 rounded-lg border bg-white p-5"><div className="eyebrow">{singleProduct ? "最终体验结论" : "最终建议"}</div><p className="mt-3 text-sm leading-7 text-slate-700">{analysis.output.recommendationSummary}</p><div className="mt-5 border-t pt-4"><div className="eyebrow">测试限制</div><ul className="mt-2 space-y-1.5">{analysis.output.limitations.map((item) => <li key={item} className="text-xs leading-5 text-muted-foreground">· {item}</li>)}</ul></div></section>
-    <section className="mt-8 flex flex-col items-center rounded-xl border bg-slate-950 px-6 py-8 text-center text-white"><Sparkles className="h-5 w-5 text-blue-400" /><h2 className="mt-3 text-xl font-semibold">把已锁定结果组织成深度报告</h2><p className="mt-2 max-w-lg text-xs leading-6 text-slate-400">报告将绑定本次 Final Result Analysis，并保留方法与真实证据追溯。</p><Button className="mt-5 bg-white text-slate-950 hover:bg-slate-100" asChild><Link href={`/projects/${projectId}/report`}><FileText className="h-4 w-4" />生成深度报告<ArrowRight className="h-4 w-4" /></Link></Button></section>
+  const run = workspace.latest;
+  const ready = run?.status === "completed" && run.effectiveOutput;
+  const confirmed = Boolean(ready && run.humanConfirmedAt);
+
+  return <div className="page-shell">
+    <WorkflowSteps projectId={projectId} workflowState={workflowState} />
+    <Link href={`/projects/${projectId}/test`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+      <ArrowLeft className="h-3.5 w-3.5" />返回真实测试
+    </Link>
+    <PageHeader
+      eyebrow={`Findings / Test Plan v${workspace.protocolVersion}`}
+      title="测评发现"
+      description="直接从真实 TestRun 和原始 Artifact 提炼值得写进内容的发现。这里不需要先跑 AI Judge，也不要求先生成综合评分。"
+      action={confirmed
+        ? <Badge variant="success"><Check className="h-3 w-3" />已人工确认 · 可直接生成内容</Badge>
+        : <Badge variant="neutral"><Sparkles className="h-3 w-3" />快速测评模式</Badge>}
+    />
+
+    {!run || run.status !== "completed" ? <GenerationState workspace={workspace} /> : !run.humanConfirmedAt && run.effectiveOutput
+      ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
+      : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
+
+    <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} unavailable={professionalUnavailable} />
   </div>;
 }
 
-function AnalysisState({ workspace, workflowState }: { workspace: ResultsWorkspace; workflowState: ProjectWorkflowState }) {
-  const analysis = workspace.latestAnalysis;
-  const failed = analysis?.status === "failed";
-  const running = analysis?.status === "pending" || analysis?.status === "running";
-  return <div className="page-shell"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /><PageHeader eyebrow={`Final Results / Protocol v${workspace.protocolVersion}`} title={workspace.projectMode === "single" ? "生成产品体验分析" : "生成最终结果分析"} description="产品身份已经揭晓。系统将使用锁定 Final Score、Judge Evidence、人工复核与 Artifact metadata 重新分析结论。" action={<Badge variant="success"><Scale className="h-3 w-3" />Final Score 已锁定</Badge>} /><Card className="mx-auto max-w-2xl p-8 text-center shadow-none"><Sparkles className="mx-auto h-6 w-6 text-blue-600" /><h2 className="mt-4 text-lg font-semibold">{failed ? "上次分析未完成" : running ? "最终分析进行中" : analysis?.stale ? "评分签名已变化，需要重新分析" : "准备生成真实分析"}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{workspace.projectMode === "single" ? "综合体验与各场景得分由当前 Final Score 确定；AI 只负责分析亮点、问题、用户适配与限制。" : "排名由当前 Final Score 确定；AI 只负责解释优势、弱点、用户适配、跨产品洞察与限制，不会重新判分。"}</p><div className="mt-6">{running ? <div className="text-sm text-blue-700">正在分析，请稍后刷新页面…</div> : <ResultAnalysisAction projectId={workspace.projectId} retry={failed || analysis?.stale} />}</div>{failed && analysis?.errorMessage && <p className="mt-3 text-xs text-amber-700">{analysis.errorMessage}</p>}</Card></div>;
+async function readOptionalProfessionalResults(projectId: string): Promise<{
+  workspace: Awaited<ReturnType<typeof getResultsWorkspace>>;
+  unavailable: boolean;
+} | null> {
+  if (!projectId) return null;
+  try {
+    return { workspace: await getResultsWorkspace(projectId), unavailable: false };
+  } catch (error) {
+    console.error("[OptionalProfessionalResultsReadError]", {
+      projectId,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return { workspace: null, unavailable: true };
+  }
 }
 
-function ScoreRow({ product, index, gridTemplate, showRank }: { product: FinalProductScore; index: number; gridTemplate: string; showRank: boolean }) {
-  return <div className="grid items-center gap-4 border-b py-4 last:border-0" style={{ gridTemplateColumns: gridTemplate }}><div className="flex items-center gap-3">{showRank && <span className={cnRank(index)}>{index + 1}</span>}<div><div className="text-sm font-semibold">{product.productName}</div><div className="text-xs font-semibold text-blue-700">{product.finalScore.toFixed(1)}</div></div></div>{product.dimensionScores.map((dimension) => <div key={dimension.dimensionId} className="text-center"><div className="text-sm font-semibold tabular-nums">{dimension.score.toFixed(1)}</div><div className="mx-auto mt-1.5 h-1 w-12 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${dimension.score * 10}%` }} /></div></div>)}</div>;
+function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace }) {
+  const run = workspace.latest;
+  const failed = run?.status === "failed";
+  const running = run?.status === "pending" || run?.status === "running";
+  return <Card className="mx-auto max-w-2xl p-8 text-center shadow-none">
+    <FlaskConical className="mx-auto h-7 w-7 text-blue-600" />
+    <h2 className="mt-4 text-xl font-semibold">{failed ? "上次 Findings 提炼失败" : running ? "正在读取真实测试证据" : "从测试证据里提炼真正值得讲的东西"}</h2>
+    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
+      AI 会直接读取你上传的文本、截图、PDF 或视频 Artifact，按“好用 / 一般 / 问题”提炼具体观察，不先打分，也不从分数倒推结论。
+    </p>
+    <div className="mt-6">
+      {running ? <div className="text-sm text-blue-700">Findings 正在生成，刷新后查看结果。</div>
+        : <FindingsGenerationAction projectId={workspace.projectId} retry={failed} />}
+    </div>
+    {failed && run?.errorMessage && <p className="mt-3 text-xs text-red-600">{run.errorMessage}</p>}
+  </Card>;
 }
 
-function InfoList({ label, items, positive = false }: { label: string; items: string[]; positive?: boolean }) { const Icon = positive ? Check : X; return <div className="mt-4"><div className="eyebrow">{label}</div><ul className="mt-2 space-y-1.5">{items.map((item) => <li key={item} className="flex gap-2 text-xs text-slate-600"><Icon className={`mt-0.5 h-3 w-3 ${positive ? "text-emerald-600" : "text-red-500"}`} />{item}</li>)}</ul></div>; }
-function FindingList({ items }: { items: string[] }) { return <div className="mt-4"><div className="eyebrow">实测发现</div><ul className="mt-2 space-y-1.5">{items.map((item) => <li key={item} className="text-xs leading-5 text-slate-600">· {item}</li>)}</ul></div>; }
-function Audience({ label, items }: { label: string; items: string[] }) { return <div><div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground"><Users2 className="h-3 w-3" />{label}</div><p className="mt-1 text-[11px] leading-5">{items.join("；")}</p></div>; }
-function initials(name: string) { return name.split(/[\s.-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
-function cnRank(index: number) { return `grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold ${index === 0 ? "bg-blue-600 text-white" : "bg-slate-100"}`; }
+function ConfirmedFindings({ workspace }: { workspace: ExperienceFindingsWorkspace }) {
+  const output = workspace.latest!.effectiveOutput!;
+  const artifactById = new Map(workspace.artifacts.map((item) => [item.artifactId, item]));
+  const groups = (["good", "neutral", "problem"] as const).map((category) => ({
+    category,
+    items: output.findings.filter((item) => item.category === category),
+  })).filter((group) => group.items.length > 0);
+
+  return <>
+    <Card className="border-blue-200 p-6 shadow-none">
+      <div className="eyebrow text-blue-600">这次测试最值得说的结论</div>
+      <p className="mt-3 text-base font-medium leading-8 text-slate-800">{output.summary}</p>
+    </Card>
+
+    <div className="mt-6 space-y-8">
+      {groups.map((group) => <section key={group.category}>
+        <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${categoryMeta[group.category].className}`}>
+          {categoryMeta[group.category].label}
+        </div>
+        <div className="mt-3 grid gap-4 lg:grid-cols-2">
+          {group.items.map((finding) => <FindingCard key={finding.id} finding={finding} artifactById={artifactById} />)}
+        </div>
+      </section>)}
+    </div>
+
+    <Card className="mt-8 p-5 shadow-none">
+      <div className="eyebrow">测试限制</div>
+      <ul className="mt-3 space-y-2">{output.limitations.map((item) => <li key={item} className="text-xs leading-6 text-muted-foreground">· {item}</li>)}</ul>
+    </Card>
+
+    <section className="mt-8 flex flex-col items-center rounded-xl border bg-slate-950 px-6 py-8 text-center text-white">
+      <Sparkles className="h-5 w-5 text-blue-300" />
+      <h2 className="mt-3 text-xl font-semibold">直接把这些 Findings 变成社区内容</h2>
+      <p className="mt-2 max-w-xl text-xs leading-6 text-slate-400">下一步只做内容策划、语言风格生成和事实核对，不要求先生成评分或深度报告。</p>
+      <Button className="mt-5 bg-white text-slate-950 hover:bg-slate-100" asChild>
+        <Link href={`/projects/${workspace.projectId}/publish`}>生成社区内容<ArrowRight className="h-4 w-4" /></Link>
+      </Button>
+    </section>
+  </>;
+}
+
+function FindingCard({
+  finding,
+  artifactById,
+}: {
+  finding: ExperienceFindingItem;
+  artifactById: Map<string, ExperienceFindingsWorkspace["artifacts"][number]>;
+}) {
+  const artifacts = finding.evidenceArtifactIds.map((id) => artifactById.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return <Card className="p-5 shadow-none">
+    <h3 className="text-base font-semibold">{finding.title}</h3>
+    <div className="mt-4">
+      <div className="eyebrow">实际观察</div>
+      <p className="mt-2 text-sm leading-7 text-slate-700">{finding.observation}</p>
+    </div>
+    <div className="mt-4">
+      <div className="eyebrow">对使用者的影响</div>
+      <p className="mt-2 text-sm leading-7 text-slate-600">{finding.impact}</p>
+    </div>
+    <div className="mt-4 border-t pt-3">
+      <div className="eyebrow">真实证据</div>
+      <div className="mt-2 space-y-2">{artifacts.map((artifact) => <a key={artifact.artifactId} href={artifact.fileUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2 text-xs hover:bg-slate-100">
+        <span className="min-w-0 truncate">{artifact.testCaseTitle} · {artifact.fileName}</span>
+        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      </a>)}</div>
+    </div>
+  </Card>;
+}
+
+function ProfessionalMode({ projectId, protocolId, professional, unavailable }: { projectId: string; protocolId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>>; unavailable: boolean }) {
+  const analysis = professional?.latestAnalysis;
+  const complete = analysis?.status === "completed" && !analysis.stale && analysis.output;
+  return <section className="mt-10 rounded-lg border border-dashed bg-slate-50/50 p-5">
+    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-slate-500" />专业测评模式（可选）</div>
+        <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">需要结构化评分、Blind Judge、人工复核或深度报告时再进入。它不会阻塞 Findings 和社区内容。</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {unavailable ? <div className="text-xs text-red-600"><p role="alert">专业评分暂时无法读取，测评发现仍可继续。</p><Link className="mt-1 inline-block underline" href={`/projects/${projectId}/review`}>查看专业评分</Link></div>
+          : !professional && <ProfessionalReviewAction projectId={projectId} protocolId={protocolId} label="进入专业评分" />}
+        {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}
+        {complete && <Button variant="outline" asChild><Link href={`/projects/${projectId}/report`}><FileText className="h-4 w-4" />生成深度报告</Link></Button>}
+      </div>
+    </div>
+  </section>;
+}

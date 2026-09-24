@@ -21,8 +21,16 @@ export async function generatePostAction(_state: PublishActionState, formData: F
   const projectId = projectIdSchema.safeParse(formData.get("projectId"));
   if (!projectId.success) return { message: "项目标识无效。" };
   const config = {
-    channel: formData.get("channel"), goal: formData.get("goal"), tone: formData.get("tone"),
-    length: formData.get("length"), imageCount: formData.get("imageCount"), interactionGoal: formData.get("interactionGoal"),
+    channel: formData.get("channel"),
+    goal: formData.get("goal"),
+    stylePreset: formData.get("stylePreset"),
+    structure: formData.get("structure"),
+    personalRatingEnabled: formData.get("personalRatingEnabled") === "true",
+    personalRatingScale: Number(formData.get("personalRatingScale") ?? 5),
+    tone: formData.get("tone"),
+    length: formData.get("length"),
+    imageCount: formData.get("imageCount"),
+    interactionGoal: formData.get("interactionGoal"),
   };
   const path = `/projects/${projectId.data}/publish`;
   try { await generateCommunityPost(projectId.data, { ideaId: String(formData.get("ideaId") ?? ""), customAngle: String(formData.get("customAngle") ?? ""), config }); }

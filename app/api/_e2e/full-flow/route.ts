@@ -1,8 +1,9 @@
 import { Buffer } from "node:buffer";
 import { uploadTestArtifactAction } from "@/app/projects/[projectId]/test/actions";
-import { getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
+import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
+import { confirmExperienceFindings, generateExperienceFindings, getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { generateProtocol, getProtocolWorkspace, lockProtocol, ProtocolExecutionError } from "@/lib/services/protocols.service";
 import { createProject, softDeleteProject } from "@/lib/services/projects.service";
 import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace } from "@/lib/services/publish.service";
@@ -10,6 +11,7 @@ import { generateReport, getReportWorkspace } from "@/lib/services/report.servic
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
 import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact } from "@/lib/services/test-execution.service";
+import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -145,6 +147,56 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(testWorkspace.testRuns.every((run) => run.projectId === projectId && run.protocolId === protocolId), "Artifact lineage left the current Project or Protocol");
   await finalizeTestExecution(projectId, protocolId);
 
+  const findingsId = await generateExperienceFindings(projectId);
+  let findings = requireValue(await getExperienceFindingsWorkspace(projectId), "Quick Findings workspace missing");
+  assert(findings.latest?.id === findingsId && findings.latest.status === "completed", "Quick Findings did not complete");
+  assert(!findings.latest?.humanConfirmedAt, "Quick Findings must remain unconfirmed before the human confirmation step");
+
+  const workflowBeforeConfirmation = requireValue(await getProjectWorkflowState(projectId), "Workflow state missing before Findings confirmation");
+  assert(!workflowBeforeConfirmation.stages.review.completed, "Quick Findings must not complete Professional Review");
+  assert(workflowBeforeConfirmation.stages.results.accessible, "Quick Findings must be accessible after Test completion");
+  try {
+    await getBlindReviewWorkspace(projectId);
+    throw new Error("Quick Findings must not initialize Blind Samples");
+  } catch (error) {
+    assert(error instanceof Error && error.message === "Blind Samples 尚未建立。", "Quick Findings unexpectedly initialized the professional Blind layer");
+  }
+
+  const generatedFindings = requireValue(findings.latest?.effectiveOutput, "Generated Findings output missing");
+  await confirmExperienceFindings(projectId, findingsId, generatedFindings);
+  findings = requireValue(await getExperienceFindingsWorkspace(projectId), "Confirmed Quick Findings workspace missing");
+  assert(findings.latest?.id === findingsId && findings.latest.humanConfirmedAt, "Quick Findings confirmation was not persisted");
+  const workflowAfterConfirmation = requireValue(await getProjectWorkflowState(projectId), "Workflow state missing after Findings confirmation");
+  assert(workflowAfterConfirmation.stages.results.completed, "Confirmed Findings did not complete the Results stage");
+  assert(workflowAfterConfirmation.stages.publish.accessible, "Confirmed Findings did not unlock Publish");
+
+  await discoverContentIdeas(projectId);
+  let quickPublish = requireValue(await getPublishWorkspace(projectId), "Quick Publish workspace missing");
+  assert(quickPublish.sourceType === "findings" && quickPublish.findingsId === findingsId && quickPublish.reportId === null, "Quick Publish did not bind confirmed Findings");
+  const quickSelectedIdea = quickPublish.pack?.ideas.find((idea) => idea.recommended) ?? quickPublish.pack?.ideas[0];
+  assert(Boolean(quickSelectedIdea), "Quick Content Discovery did not return an idea");
+  await generateCommunityPost(projectId, {
+    ideaId: quickSelectedIdea!.id,
+    config: {
+      channel: "通用社区",
+      goal: "分享真实体验",
+      tone: "真实、克制、有观点，严格基于测试证据。",
+      length: "600 字左右",
+      imageCount: 1,
+      interactionGoal: "邀请读者分享最看重的真实使用体验。",
+    },
+  });
+  quickPublish = requireValue(await getPublishWorkspace(projectId), "Completed Quick Publish workspace missing");
+  const quickPublishPack = requireValue(quickPublish.pack, "Completed Quick Publish pack missing");
+  assert(quickPublish.sourceType === "findings" && quickPublishPack.status === "ready", "Quick Findings Publish did not complete");
+  const quickPublishPost = requireValue(quickPublishPack.post, "Completed Quick Publish post missing");
+  assert(quickPublishPost.body.includes("真实体验"), "Quick Publish copy must use Findings experience semantics");
+  assert(quickPublishPost.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Quick Publish must only reference current Artifacts");
+  assert(!textOnlyEvidence || quickPublishPost.screenshotRecommendations.length === 0, "Text-only Quick Publish must not fabricate screenshot recommendations");
+
+  // Professional scoring remains an explicit opt-in branch after the quick content path.
+  await startProfessionalReview(projectId, protocolId);
+
   const blind = requireValue(await getBlindReviewWorkspace(projectId), "Single Blind workspace missing");
   assert(blind.samples.length === 1, "Single Project must retain one anonymous Sample");
   await runBlindJudge(projectId);
@@ -169,28 +221,9 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(report.report.content?.title.includes("体验"), "Single Report title must use experience semantics");
   assert(new Set(report.evidence.map((item) => item.artifactId)).size === artifactIds.length, "Report evidence must retain the current Artifact lineage");
 
-  await discoverContentIdeas(projectId);
-  let publish = requireValue(await getPublishWorkspace(projectId), "Single Publish workspace missing");
-  const selectedIdea = publish.pack?.ideas.find((idea) => idea.recommended) ?? publish.pack?.ideas[0];
-  assert(Boolean(selectedIdea), "Content Discovery did not return an idea");
-  await generateCommunityPost(projectId, {
-    ideaId: selectedIdea!.id,
-    config: {
-      channel: "通用社区",
-      goal: "分享真实体验",
-      tone: "真实、克制、有观点，严格基于测试证据。",
-      length: "600 字左右",
-      imageCount: 1,
-      interactionGoal: "邀请读者分享最看重的真实使用体验。",
-    },
-  });
-  publish = requireValue(await getPublishWorkspace(projectId), "Completed Publish workspace missing");
-  assert(publish.projectMode === "single" && publish.pack?.status === "ready", "Single Publish Pack did not complete");
-  assert(publish.pack.post?.body.includes("真实体验"), "Single Publish copy must use experience semantics");
-  assert(publish.pack.post?.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Publish must only reference current Artifacts");
-  assert(!textOnlyEvidence || publish.pack.post?.screenshotRecommendations.length === 0, "Text-only Publish must not fabricate screenshot recommendations");
+  const publish = { ...quickPublish, pack: quickPublishPack };
 
-  const routeChecks = await verifySingleRoutes(new URL(request.url).origin, projectId, report.report.content!.title, publish.pack.post!.title);
+  const routeChecks = await verifySingleRoutes(new URL(request.url).origin, projectId, report.report.content!.title, quickPublishPost.title);
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,
@@ -198,11 +231,15 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     testCases: protocolWorkspace.protocol.testCases.map((item) => ({ id: item.id, expectedOutputTypes: item.expectedOutputTypes, evidenceRequirements: item.evidenceRequirements })),
     testRunCount: testWorkspace.testRuns.length,
     artifactIds,
+    findingsId,
+    findingsConfirmed: Boolean(findings.latest?.humanConfirmedAt),
     blindSampleCount: blind.samples.length,
     judgeScoreCount: review.scores.length,
     resultMode: results.projectMode,
     reportMode: report.projectMode,
     publishMode: publish.projectMode,
+    quickPublishSourceType: publish.sourceType,
+    quickPublishReady: publish.pack?.status === "ready",
     publishScreenshotCount: publish.pack.post?.screenshotRecommendations.length ?? 0,
     routeChecks,
   };
@@ -259,7 +296,7 @@ async function verifySingleRoutes(origin: string, projectId: string, reportTitle
     ["protocol", ["已锁定"], []],
     ["test", ["测试数据已确认"], []],
     ["review", ["产品身份已揭晓"], []],
-    ["results", ["产品体验结果", "综合体验得分", "证据化 Case 素材"], ["综合冠军", "最终排名", "第一名"]],
+    ["results", ["测评发现", "专业测评模式（可选）"], ["产品体验结果", "综合体验得分", "证据化 Case 素材"]],
     ["report", ["体验报告已生成", reportTitle], ["综合冠军", "最终排名", "第一名"]],
     ["publish", ["已准备好", postTitle], ["综合冠军", "最终排名", "第一名"]],
   ] as const;

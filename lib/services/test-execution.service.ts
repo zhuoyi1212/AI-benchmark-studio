@@ -7,7 +7,6 @@ import {
   testExecutionRepository,
   type RunExecutionMetadata,
 } from "@/lib/repositories/test-execution.repository";
-import { blindReviewRepository } from "@/lib/repositories/blind-review.repository";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
@@ -148,9 +147,6 @@ export async function finalizeTestExecution(projectId: string, protocolId: strin
 
   try {
     await testExecutionRepository.finalize(projectId, protocolId);
-    // Blind samples are created by this explicit confirmation, not by a GET
-    // of the Review page.
-    await blindReviewRepository.initialize(projectId, protocolId);
   } catch (error) {
     throw new TestExecutionError(toUserFacingError(error));
   }

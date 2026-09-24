@@ -23,6 +23,14 @@ export const blindReviewRepository = {
     if (error) throwRepositoryError("blindReview.initialize", error);
   },
 
+  async startProfessional(projectId: string, protocolId: string): Promise<void> {
+    const { error } = await getSupabaseServerClient().rpc("start_professional_review", {
+      p_project_id: projectId,
+      p_protocol_id: protocolId,
+    });
+    if (error) throwRepositoryError("blindReview.startProfessional", error);
+  },
+
   async listSamples(protocolId: string): Promise<BlindSampleRow[]> {
     const { data, error } = await getSupabaseServerClient()
       .from("blind_samples")

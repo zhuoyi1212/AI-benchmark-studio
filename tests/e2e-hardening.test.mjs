@@ -71,11 +71,13 @@ test("Judge failures are persisted and retry creates an auditable run", () => {
   assert.doesNotMatch(judgeService, /mock|fallback/i);
 });
 
-test("early reveal and downstream access are rejected before Review lock", () => {
+test("professional analysis still requires Review reveal while quick Findings do not", () => {
   assert.match(reviewMigration, /status = 'locked'/);
   assert.match(reviewService, /只有锁定最终评分后才能揭晓产品身份/);
   assert.match(resultService, /review\.status !== "revealed"/);
-  assert.match(resultsPage, /redirect\(`\/projects\/\$\{projectId\}\/review`\)/);
+  assert.match(resultsPage, /getExperienceFindingsWorkspace/);
+  assert.match(resultsPage, /不需要先跑 AI Judge/);
+  assert.doesNotMatch(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
 });
 
 test("invalid Human Override values and missing reasons are rejected", () => {
@@ -115,7 +117,7 @@ test("full route E2E owns a unique temporary Project lifecycle instead of a fixe
 test("full route E2E uses real services and mocks only the local external AI boundary", () => {
   for (const operation of [
     "createProject", "executeProductResearch", "generateProtocol", "uploadTestArtifact",
-    "runBlindJudge", "lockHumanReview", "revealHumanReview", "generateFinalResultAnalysis",
+    "startProfessionalReview", "runBlindJudge", "lockHumanReview", "revealHumanReview", "generateFinalResultAnalysis",
     "generateReport", "discoverContentIdeas", "generateCommunityPost",
   ]) assert.match(e2eRoute, new RegExp(operation));
   assert.match(providerEndpoints, /E2E_TEST_MODE !== "1"/);
@@ -123,4 +125,30 @@ test("full route E2E uses real services and mocks only the local external AI bou
   assert.match(providerEndpoints, /apiKey: e2eCredential/);
   assert.match(providerEndpoints, /localhost|127\.0\.0\.1/);
   assert.match(providerMock, /Search context: \$\{query\}/);
+});
+
+test("full route E2E verifies Quick Findings and Findings Publish before optional Professional Review", () => {
+  const flow = e2eRoute.slice(e2eRoute.indexOf("async function runSingleProductFlow"));
+  const findings = flow.indexOf("generateExperienceFindings");
+  const confirmation = flow.indexOf("confirmExperienceFindings");
+  const quickPublish = flow.indexOf('quickPublish.sourceType === "findings"');
+  const professional = flow.indexOf("startProfessionalReview");
+  assert.ok(findings >= 0 && confirmation > findings && quickPublish > confirmation && professional > quickPublish);
+  assert.match(e2eRoute, /Quick Findings must not initialize Blind Samples/);
+  assert.match(e2eRoute, /quickPublishReady: publish\.pack\?\.status === "ready"/);
+  assert.match(e2eRunner, /ExperienceFindings/);
+  assert.match(e2eRunner, /CommunityPostDraft/);
+  assert.match(e2eRunner, /HumanizedCommunityPost/);
+  assert.match(e2eRunner, /EvidenceCheckedCommunityPost/);
+  assert.doesNotMatch(e2eRunner, /taskCounts\.MicroFindingDiscovery/);
+  assert.match(providerMock, /schemaName === "ExperienceFindings"/);
+  assert.match(providerMock, /schemaName === "ContentIdeas"/);
+  assert.match(providerMock, /schemaName === "CommunityPostDraft"/);
+  assert.match(providerMock, /schemaName === "HumanizedCommunityPost"/);
+  assert.match(providerMock, /schemaName === "EvidenceCheckedCommunityPost"/);
+});
+
+test("full E2E client allows the route to finish its bounded cleanup and response", () => {
+  assert.match(e2eRunner, /AbortSignal\.timeout\(360_000\)/);
+  assert.match(e2eRunner, /allowing server-side cleanup 30 seconds to finish/);
 });

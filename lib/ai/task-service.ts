@@ -108,9 +108,12 @@ export const aiTaskService = {
     request: StructuredTaskRequest<Schema>,
   ) => runStructuredAITask(selectJudgeTaskForCase(testCaseId, artifacts), request),
   analyzeFinalResults: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("result_analysis", request),
+  generateFindings: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("findings", request),
   generateReport: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("report", request),
   discoverContentIdeas: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("content_discovery", request),
   generateCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post", request),
+  humanizeCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_humanize", request),
+  factCheckCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check", request),
   understandScreenshots: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("screenshot_understanding", request),
   extractArtifactText: (request: OCRRequest) => runOCR(request),
 } satisfies Record<string, (...args: never[]) => unknown>;

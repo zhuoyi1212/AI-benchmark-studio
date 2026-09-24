@@ -3,13 +3,21 @@ export type ExpectedOutputType = "text" | "image" | "document" | "video" | "code
 
 export type TestRule = { id: string; text: string };
 
+export type ProtocolInputArtifact = {
+  id: string;
+  name: string;
+  type: "application/pdf" | "text/plain" | "text/csv";
+  description: string;
+  downloadUrl?: string;
+};
+
 export type TestCase = {
   id: string;
   title: string;
   objective: string;
   prompt: string;
   inputDescription?: string;
-  inputArtifacts?: Array<{ id: string; name: string; type: string }>;
+  inputArtifacts?: ProtocolInputArtifact[];
   expectedOutputTypes: ExpectedOutputType[];
   evidenceRequirements: string[];
   observationFocus: string[];

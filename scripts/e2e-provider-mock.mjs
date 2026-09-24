@@ -4,8 +4,9 @@ import { createServer } from "node:http";
 const expectedAuthorization = "Bearer e2e-local-provider-boundary";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 
-export async function startE2EProviderMock() {
+export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys = {} } = {}) {
   const requests = [];
+  const realAiTaskSet = new Set(realAiTasks);
   const protocolScenario = process.env.E2E_PROTOCOL_RESPONSE_SCENARIO ?? "normal";
   const supportedProtocolScenarios = new Set(["normal", "empty-then-success", "always-empty", "truncated-then-success", "invalid-json-then-success", "schema-invalid-then-success"]);
   if (!supportedProtocolScenarios.has(protocolScenario)) throw new Error(`Unsupported E2E Protocol response scenario: ${protocolScenario}`);
@@ -41,7 +42,15 @@ export async function startE2EProviderMock() {
         });
         return send(response, 200, planned.body);
       }
-      requests.push({ task: schemaName, multimodal });
+      const provider = request.url.startsWith("/zhipu/") ? "zhipu" : "deepseek";
+      const trackedRequest = { task: schemaName, provider, multimodal };
+      requests.push(trackedRequest);
+      if (realAiTaskSet.has(schemaName)) {
+        const apiKey = providerApiKeys[provider];
+        if (!apiKey) return send(response, 500, { error: `Missing real AI credential for ${provider}` });
+        trackedRequest.realAi = true;
+        return await proxyRealProviderRequest(provider, apiKey, body, response);
+      }
       return send(response, 200, createCompletionResponse(buildStructuredOutput(schemaName, body.messages)));
     } catch (error) {
       return send(response, 500, { error: error instanceof Error ? error.message : "Unknown provider mock failure" });
@@ -60,11 +69,30 @@ export async function startE2EProviderMock() {
     stats: () => ({
       total: requests.length,
       taskCounts: Object.fromEntries([...Map.groupBy(requests, (item) => item.task)].map(([task, items]) => [task, items.length])),
+      realAiTaskCounts: Object.fromEntries([...Map.groupBy(requests.filter((item) => item.realAi), (item) => item.task)].map(([task, items]) => [task, items.length])),
       multimodalJudgeRequests: requests.filter((item) => item.task === "JudgeCaseScores" && item.multimodal).length,
       protocolAttempts: requests.filter((item) => item.task === "TestProtocol" || item.task === "ProtocolContent"),
     }),
-    close: () => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
+    close: () => new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+      server.closeAllConnections();
+    }),
   };
+}
+
+async function proxyRealProviderRequest(provider, apiKey, body, response) {
+  const endpoint = provider === "zhipu"
+    ? "https://api.z.ai/api/paas/v4/chat/completions"
+    : "https://api.deepseek.com/chat/completions";
+  const upstream = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(180_000),
+  });
+  const payload = Buffer.from(await upstream.arrayBuffer());
+  response.writeHead(upstream.status, { "content-type": upstream.headers.get("content-type") ?? "application/json" });
+  response.end(payload);
 }
 
 function createSearchResponse(body) {
@@ -108,7 +136,7 @@ function buildStructuredOutput(schemaName, messages) {
         : forcedNotComparable
           ? "两个产品的核心任务不同，不适合使用同一标准化 Protocol。"
           : "两个产品具有共同任务和可验证的输出，可进行标准化横向测试。",
-      commonCapabilities: single ? ["核心输出质量", "真实场景完成度"] : forcedNotComparable ? [] : ["结构化内容生成", "视觉结果输出"],
+      commonCapabilities: single ? ["核心输出质量", "真实场景完成度"] : forcedNotComparable ? ["基于自然语言输入生成内容"] : ["结构化内容生成", "视觉结果输出"],
       warnings: forcedNotComparable ? ["强行比较会引入任务偏差"] : [],
     };
   }
@@ -155,6 +183,30 @@ function buildStructuredOutput(schemaName, messages) {
       };
     }
     return protocol;
+  }
+  if (schemaName === "ExperienceFindings") {
+    const input = findJsonMessage(messages, (value) => value.project?.id && value.protocol?.testCases);
+    const artifacts = extractFindingsArtifacts(messages);
+    if (artifacts.length === 0) throw new Error("Findings mock did not receive real Artifact references");
+    return {
+      summary: "真实测试显示，产品能够完成主要任务，但结果的可核查性和后续人工确认仍然决定了最终使用体验。",
+      findings: artifacts.slice(0, 12).map((artifact, index) => ({
+        id: `e2e-finding-${index + 1}`,
+        productId: artifact.productId,
+        testCaseId: artifact.testCaseId,
+        title: index === 0 ? "主要任务可以完成" : "原始结果保留了可核查细节",
+        category: index === 0 ? "good" : "neutral",
+        observation: index === 0
+          ? "这次测试产生了完整的原始输出，主要任务结果可以继续检查。"
+          : "原始 Artifact 保留了本次任务的具体结果，便于人工回看和判断。",
+        impact: index === 0
+          ? "用户可以先拿到结果，再根据实际场景决定是否继续调整。"
+          : "后续复核不必依赖模型的概括，能够回到同一次真实测试证据。",
+        evidenceArtifactIds: [artifact.artifactId],
+        confidence: 0.9,
+      })),
+      limitations: ["本次 Findings 只覆盖当前锁定 Protocol、真实 TestRun 和已上传 Artifact。"],
+    };
   }
   if (schemaName === "JudgeCaseScores") {
     const instruction = findJsonMessage(messages, (value) => value.blindSamples && value.rubricDimensions);
@@ -213,6 +265,97 @@ function buildStructuredOutput(schemaName, messages) {
         productAnalyses: report.experiment.products.map((product) => ({ productId: product.productId, analysis: "结果完整呈现核心内容，同时保留可进一步验证的限制。" })),
       })),
       finalRecommendation: single ? "建议先用自己的真实任务验证工作流匹配度，再决定是否长期使用。" : "建议结合具体场景和维度表现选择产品。",
+    };
+  }
+  if (schemaName === "ContentIdeas") {
+    const input = findJsonMessage(messages, (value) => value.sourceType === "confirmed_findings" || value.sourceType === "professional_report");
+    const testCaseId = input.testCases[0]?.id;
+    if (!testCaseId) throw new Error("Content discovery mock did not receive a TestCase");
+    const artifactId = input.imageArtifacts[0]?.artifactId;
+    const evidence = artifactId ? [artifactId] : [];
+    return {
+      ideas: [
+        {
+          id: "e2e-quick-angle",
+          title: "先看 AI 能不能把任务做完",
+          type: "具体观察",
+          angle: "判断 AI 工具时，先看它能不能把一个真实任务推进到可以核对的结果。",
+          insight: "一次完整的任务结果，比功能清单更能说明默认体验是否可用。",
+          whyInteresting: "它把抽象的产品能力落到了用户能直接检查的结果上。",
+          supportingEvidence: ["原始测试结果保留了本次任务的具体输出。"],
+          relatedTestCaseIds: [testCaseId],
+          relatedArtifactIds: evidence,
+          informationValue: 0.92,
+          discussionPotential: 0.86,
+          confidence: 0.9,
+          recommended: true,
+        },
+        {
+          id: "e2e-evidence-angle",
+          title: "结果出来以后还要不要人工核对",
+          type: "使用边界",
+          angle: "AI 做得越完整，用户越需要知道结果该如何核对。",
+          insight: "省掉操作不等于省掉判断，证据是否可回看同样重要。",
+          whyInteresting: "它保留了效率和可验证性之间的真实取舍。",
+          supportingEvidence: ["测试 Artifact 能够回到同一次任务结果。"],
+          relatedTestCaseIds: [testCaseId],
+          relatedArtifactIds: evidence,
+          informationValue: 0.84,
+          discussionPotential: 0.8,
+          confidence: 0.86,
+          recommended: false,
+        },
+      ],
+    };
+  }
+  if (schemaName === "CommunityPostDraft") {
+    const input = findJsonMessage(messages, (value) => value.selectedIdea && value.config && value.sourceType);
+    const idea = input.selectedIdea;
+    const findings = input.humanConfirmedFindings?.findings ?? [];
+    const observation = findings[0]?.observation ?? idea.insight;
+    return {
+      title: idea.title,
+      body: [
+        `本次测试先聚焦一个具体问题：${idea.angle}。测试把这一要求写入锁定的用例，并逐项检查产品有没有走到可核对的结果，因此这里讨论的是任务执行过程，而不是产品页面列出的功能数量。`,
+        `${observation} 对应的原始输出已保存在本次测试记录和证据材料中，读者可以回到同一任务的截图或输出核实这条描述，也能区分哪些信息来自测试，哪些仍需进一步判断。`,
+        "从真实体验看，任务能够推进会减少重复操作；不过，如果结果缺少背景或细节，用户仍需要检查原始证据材料，再决定是否继续编辑或采用。完成任务不等于所有内容都可以直接采信。",
+        "所以这次观察只适用于当前版本、既定测试方案和这组条件，不代表同类产品的整体能力，也不能外推到其他任务。你在选择工具时，会先看它能否交付结果，还是先看结果是否方便验证？",
+      ].join("\n\n"),
+      tags: ["AI产品", "真实体验", "产品观察"],
+      interactionQuestion: "你更在意 AI 少让你操作几步，还是更在意结果方便核对？",
+      screenshotRecommendations: [],
+      contentBrief: {
+        coreViewpoint: idea.insight,
+        opening: "先从这次真实测试里最明显的一件事讲起。",
+        supportingPoints: [
+          { finding: observation, userMeaning: "用户能直接看到任务有没有推进到可核对的结果。" },
+          { finding: "结果仍需要回到原始证据确认。", userMeaning: "省掉操作不等于省掉判断。" },
+        ],
+        ending: "最后只给当前测试范围内的使用判断。",
+        voice: "第一人称、短句、具体，不写成测评报告。",
+        avoidPhrases: ["总体而言", "值得注意的是", "综上所述"],
+      },
+    };
+  }
+  if (schemaName === "HumanizedCommunityPost") {
+    const input = findJsonMessage(messages, (value) => value.source && value.draft);
+    return {
+      ...input.draft,
+      body: input.draft.body
+        .replace("本次测试先聚焦一个具体问题：", "我这次主要想看一件事：")
+        .replace("从真实体验看，", "实际用下来，"),
+      languagePass: {
+        status: "polished",
+        changedSentenceCount: 2,
+        notes: ["删掉报告式开场", "把抽象连接词换成更自然的体验表达"],
+      },
+    };
+  }
+  if (schemaName === "EvidenceCheckedCommunityPost") {
+    const input = findJsonMessage(messages, (value) => value.source && value.draft);
+    return {
+      ...input.draft,
+      factCheck: { status: "passed", revisedClaimCount: 0, notes: [] },
     };
   }
   if (schemaName === "MicroFindingDiscovery") {
@@ -356,6 +499,15 @@ function extractArtifactIds(messages) {
   return result;
 }
 
+function extractFindingsArtifacts(messages) {
+  const artifacts = [];
+  for (const text of textParts(messages)) {
+    const match = text.match(/Product: ([^;]+); productId: ([0-9a-f-]{36}); TestCase: ([^;]+); testCaseId: ([0-9a-f-]{36}); artifactId: ([0-9a-f-]{36});/i);
+    if (match) artifacts.push({ productName: match[1], productId: match[2], testCaseTitle: match[3], testCaseId: match[4], artifactId: match[5] });
+  }
+  return artifacts;
+}
+
 function findJsonMessage(messages, predicate) {
   for (const text of textParts(messages).reverse()) {
     const candidates = [text, text.split("\n")[0]];
@@ -406,7 +558,7 @@ function createProtocolScenarioResponse(scenario, attempt, schemaName, messages)
   if (scenario === "invalid-json-then-success" && attempt === 2) requireRepairInstruction(messages, "Previous response was not valid JSON");
   if (scenario === "schema-invalid-then-success" && attempt === 1) {
     const invalid = buildStructuredOutput(schemaName, messages);
-    invalid.rubric[0].weight -= 10;
+    invalid.rubric[0].description = "";
     return { outcome: "schema_validation", body: createCompletionResponse(invalid) };
   }
   if (scenario === "schema-invalid-then-success" && attempt === 2) requireRepairInstruction(messages, "rubric");

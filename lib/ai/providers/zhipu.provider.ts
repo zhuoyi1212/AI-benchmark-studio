@@ -43,7 +43,7 @@ export class ZhipuProvider implements AIProvider {
       response_format: { type: "json_object" },
       max_tokens: request.maxTokens ?? 16_384,
       thinking: { type: request.reasoning === "high" ? "enabled" : "disabled" },
-      stream: false,
+      stream: true,
     }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs });
 
     // Provider thinking fields are intentionally discarded by normalization.

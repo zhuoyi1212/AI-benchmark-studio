@@ -4,7 +4,11 @@
 
 本 Schema 将一次测评保存为可追溯的数据链：
 
-`Project → Research → Protocol → TestRun → Artifact → Blind Judge → Human Review → Final Result Analysis → Report → Publish`
+`Project → Research → Protocol → TestRun → Artifact → Experience Findings → Publish`
+
+专业测评作为可选支线保留：
+
+`Artifact → Blind Judge → Human Review → Final Result Analysis → Report → Publish`
 
 原则：
 
@@ -13,7 +17,8 @@
 - locked Protocol 及其 TestCase、Rubric 不可原地修改。
 - AI Judge 原始评分不可修改；人工复核只追加事件。
 - Reveal 前后普通客户端均不能直接读取 `blind_mappings`。
-- Report 绑定有效 ResultAnalysis；PublishPack 绑定 Report；配图必须绑定真实图片 Artifact。
+- `experience_findings` 直接绑定当前 locked Protocol 和完整 Artifact-backed TestRun 矩阵；人工确认后可直接进入 Publish。
+- Report 仍绑定有效 ResultAnalysis；PublishPack 必须且只能绑定 `findings_id` 或 `report_id` 其中一个；配图必须绑定同一 Protocol 的真实图片 Artifact。
 
 迁移文件：`supabase/migrations/202608170001_initial_benchmark_schema.sql` 与后续按时间排序的增量 migrations。
 
@@ -39,10 +44,11 @@
 | `judge_scores` | AI 原始逐项评分 | `Case × Sample × Rubric` 唯一；0–10；不可更新/删除 |
 | `review_sessions` | 人工复核状态 | 只允许 `reviewing → locked → revealed` |
 | `human_review_events` | 人工 override/revert 历史 | append-only；override 理由必填；只允许复核期写入 |
+| `experience_findings` | 快速测评的证据化发现 | 来自完整 TestRun / Artifact；AI 输出与人工确认稿分离；不保存评分 |
 | `result_analyses` | Reveal 后最终分析 | 绑定 ReviewSession 和 `final_score_signature` |
 | `reports` | 深度报告 | 只能绑定 completed 且非 stale 的 ResultAnalysis |
 | `report_artifacts` | 报告证据引用 | 只能引用 ResultAnalysis 同一 Protocol 的真实 Artifact |
-| `publish_packs` | 社区选题、配置与帖子 | 绑定 completed Report；`community_post` 同时保存最终 Style Critic 溯源与单次 rewrite 状态 |
+| `publish_packs` | 社区选题、配置与帖子 | 二选一绑定人工确认后的 Findings 或 completed Report；Quick Publish 不依赖 Judge / Review / Report |
 | `publish_pack_artifacts` | 社区截图推荐 | 可选；有配图时只允许同 Project/Protocol 的 image TestArtifact，顺序 1–9 |
 
 三张 Artifact 关联表用 FK 取代不可校验的 JSON ID 列表：`judge_run_artifacts` 固化 Judge 输入，`report_artifacts` 固化报告证据，`publish_pack_artifacts` 固化社区截图。Report/Publish 引用还必须与 ResultAnalysis 属于同一 Protocol。
@@ -80,6 +86,8 @@ erDiagram
   JUDGE_RUNS ||--|| REVIEW_SESSIONS : reviewed_in
   REVIEW_SESSIONS ||--o{ HUMAN_REVIEW_EVENTS : audits
   JUDGE_SCORES ||--o{ HUMAN_REVIEW_EVENTS : adjusts
+  PROTOCOLS ||--o{ EXPERIENCE_FINDINGS : summarized_as
+  EXPERIENCE_FINDINGS ||--o{ PUBLISH_PACKS : repurposed_as
   REVIEW_SESSIONS ||--o{ RESULT_ANALYSES : analyzed_as
   RESULT_ANALYSES ||--o{ REPORTS : reported_as
   REPORTS ||--o{ REPORT_ARTIFACTS : cites
@@ -106,6 +114,15 @@ erDiagram
 - 新版本先以 `draft` 创建；数据库拒绝直接插入 locked Protocol。
 - Lock 时数据库检查：至少 1 个 TestCase、至少 1 个 Rubric、Rubric 总权重恰好 100。
 - locked 后 Protocol、TestCase、Rubric 的 UPDATE/DELETE/INSERT 均被 trigger 阻止；修改方案必须创建新 version。
+
+### Quick Findings
+
+- 完整 `Product × TestCase` TestRun 矩阵确认后，可以直接创建 `experience_findings`，不要求先初始化 Blind Layer。
+- AI Findings 只输出 `good / neutral / problem` 三类可观察发现，每条必须绑定同一产品、同一 TestCase 的真实 Artifact。
+- AI 生成完成不等于快速测评完成；只有用户确认或修改 Findings 后，项目才进入快速测评完成态。
+- 人工确认稿作为社区内容的编辑主线，不覆盖 AI 原始 Findings；已确认记录不原地改写。
+- PublishPack 可直接绑定 `findings_id`；最终社区内容事实核对会重新读取原始 Artifact，避免二次摘要持续放大错误。
+- PublishPack source trigger 按 `report_id` 或已人工确认的 `findings_id` 校验来源，并拒绝原地修改来源及版本。
 
 ### Review
 
@@ -214,7 +231,7 @@ Auth 在后续接入。`projects.owner_id` 可为空是为了允许第一阶段�
 `lib/types/database.ts` 提供：
 
 - `Json`
-- 所有 23 张表的 Row 类型
+- 所有核心表的 Row 类型
 - `DatabaseTableName` / `TableRow<T>`
 - 常用状态联合类型
 - `ReviewFinalScoreRow` 视图类型
