@@ -38,6 +38,7 @@
     "verify:result-analysis": "node scripts/verify-result-analysis.mjs",
     "verify:report": "node scripts/verify-report.mjs",
     "verify:publish": "node scripts/verify-publish.mjs",
+    "verify:blind-review-start": "node scripts/verify-blind-review-start.mjs",
     "verify:full-e2e": "node scripts/run-self-contained-e2e.mjs",
     "audit:final": "node scripts/final-audit.mjs",
     "regenerate:auto-demo-publish": "node scripts/create-auto-demos.mjs --publish-only",

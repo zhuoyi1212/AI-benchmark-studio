@@ -6,12 +6,13 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [config, router, taskService, deepSeek, zhipu, serverEnv, envExample] = await Promise.all([
+const [config, router, taskService, deepSeek, zhipu, providerHttp, serverEnv, envExample] = await Promise.all([
   read("lib/ai/config.ts"),
   read("lib/ai/router.ts"),
   read("lib/ai/task-service.ts"),
   read("lib/ai/providers/deepseek.provider.ts"),
   read("lib/ai/providers/zhipu.provider.ts"),
+  read("lib/ai/providers/http.ts"),
   read("lib/env/server.ts"),
   read(".env.example"),
 ]);
@@ -25,10 +26,9 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /findings:[\s\S]*provider: "zhipu"[\s\S]*capability: "multimodal"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
-  assert.match(config, /community_post:[\s\S]*provider: "zhipu"[\s\S]*promptVersion: "community-post\.v5-evidence-editorial"/);
-  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v4-style-preservation"/);
-  assert.match(config, /community_post_style_edit:[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-style-edit\.v1"/);
-  assert.match(taskService, /editCommunityPostStyle/);
+  assert.match(config, /community_post:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post\.v4-content-brief-draft"[\s\S]*deepSeekWritingModel/);
+  assert.match(config, /community_post_humanize:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post-humanize\.v1"[\s\S]*deepSeekWritingModel/);
+  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v1"/);
   assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
@@ -36,6 +36,7 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(taskService, /Product Research requires at least one source search/);
   assert.match(taskService, /Use only these retrieved sources for product facts/);
   assert.match(taskService, /generateFindings/);
+  assert.match(taskService, /humanizeCommunityPost/);
   assert.match(taskService, /factCheckCommunityPost/);
 });
 
@@ -82,4 +83,14 @@ test("keeps provider credentials server-only", () => {
   assert.match(serverEnv, /^import "server-only";/);
   assert.match(deepSeek, /^import "server-only";/);
   assert.match(zhipu, /^import "server-only";/);
+});
+
+test("keeps useful provider error details while redacting credentials and signed URLs", () => {
+  assert.match(providerHttp, /extractProviderError\(responseBody, apiKey\)/);
+  assert.match(providerHttp, /message\.split\(apiKey\)\.join\("\[redacted\]"\)/);
+  assert.match(providerHttp, /URL redacted/);
+  assert.match(providerHttp, /requestImageCount/);
+  assert.match(providerHttp, /requestFileCount/);
+  assert.match(router, /providerCode: error\.providerCode/);
+  assert.match(router, /providerMessage: error\.providerMessage/);
 });

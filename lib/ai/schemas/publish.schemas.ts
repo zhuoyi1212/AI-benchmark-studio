@@ -3,20 +3,29 @@ import { z } from "zod";
 const text = z.string().trim().min(1);
 const internalIdentifierPattern = /(?:\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b|\b(?:blindSampleId|TestRun|artifactId|productId|testCaseId|rubricDimensionId|dimensionId|finalScoreSignature|humanOverrideReason)\b)/i;
 
+const normalizedScore = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() !== "") value = Number(value);
+  if (typeof value === "number" && Number.isFinite(value) && value > 1 && value <= 100) return value / 100;
+  return value;
+}, z.number().min(0).max(1));
+
 export const contentIdeaSchema = z.object({
-  id: z.string().trim().min(2).max(80).regex(/^[a-z0-9][a-z0-9-]*$/),
+  // The provider-facing id is permissive because the service rewrites it
+  // to a stable idea-N id before persistence.
+  id: z.string().trim().min(1).max(120),
   title: text.max(240),
   type: text.max(60),
   angle: text.max(600),
   insight: text.max(1200),
   whyInteresting: text.max(1600),
   supportingEvidence: z.array(text.max(800)).min(1).max(8),
-  relatedTestCaseIds: z.array(z.string().uuid()).min(1),
-  relatedArtifactIds: z.array(z.string().uuid()).max(9),
-  informationValue: z.number().min(0).max(1),
-  discussionPotential: z.number().min(0).max(1),
-  confidence: z.number().min(0).max(1),
-  recommended: z.boolean(),
+  // Evidence references are checked against the actual source after generation.
+  relatedTestCaseIds: z.array(z.string().trim().min(1)).max(20).default([]),
+  relatedArtifactIds: z.array(z.string().trim().min(1)).max(9).default([]),
+  informationValue: normalizedScore.default(0.5),
+  discussionPotential: normalizedScore.default(0.5),
+  confidence: normalizedScore.default(0.5),
+  recommended: z.boolean().default(false),
 });
 
 export const contentIdeasOutputSchema = z.object({
@@ -78,6 +87,24 @@ export const screenshotRecommendationSchema = z.object({
   order: z.number().int().min(1).max(9),
 });
 
+export const contentBriefSchema = z.object({
+  coreViewpoint: text.max(1200),
+  opening: text.max(800),
+  supportingPoints: z.array(z.object({
+    finding: text.max(800),
+    userMeaning: text.max(800),
+  })).min(2).max(5),
+  ending: text.max(800),
+  voice: text.max(400),
+  avoidPhrases: z.array(text.max(200)).max(12),
+});
+
+export const languagePassSchema = z.object({
+  status: z.enum(["polished", "unchanged"]),
+  changedSentenceCount: z.number().int().nonnegative().max(100),
+  notes: z.array(text.max(500)).max(8),
+});
+
 export const editorialSectionSchema = z.object({
   heading: text.max(120),
   findingIds: z.array(text.max(100)).min(1).max(12),
@@ -92,6 +119,7 @@ export const editorialSectionSchema = z.object({
   }).nullable(),
 });
 
+// Kept optional so historical generated posts remain readable.
 export const editorialPlanSchema = z.object({
   centralQuestion: text.max(600).optional(),
   targetReader: text.max(400).optional(),
@@ -108,22 +136,21 @@ export const editorialPlanSchema = z.object({
     findingIds: z.array(text).min(1).max(12).optional(),
   }).optional(),
   coreConclusion: text.max(1200),
-  highlights: z.array(text.max(800)).max(6),
+  highlights: z.array(text.max(800)).min(1).max(6),
   neutralPoints: z.array(text.max(800)).max(6),
   painPoints: z.array(text.max(800)).max(6),
-  structure: z.array(text.max(120)).min(2).max(8),
+  structure: z.array(text.max(120)).min(3).max(8),
   avoidClaims: z.array(text.max(800)).max(8),
 });
 
-// Required only for new planning calls; historical editorial plans remain readable.
 export const communityEditorialPlanSchema = editorialPlanSchema.extend({
-  openingAngle: text.max(1200),
-  closingTakeaway: text.max(1200),
   centralQuestion: text.max(600),
   targetReader: text.max(400),
   testScope: text.max(1200),
   sections: z.array(editorialSectionSchema).min(1).max(8),
   materialGaps: z.array(text.max(800)).max(8),
+  openingAngle: text.max(1200),
+  closingTakeaway: text.max(1200),
 });
 export type CommunityEditorialPlan = z.infer<typeof communityEditorialPlanSchema>;
 
@@ -142,12 +169,13 @@ export const publishGenerationTraceSchema = z.array(z.object({
   promptVersion: text,
   inputSignature: text,
   usage: z.object({
-    inputTokens: z.number().nullable(), outputTokens: z.number().nullable(),
-    latencyMs: z.number(), estimatedCost: z.number().nullable(),
+    inputTokens: z.number().nullable(),
+    outputTokens: z.number().nullable(),
+    latencyMs: z.number(),
+    estimatedCost: z.number().nullable(),
   }),
 })).max(4);
 
-// Deliberately excludes evidence bindings, ratings, tags and approval metadata.
 export const communityStyleEditSchema = z.object({
   title: text.max(240),
   body: text.max(12_000),
@@ -182,6 +210,8 @@ export const communityPostContentSchema = z.object({
   body: text.max(12_000),
   tags: z.array(text.max(40)).min(1).max(12),
   interactionQuestion: z.string().trim().max(600),
+  contentBrief: contentBriefSchema.optional(),
+  languagePass: languagePassSchema.optional(),
   editorialPlan: editorialPlanSchema.optional(),
   factCheck: factCheckSchema.optional(),
   articleReview: articleReviewSchema.optional(),
@@ -201,15 +231,33 @@ export const communityPostOutputSchema = communityPostContentSchema.extend({
 export type CommunityPostOutput = z.infer<typeof communityPostOutputSchema>;
 
 export const communityPostDraftSchema = communityPostOutputSchema.safeExtend({
-  editorialPlan: editorialPlanSchema,
+  contentBrief: contentBriefSchema,
 });
 export type CommunityPostDraft = z.infer<typeof communityPostDraftSchema>;
 
-// Apply completeness and evidence-check metadata to new generations only; historical posts stay readable.
-export const communityPostGenerationSchema = communityPostOutputSchema.safeExtend({
-  editorialPlan: editorialPlanSchema,
+export const communityPostHumanizedSchema = communityPostOutputSchema.safeExtend({
+  contentBrief: contentBriefSchema,
+  languagePass: languagePassSchema,
+});
+export type HumanizedCommunityPost = z.infer<typeof communityPostHumanizedSchema>;
+
+const briefGenerationSchema = communityPostOutputSchema.safeExtend({
+  contentBrief: contentBriefSchema,
+  languagePass: languagePassSchema,
   factCheck: factCheckSchema,
-}).refine(
+});
+
+const editorialGenerationSchema = communityPostOutputSchema.safeExtend({
+  editorialPlan: communityEditorialPlanSchema,
+  articleReview: articleReviewSchema,
+  factCheck: factCheckSchema,
+});
+
+// Both generation pipelines remain readable while they converge on the same complete-article contract.
+export const communityPostGenerationSchema = z.union([
+  briefGenerationSchema,
+  editorialGenerationSchema,
+]).refine(
   (post) => post.body.trim().length >= 200 && post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length >= 4,
   { path: ["body"], message: "Return the complete article in body, not just an opening: at least 200 characters and 4 paragraphs separated by blank lines. Include the tested task, concrete output, evidence-backed findings, and scope limitations without repeating the same conclusion." },
 );

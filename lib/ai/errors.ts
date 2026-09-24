@@ -36,7 +36,11 @@ export type AIProviderErrorDetails = {
   responseContentType?: string | null;
   responseBodyLength?: number | null;
   providerCode?: string | null;
+  providerMessage?: string | null;
   inputIssue?: "mixed_media" | null;
+  requestTextCount?: number;
+  requestImageCount?: number;
+  requestFileCount?: number;
 };
 
 export class AIProviderError extends Error {
@@ -55,7 +59,11 @@ export class AIProviderError extends Error {
   readonly responseContentType: string | null;
   readonly responseBodyLength: number | null;
   readonly providerCode: string | null;
+  readonly providerMessage: string | null;
   readonly inputIssue: "mixed_media" | null;
+  readonly requestTextCount: number;
+  readonly requestImageCount: number;
+  readonly requestFileCount: number;
 
   constructor(message: string, details: AIProviderErrorDetails) {
     super(message);
@@ -75,7 +83,11 @@ export class AIProviderError extends Error {
     this.responseContentType = details.responseContentType ?? null;
     this.responseBodyLength = details.responseBodyLength ?? null;
     this.providerCode = details.providerCode ?? null;
+    this.providerMessage = details.providerMessage ?? null;
     this.inputIssue = details.inputIssue ?? null;
+    this.requestTextCount = details.requestTextCount ?? 0;
+    this.requestImageCount = details.requestImageCount ?? 0;
+    this.requestFileCount = details.requestFileCount ?? 0;
   }
 }
 

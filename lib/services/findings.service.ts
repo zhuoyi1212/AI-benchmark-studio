@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { z } from "zod";
 import { maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
 import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -16,6 +17,7 @@ import type { ExperienceFindingRow, Json } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace } from "@/lib/types/test-run";
 
 const maxTextCharacters = 120_000;
+const maxImagesPerVisionRequest = 2;
 const textMimeTypes = new Set(["text/plain", "text/markdown", "application/json", "text/csv"]);
 
 export type FindingsArtifact = {
@@ -119,7 +121,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
           role: "system",
           content: [
             "你是 AI 产品真实体验的 Findings 编辑，不是评分员。",
-            "只根据给定 Research 背景、Locked Test Plan、TestRun 元数据和完整原始 Artifact 提炼可观察发现。",
+            "只根据给定 Research 背景、Locked Test Plan、TestRun 元数据、原始文本和带 artifactId 的截图视觉观察提炼可观察发现。",
             "不要生成分数、排名、冠军或总评等级。重点找：明确好用的功能、体验一般的功能、不能用/难用/明显有问题的功能。",
             "每条 finding 必须绑定真实 productId、testCaseId 和至少一个 evidenceArtifactId。",
             "observation 写本次实际观察到的现象；impact 写它对真实使用者意味着什么。二者不能重复。",
@@ -140,6 +142,21 @@ export async function generateExperienceFindings(projectId: string): Promise<str
     await findingsRepository.complete(persisted.id, result.data, result.usage);
     return persisted.id;
   } catch (error) {
+    if (error instanceof AIProviderError) {
+      console.error("[FindingsProviderError]", {
+        provider: error.provider,
+        model: error.model,
+        status: error.status,
+        errorCategory: error.category,
+        task: error.task,
+        attempt: error.attempt,
+        providerCode: error.providerCode,
+        providerMessage: error.providerMessage,
+        requestTextCount: error.requestTextCount,
+        requestImageCount: error.requestImageCount,
+        requestFileCount: error.requestFileCount,
+      });
+    }
     if (findingsId) {
       try { await findingsRepository.fail(findingsId, safeFailureMessage(error)); } catch { /* preserve original error */ }
     }
@@ -231,10 +248,19 @@ async function buildArtifactContent(
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
 ): Promise<AIMessageContent> {
   const artifacts = test.testRuns.flatMap((run) => run.artifacts);
-  const renderPdfs = artifacts.some((artifact) => artifact.fileType.startsWith("image/"))
-    && artifacts.some((artifact) => artifact.fileType === "application/pdf");
-  let remainingPages = maxPdfEvidencePages;
-  let remainingBytes = maxPdfEvidenceBytes;
+  const renderPdfs = artifacts.some((artifact) => normalizeMimeType(artifact.fileType).startsWith("image/"))
+    && artifacts.some((artifact) => normalizeMimeType(artifact.fileType) === "application/pdf");
+  let remainingPdfPages = maxPdfEvidencePages;
+  let remainingPdfBytes = maxPdfEvidenceBytes;
+  const imageEvidence: Array<{
+    artifact: TestArtifact;
+    runId: string;
+    productName: string;
+    productId: string;
+    testCaseTitle: string;
+    testCaseId: string;
+    notes: string | null;
+  }> = [];
   const content: Exclude<AIMessageContent, string> = [{
     type: "text",
     text: JSON.stringify({
@@ -267,30 +293,121 @@ async function buildArtifactContent(
     const testCase = test.protocol.testCases.find((item) => item.id === run.testCaseId);
     if (!product || !testCase) throw new FindingsExecutionError("TestRun 与当前测试计划不一致。");
 
+    const hasTextArtifact = run.artifacts.some((artifact) => textMimeTypes.has(normalizeMimeType(artifact.fileType)));
     for (const artifact of run.artifacts) {
+      const mimeType = normalizeMimeType(artifact.fileType);
+      if (mimeType === "application/pdf" && hasTextArtifact) {
+        console.info("[FindingsEvidence] PDF omitted because this TestRun has a text Artifact", {
+          testRunId: run.id,
+          artifactId: artifact.id,
+        });
+        continue;
+      }
       if (!artifact.fileUrl) throw new FindingsExecutionError("原始 Artifact 缺少可读取地址。");
       content.push({
         type: "text",
-        text: `Product: ${product.name}; productId: ${product.id}; TestCase: ${testCase.title}; testCaseId: ${testCase.id}; artifactId: ${artifact.id}; MIME: ${artifact.fileType}; TestRun notes: ${run.notes ?? "none"}`,
+        text: `Product: ${product.name}; productId: ${product.id}; TestCase: ${testCase.title}; testCaseId: ${testCase.id}; artifactId: ${artifact.id}; MIME: ${mimeType}; TestRun notes: ${run.notes ?? "none"}`,
       });
-      if (textMimeTypes.has(artifact.fileType.toLowerCase())) {
+      if (textMimeTypes.has(mimeType)) {
         content.push({ type: "text", text: await readTextArtifact(artifact) });
-      } else if (artifact.fileType.startsWith("image/")) {
-        content.push({ type: "image_url", image_url: { url: artifact.fileUrl } });
-      } else if (renderPdfs && artifact.fileType === "application/pdf") {
-        const pages = await renderPdfEvidence(await readArtifactBytes(artifact), remainingPages, remainingBytes);
-        remainingPages -= pages.length;
-        remainingBytes -= pages.reduce((sum, page) => sum + page.length, 0);
+      } else if (mimeType.startsWith("image/")) {
+        if (hasTextArtifact) {
+          console.info("[FindingsEvidence] Image omitted because this TestRun has a text Artifact", {
+            testRunId: run.id,
+            artifactId: artifact.id,
+          });
+          continue;
+        }
+        imageEvidence.push({
+          artifact,
+          runId: run.id,
+          productName: product.name,
+          productId: product.id,
+          testCaseTitle: testCase.title,
+          testCaseId: testCase.id,
+          notes: run.notes ?? null,
+        });
+      } else if (mimeType === "application/pdf" && renderPdfs) {
+        const pages = await renderPdfEvidence(await readArtifactBytes(artifact), remainingPdfPages, remainingPdfBytes);
+        remainingPdfPages -= pages.length;
+        remainingPdfBytes -= pages.reduce((sum, page) => sum + page.length, 0);
         for (const [index, url] of pages.entries()) {
           content.push({ type: "text", text: `artifactId: ${artifact.id}; original PDF page ${index + 1}/${pages.length}` });
           content.push({ type: "image_url", image_url: { url } });
         }
-      } else {
+      } else if (mimeType === "application/pdf") {
+        console.info("[FindingsEvidence] PDF retained as native file evidence", { testRunId: run.id, artifactId: artifact.id });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
+      } else {
+        throw new FindingsExecutionError(`Findings 不支持此 Artifact 类型：${mimeType}`);
       }
     }
   }
+  if (imageEvidence.length <= maxImagesPerVisionRequest) {
+    for (const image of imageEvidence) {
+      content.push({ type: "image_url", image_url: { url: image.artifact.fileUrl! } });
+    }
+  } else {
+    console.info("[FindingsEvidence] Screenshot batching started", {
+      imageCount: imageEvidence.length,
+      batchSize: maxImagesPerVisionRequest,
+      batchCount: Math.ceil(imageEvidence.length / maxImagesPerVisionRequest),
+    });
+    for (let index = 0; index < imageEvidence.length; index += maxImagesPerVisionRequest) {
+      const batch = imageEvidence.slice(index, index + maxImagesPerVisionRequest);
+      const batchContent: Exclude<AIMessageContent, string> = [
+        {
+          type: "text" as const,
+          text: batch.map((image, imageIndex) => `Screenshot ${imageIndex + 1}: ${artifactContext(image)}`).join("\n"),
+        },
+        ...batch.map((image) => ({ type: "image_url" as const, image_url: { url: image.artifact.fileUrl! } })),
+      ];
+      const { data } = await aiTaskService.understandScreenshots({
+        schema: z.object({
+          observations: z.array(z.string().trim().min(1).max(2400)).length(batch.length),
+        }),
+        schemaName: "FindingsScreenshotObservations",
+        messages: [
+          {
+            role: "system",
+            content: `逐张读取截图，只描述画面中可直接观察到的产品输出、成功、问题和限制。按 Screenshot 1 到 Screenshot ${batch.length} 的顺序返回 observations 字符串数组，长度必须是 ${batch.length}；不要评分，不要猜测截图外的信息。`,
+          },
+          { role: "user", content: batchContent },
+        ],
+        maxTokens: 2400,
+        maxAttempts: 2,
+      });
+      for (const [observationIndex, observation] of data.observations.entries()) {
+        const image = batch[observationIndex]!;
+        content.push({
+          type: "text",
+          text: `${artifactContext(image)}\nScreenshot observation: ${observation}`,
+        });
+      }
+      console.info("[FindingsEvidence] Screenshot batch completed", {
+        batch: Math.floor(index / maxImagesPerVisionRequest) + 1,
+        imageCount: batch.length,
+        artifactIds: batch.map((item) => item.artifact.id),
+      });
+    }
+  }
   return content;
+}
+
+function artifactContext(image: {
+  artifact: TestArtifact;
+  runId: string;
+  productName: string;
+  productId: string;
+  testCaseTitle: string;
+  testCaseId: string;
+  notes: string | null;
+}) {
+  return `Product: ${image.productName}; productId: ${image.productId}; TestCase: ${image.testCaseTitle}; testCaseId: ${image.testCaseId}; testRunId: ${image.runId}; artifactId: ${image.artifact.id}; MIME: ${normalizeMimeType(image.artifact.fileType)}; TestRun notes: ${image.notes ?? "none"}`;
+}
+
+function normalizeMimeType(mimeType: string) {
+  return mimeType.split(";", 1)[0]!.trim().toLowerCase();
 }
 
 async function readArtifactBytes(artifact: TestArtifact) {
@@ -365,7 +482,22 @@ function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["
 
 function safeFailureMessage(error: unknown) {
   if (error instanceof AIValidationError) return `Findings validation failed: ${error.schemaName}`;
-  if (error instanceof AIProviderError || error instanceof PdfEvidenceError) return toUserFacingError(error);
+  if (error instanceof PdfEvidenceError) return error.message;
+  if (error instanceof AIProviderError) {
+    const details = [
+      `provider=${error.provider}`,
+      `model=${error.model}`,
+      `status=${error.status ?? "unknown"}`,
+      `category=${error.category}`,
+      `task=${error.task}`,
+      error.providerCode ? `providerCode=${error.providerCode}` : null,
+      error.providerMessage ? `reason=${error.providerMessage}` : null,
+      `text=${error.requestTextCount}`,
+      `images=${error.requestImageCount}`,
+      `files=${error.requestFileCount}`,
+    ].filter((value): value is string => value !== null);
+    return `AI Provider request failed: ${details.join(", ")}`;
+  }
   if (error instanceof RepositoryError) return `Findings persistence failed at ${error.operation}`;
   if (error instanceof FindingsExecutionError) return error.message;
   return "Findings generation failed";

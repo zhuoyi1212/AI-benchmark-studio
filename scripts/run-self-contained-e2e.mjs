@@ -6,20 +6,35 @@ import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { startE2EProviderMock } from "./e2e-provider-mock.mjs";
 
-const localEnvironment = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
+const localEnvironment = await readLocalEnvironment();
 const supabaseUrl = localEnvironment.SUPABASE_URL || localEnvironment.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseSecretKey = localEnvironment.SUPABASE_SECRET_KEY;
-if (!supabaseUrl || !supabaseSecretKey) throw new Error("Full E2E requires Supabase server credentials in .env.local");
+if (!supabaseUrl || !supabaseSecretKey) throw new Error("Full E2E requires Supabase server credentials in .env.local or .env");
 
 const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 const protocolOnly = process.env.E2E_PROTOCOL_ONLY === "1";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
+const realAiQuickPublish = process.env.E2E_REAL_AI_FINDINGS_PUBLISH === "1";
+const realAiTasks = ["ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost"];
+const liveProviderKeys = {
+  zhipu: process.env.ZAI_API_KEY || localEnvironment.ZAI_API_KEY,
+  deepseek: process.env.DEEPSEEK_API_KEY || localEnvironment.DEEPSEEK_API_KEY,
+};
+if (realAiQuickPublish && Object.values(liveProviderKeys).some((value) => !value)) {
+  throw new Error("Real AI Findings → Publish E2E requires both configured provider credentials");
+}
+if (realAiQuickPublish && protocolOnly) throw new Error("Real AI Findings → Publish E2E requires the full-flow scenario");
 const token = randomUUID();
-const providerMock = await startE2EProviderMock();
+const providerMock = await startE2EProviderMock({
+  realAiTasks: realAiQuickPublish ? realAiTasks : [],
+  providerApiKeys: realAiQuickPublish ? liveProviderKeys : {},
+});
 const appPort = await findAvailablePort();
 const appOrigin = `http://127.0.0.1:${appPort}`;
 const logs = [];
 let appProcess;
+let fullFlowRequestStarted = false;
+let fullFlowResponseReceived = false;
 
 try {
   appProcess = spawn(process.execPath, [
@@ -37,24 +52,27 @@ try {
       AI_E2E_PROVIDER_BASE_URL: providerMock.baseUrl,
       E2E_TEST_MODE: "1",
       E2E_TEST_TOKEN: token,
-      ZAI_API_KEY: "e2e-provider-key-not-a-secret",
-      DEEPSEEK_API_KEY: "e2e-provider-key-not-a-secret",
+      ZAI_API_KEY: realAiQuickPublish ? liveProviderKeys.zhipu : "e2e-provider-key-not-a-secret",
+      DEEPSEEK_API_KEY: realAiQuickPublish ? liveProviderKeys.deepseek : "e2e-provider-key-not-a-secret",
       AI_BENCHMARK_NEXT_DIST_DIR: ".next-e2e",
       NEXT_TELEMETRY_DISABLED: "1",
     },
+    detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  collectLogs(appProcess.stdout, logs);
-  collectLogs(appProcess.stderr, logs);
+  collectLogs(appProcess.stdout, logs, process.stdout);
+  collectLogs(appProcess.stderr, logs, process.stderr);
   await waitForServer(appOrigin, appProcess, logs);
 
+  fullFlowRequestStarted = true;
   const response = await fetch(`${appOrigin}/api/e2e-test/full-flow`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-e2e-token": token },
     body: JSON.stringify({ runId, protocolOnly, textOnlyEvidence }),
-    signal: AbortSignal.timeout(300_000),
+    signal: AbortSignal.timeout(360_000),
   });
   const result = await response.json();
+  fullFlowResponseReceived = true;
   assert.equal(response.ok, true, `Full route E2E failed: ${JSON.stringify(result)}`);
   assert.equal(result.ok, true);
   assert.equal(result.single.comparabilityStatus, "not_comparable");
@@ -67,6 +85,9 @@ try {
     assert.equal(result.single.resultMode, "single");
     assert.equal(result.single.reportMode, "single");
     assert.equal(result.single.publishMode, "single");
+    assert.equal(result.single.findingsConfirmed, true);
+    assert.equal(result.single.quickPublishSourceType, "findings");
+    assert.equal(result.single.quickPublishReady, true);
     assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
     assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
     if (textOnlyEvidence) assert.equal(result.single.publishScreenshotCount, 0);
@@ -82,15 +103,22 @@ try {
   const providerStats = providerMock.stats();
   const expectedTasks = protocolOnly
     ? ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent"]
-    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport", "MicroFindingDiscovery", "CommunityPost", "SafeCommunityRewrite", "CommunityStyleCritic"];
+    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport"];
   for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
   if (!protocolOnly) {
-    assert.equal(providerStats.taskCounts.MicroFindingDiscovery, 1, "Micro Finding discovery must run once");
-    assert.equal(providerStats.taskCounts.CommunityPost, 1, "Community Post must generate only one initial draft");
-    assert.equal(providerStats.taskCounts.SafeCommunityRewrite, 1, "Community Post must perform exactly one safe language rewrite");
-    assert.equal(providerStats.taskCounts.CommunityStyleCritic, 2, "Style Critic must review the draft and the single rewrite");
+    if (realAiQuickPublish) {
+      for (const task of realAiTasks) {
+        assert.ok(providerStats.realAiTaskCounts[task] > 0, `${task} did not reach a real AI provider`);
+      }
+    } else {
+      assert.equal(providerStats.taskCounts.ExperienceFindings, 1, "Quick Findings must run once");
+      assert.equal(providerStats.taskCounts.ContentIdeas, 1, "Quick Content Discovery must run once");
+      assert.equal(providerStats.taskCounts.CommunityPostDraft, 1, "Quick Community Post must generate one initial draft");
+      assert.equal(providerStats.taskCounts.HumanizedCommunityPost, 1, "Quick Community Post must run one language naturalization pass");
+      assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 1, "Quick Community Post must run one evidence check");
+    }
     if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
     else assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
   }
@@ -114,19 +142,26 @@ try {
   }
   console.log(`Comparison regression: comparable Protocol with ${result.comparison.testCaseCount} TestCases`);
   console.log("Not-comparable regression: Protocol correctly blocked");
-  console.log(`Provider boundary: ${providerStats.total} mocked external request(s), ${providerStats.multimodalJudgeRequests} multimodal Judge request(s)`);
+  console.log(`Provider boundary: ${providerStats.total} request(s), ${providerStats.multimodalJudgeRequests} multimodal Judge request(s)`);
+  if (realAiQuickPublish) {
+    console.log(`Real AI Findings → Publish calls: ${realAiTasks.map((task) => `${task}=${providerStats.realAiTaskCounts[task]}`).join(", ")}`);
+  }
   console.log(`Protocol attempts: ${providerStats.protocolAttempts.map((item) => `${item.attempt}:${item.reasoning}:${item.outcome}:${item.finishReason ?? "null"}`).join(", ")}`);
   console.log(`Cleanup: ${archivedProjects.length}/${projectIds.length} temporary Projects soft-deleted`);
   console.log(protocolOnly
     ? "Create → Research → Protocol plus comparison/not-comparable regressions: verified"
-    : "Create → Research → Protocol → TestRun/Artifact → Judge → Human Review → Results → Report → Publish: verified");
-} catch (error) {
-  const recentLogs = logs.join("").split("\n").slice(-80).join("\n");
-  if (recentLogs) console.error(`\nNext.js E2E logs:\n${recentLogs}`);
-  throw error;
+    : "Create → Research → Protocol → TestRun/Artifact → Quick Findings → Confirm → Publish → optional Professional Review → Results → Report: verified");
 } finally {
-  if (appProcess) await stopProcess(appProcess);
-  await providerMock.close();
+  try {
+    if (appProcess && fullFlowRequestStarted && !fullFlowResponseReceived
+      && appProcess.exitCode === null && appProcess.signalCode === null) {
+      console.warn("Full-flow request ended before a response; allowing server-side cleanup 30 seconds to finish.");
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
+    }
+    if (appProcess) await stopProcess(appProcess);
+  } finally {
+    await providerMock.close();
+  }
 }
 
 async function waitForServer(origin, child, output) {
@@ -157,19 +192,45 @@ async function findAvailablePort() {
 }
 
 async function stopProcess(child) {
-  if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
-  const exited = await Promise.race([
-    new Promise((resolve) => child.once("exit", () => resolve(true))),
-    new Promise((resolve) => setTimeout(() => resolve(false), 8_000)),
-  ]);
-  if (!exited && child.exitCode === null) child.kill("SIGKILL");
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  signalProcessTree(child, "SIGTERM");
+  if (await waitForExit(child, 8_000)) return;
+  signalProcessTree(child, "SIGKILL");
+  if (!await waitForExit(child, 5_000)) throw new Error("Next.js E2E server did not exit after SIGKILL");
 }
 
-function collectLogs(stream, output) {
+function signalProcessTree(child, signal) {
+  if (process.platform !== "win32" && child.pid) {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ESRCH") return;
+      throw error;
+    }
+  }
+  child.kill(signal);
+}
+
+function waitForExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const finish = (exited) => {
+      clearTimeout(timer);
+      child.off("exit", onExit);
+      resolve(exited);
+    };
+    const onExit = () => finish(true);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    child.once("exit", onExit);
+  });
+}
+
+function collectLogs(stream, output, destination) {
   stream.setEncoding("utf8");
   stream.on("data", (chunk) => {
     output.push(chunk);
+    destination.write(chunk);
     if (output.length > 400) output.splice(0, output.length - 400);
   });
 }
@@ -202,4 +263,15 @@ function parseEnv(text) {
     if (index < 1) return [];
     return [[value.slice(0, index).trim(), value.slice(index + 1).trim().replace(/^(['"])(.*)\1$/, "$2")]];
   }));
+}
+
+async function readLocalEnvironment() {
+  for (const file of [".env.local", ".env"]) {
+    try {
+      return parseEnv(await readFile(new URL(`../${file}`, import.meta.url), "utf8"));
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
+  }
+  throw new Error("Full E2E requires Supabase server credentials in .env.local or .env");
 }

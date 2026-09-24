@@ -4,8 +4,9 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [migration, schema, repository, service, page, editor, testPage, publishService, publishRepository] = await Promise.all([
+const [migration, publishSourceMigration, schema, repository, service, page, editor, testPage, publishService, publishRepository] = await Promise.all([
   read("supabase/migrations/20260920060000_quick_findings_flow.sql"),
+  read("supabase/migrations/20260923090000_allow_findings_publish_pack_source.sql"),
   read("lib/ai/schemas/findings.schemas.ts"),
   read("lib/repositories/findings.repository.ts"),
   read("lib/services/findings.service.ts"),
@@ -40,6 +41,22 @@ test("Findings are evidence-backed observations rather than scores", () => {
   assert.match(service, /createHash\("sha256"\)/);
   assert.match(service, /type: "image_url"/);
   assert.match(service, /type: "file_url"/);
+  assert.match(service, /normalizeMimeType\(artifact\.fileType\)/);
+  assert.match(service, /mimeType === "application\/pdf" && hasTextArtifact/);
+  assert.match(service, /Image omitted because this TestRun has a text Artifact/);
+  assert.match(service, /renderPdfEvidence\(await readArtifactBytes\(artifact\)/);
+  assert.match(service, /original PDF page/);
+  assert.match(service, /maxImagesPerVisionRequest = 2/);
+  assert.match(service, /aiTaskService\.understandScreenshots/);
+  assert.match(service, /Screenshot batching started/);
+  assert.match(service, /\.length\(batch\.length\)/);
+  assert.match(service, /batch\[observationIndex\]/);
+  assert.match(service, /provider=\$\{error\.provider\}/);
+  assert.match(service, /model=\$\{error\.model\}/);
+  assert.match(service, /status=\$\{error\.status/);
+  assert.match(service, /category=\$\{error\.category\}/);
+  assert.match(service, /providerCode=\$\{error\.providerCode\}/);
+  assert.match(service, /images=\$\{error\.requestImageCount\}/);
   assert.match(service, /realArtifactReferences/);
   assert.doesNotMatch(service, /getHumanReviewWorkspace|judgeRepository|resultAnalysisRepository|getReportWorkspace/);
 });
@@ -63,11 +80,41 @@ test("real test can go directly to Findings while professional scoring stays opt
   assert.match(page, /生成社区内容/);
 });
 
+test("Quick Findings opens without Blind Samples or a professional scoring run", () => {
+  assert.match(page, /getExperienceFindingsWorkspace\(projectId\)/);
+  assert.match(page, /workflowState\.stages\.review\.completed/);
+  assert.match(page, /workflowState\.stages\.review\.completed\s*\?\s*await readOptionalProfessionalResults\(projectId\)\s*:\s*null/);
+  const pageLoad = page.slice(0, page.indexOf("async function readOptionalProfessionalResults"));
+  assert.doesNotMatch(pageLoad, /Promise\.all\(\[[\s\S]*getResultsWorkspace\(projectId\)/);
+  assert.match(page, /专业测评模式（可选）/);
+});
+
+test("a professional Results read failure cannot fail the Quick Findings page", () => {
+  assert.match(page, /async function readOptionalProfessionalResults/);
+  assert.match(page, /try \{[\s\S]*getResultsWorkspace\(projectId\)[\s\S]*catch \(error\)/);
+  assert.match(page, /OptionalProfessionalResultsReadError/);
+  assert.match(page, /return null;/);
+});
+
+test("Quick Findings has no professional repository dependency", () => {
+  assert.doesNotMatch(service, /blindReviewRepository|judgeRepository|resultAnalysisRepository|reportRepository/);
+  assert.doesNotMatch(service, /getBlindReviewWorkspace|getJudgeReviewWorkspace|getHumanReviewWorkspace|getResultsWorkspace|getReportWorkspace/);
+  const generation = service.slice(service.indexOf("export async function generateExperienceFindings"), service.indexOf("export async function buildRawFindingsEvidenceContent"));
+  assert.doesNotMatch(generation, /blindReviewRepository|judgeRepository|humanReviewRepository|resultAnalysisRepository|reportRepository|getBlindReviewWorkspace|getJudgeReviewWorkspace|getHumanReviewWorkspace|getResultsWorkspace|getReportWorkspace/i);
+  assert.match(generation, /getTestExecutionWorkspace/);
+  assert.match(generation, /getResearchWorkspace/);
+  assert.match(generation, /buildArtifactContent/);
+});
+
 test("PublishPack can bind either confirmed Findings or a professional Report", () => {
   assert.match(migration, /findings_id uuid/);
   assert.match(migration, /num_nonnulls\(report_id, findings_id\) = 1/);
   assert.match(migration, /begin_findings_publish_pack/);
   assert.match(migration, /PublishPack requires confirmed Findings/);
+  assert.match(publishSourceMigration, /new\.report_id is not null/);
+  assert.match(publishSourceMigration, /new\.findings_id is not null/);
+  assert.match(publishSourceMigration, /human_confirmed_at is not null/);
+  assert.match(publishSourceMigration, /old\.report_id, old\.findings_id, old\.version/);
   assert.match(publishRepository, /beginFromFindings/);
   assert.match(publishRepository, /listByFindings/);
   assert.match(publishService, /source\.kind === "findings"/);

@@ -33,15 +33,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
   ]);
   if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
-
-  // Quick Findings never require Blind/Judge/Review. Only read professional
-  // results after reveal, and isolate failures in this optional panel.
-  let professional: Awaited<ReturnType<typeof getResultsWorkspace>> = null;
-  let professionalUnavailable = false;
-  if (workflowState.stages.review.completed) {
-    try { professional = await getResultsWorkspace(projectId); }
-    catch { professionalUnavailable = true; }
-  }
+  const professionalResult = workflowState.stages.review.completed
+    ? await readOptionalProfessionalResults(projectId)
+    : null;
+  const professional = professionalResult?.workspace ?? null;
+  const professionalUnavailable = professionalResult?.unavailable ?? false;
 
   const run = workspace.latest;
   const ready = run?.status === "completed" && run.effectiveOutput;
@@ -67,6 +63,22 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
 
     <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} unavailable={professionalUnavailable} />
   </div>;
+}
+
+async function readOptionalProfessionalResults(projectId: string): Promise<{
+  workspace: Awaited<ReturnType<typeof getResultsWorkspace>>;
+  unavailable: boolean;
+} | null> {
+  if (!projectId) return null;
+  try {
+    return { workspace: await getResultsWorkspace(projectId), unavailable: false };
+  } catch (error) {
+    console.error("[OptionalProfessionalResultsReadError]", {
+      projectId,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return { workspace: null, unavailable: true };
+  }
 }
 
 function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace }) {
