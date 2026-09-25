@@ -15,16 +15,17 @@ type ProductResearchRequest<Schema extends ZodType> = StructuredTaskRequest<Sche
 async function researchProducts<Schema extends ZodType>({ productName, searches, allowedDomains, allowedSourceUrls = [], ...request }: ProductResearchRequest<Schema>) {
   if (searches.length === 0) throw new Error("Product Research requires at least one source search");
   const searchResults = await Promise.all(searches.map((search) => runResearchSearch(search)));
+  const submittedOfficialSources = buildSubmittedOfficialSources(productName, allowedDomains, allowedSourceUrls);
   const sourceGroups = searchResults.map((result) => result.sources.filter((source) => {
     const isPreferredOfficialSource = allowedDomains?.some((domain) => isDomainOrSubdomain(source.url, domain)) ?? false;
     return isPreferredOfficialSource || sourceMentionsProduct(source, productName);
   }));
   const relevantSourceCount = new Set(sourceGroups.flatMap((sources) => sources.map((source) => source.url))).size;
   if (relevantSourceCount < 3) throw new AIValidationError("research", "insufficientRelevantSearchSources");
-  if (allowedDomains?.length && !sourceGroups.flat().some((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))) {
+  if (allowedDomains?.length && ![...sourceGroups.flat(), ...submittedOfficialSources].some((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))) {
     throw new AIValidationError("research", "officialSearchSourceRequired");
   }
-  const relevantSources = interleaveUniqueSources(sourceGroups);
+  const relevantSources = interleaveUniqueSources([...sourceGroups, submittedOfficialSources]);
   const officialSources = allowedDomains?.length
     ? relevantSources.filter((source) => allowedDomains.some((domain) => isDomainOrSubdomain(source.url, domain)))
     : [];
@@ -53,6 +54,26 @@ async function researchProducts<Schema extends ZodType>({ productName, searches,
     ],
   });
   return { ...synthesis, sources, searchRoute: searchResults[0]!.route };
+}
+
+function buildSubmittedOfficialSources(productName: string, allowedDomains: string[] | undefined, allowedSourceUrls: string[]): ResearchSource[] {
+  if (!allowedDomains?.length) return [];
+  return allowedSourceUrls.flatMap((url) => {
+    if (!allowedDomains.some((domain) => isDomainOrSubdomain(url, domain))) return [];
+    let siteName: string | null = null;
+    try {
+      siteName = new URL(url).hostname;
+    } catch {
+      return [];
+    }
+    return [{
+      title: `${productName} 官方网站（用户提交）`,
+      url,
+      snippet: "创建项目时由用户提交的官方网站。仅用于确认产品身份和官网地址，不得单独用于证明产品功能、价格或能力。",
+      siteName,
+      publishedAt: null,
+    }];
+  });
 }
 
 function interleaveUniqueSources(groups: ResearchSource[][]) {

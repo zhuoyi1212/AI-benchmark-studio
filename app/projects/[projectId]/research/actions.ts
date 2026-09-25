@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { resumeQuickProjectPreparation } from "@/lib/services/quick-project-preparation.service";
 import { executeProductResearch, ResearchExecutionError } from "@/lib/services/research.service";
 
 const projectIdSchema = z.string().uuid();
@@ -20,6 +21,7 @@ export async function startResearchAction(
 
   try {
     await executeProductResearch(parsedProjectId.data, { forceRefresh });
+    await resumeQuickProjectPreparation(parsedProjectId.data);
   } catch (error) {
     if (error instanceof ResearchExecutionError) {
       revalidatePath(path);

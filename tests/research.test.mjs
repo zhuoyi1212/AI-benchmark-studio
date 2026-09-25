@@ -6,7 +6,7 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, neutralMigration, repository, service, page, action, actionComponent, taskService, schema, config] = await Promise.all([
+const [migration, neutralMigration, repository, service, page, action, actionComponent, taskService, schema, config, quickPreparation, protocolAction] = await Promise.all([
   read("supabase/migrations/202608170005_research_run_lifecycle.sql"),
   read("supabase/migrations/202608170006_provider_neutral_research_completion.sql"),
   read("lib/repositories/research.repository.ts"),
@@ -17,6 +17,8 @@ const [migration, neutralMigration, repository, service, page, action, actionCom
   read("lib/ai/task-service.ts"),
   read("lib/ai/schemas/research.schemas.ts"),
   read("lib/ai/config.ts"),
+  read("lib/services/quick-project-preparation.service.ts"),
+  read("app/projects/[projectId]/protocol/actions.ts"),
 ]);
 
 test("versions ResearchRuns and preserves terminal history", () => {
@@ -42,6 +44,9 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(taskService, /isDomainOrSubdomain/);
   assert.match(taskService, /isPreferredOfficialSource \|\| sourceMentionsProduct/);
   assert.match(taskService, /officialSearchSourceRequired/);
+  assert.match(taskService, /buildSubmittedOfficialSources/);
+  assert.match(taskService, /仅用于确认产品身份和官网地址，不得单独用于证明产品功能、价格或能力/);
+  assert.match(taskService, /\.\.\.submittedOfficialSources/);
   assert.match(service, /`"\$\{product\.name\}"`/);
   assert.match(taskService, /sourceMentionsProduct/);
   assert.match(taskService, /interleaveUniqueSources/);
@@ -84,5 +89,9 @@ test("real research route exposes failed and retry states without mock fallback"
   assert.match(page, /ResearchRun v/);
   assert.match(page, /<ResearchAction[\s\S]*retry/);
   assert.match(actionComponent, /重新调研/);
+  assert.match(action, /resumeQuickProjectPreparation/);
+  assert.match(quickPreparation, /project\.status === "research_ready"/);
+  assert.match(quickPreparation, /\["idle", "failed"\]\.includes/);
+  assert.match(protocolAction, /resumeQuickProjectPreparation/);
   assert.doesNotMatch(page + action + service + repository, /@\/lib\/mock|mockResearchResponse|\/projects\/demo/);
 });

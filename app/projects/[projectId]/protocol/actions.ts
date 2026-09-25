@@ -9,6 +9,7 @@ import {
   removeDraftTestCase,
   ProtocolExecutionError,
 } from "@/lib/services/protocols.service";
+import { resumeQuickProjectPreparation } from "@/lib/services/quick-project-preparation.service";
 
 const projectIdSchema = z.string().uuid();
 const protocolIdSchema = z.string().uuid();
@@ -24,7 +25,8 @@ export async function generateProtocolAction(
   const path = `/projects/${projectId.data}/protocol`;
 
   try {
-    await generateProtocol(projectId.data);
+    const resumedQuickPreparation = await resumeQuickProjectPreparation(projectId.data);
+    if (!resumedQuickPreparation) await generateProtocol(projectId.data);
   } catch (error) {
     if (error instanceof ProtocolExecutionError) {
       revalidatePath(path);
