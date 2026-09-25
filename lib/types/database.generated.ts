@@ -537,14 +537,18 @@ export type Database = {
           capabilities: Json
           created_at: string
           id: string
+          input_formats: Json
           key_features: Json
           limitations: Json
           official_best_practices: Json
+          output_formats: Json
           positioning: string
           pricing: Json | null
           product_id: string
           project_id: string
           research_run_id: string
+          reused_from_snapshot: boolean
+          snapshot_id: string | null
           sources: Json
           target_users: Json
         }
@@ -552,14 +556,18 @@ export type Database = {
           capabilities?: Json
           created_at?: string
           id?: string
+          input_formats?: Json
           key_features?: Json
           limitations?: Json
           official_best_practices?: Json
+          output_formats?: Json
           positioning: string
           pricing?: Json | null
           product_id: string
           project_id: string
           research_run_id: string
+          reused_from_snapshot?: boolean
+          snapshot_id?: string | null
           sources?: Json
           target_users?: Json
         }
@@ -567,18 +575,29 @@ export type Database = {
           capabilities?: Json
           created_at?: string
           id?: string
+          input_formats?: Json
           key_features?: Json
           limitations?: Json
           official_best_practices?: Json
+          output_formats?: Json
           positioning?: string
           pricing?: Json | null
           product_id?: string
           project_id?: string
           research_run_id?: string
+          reused_from_snapshot?: boolean
+          snapshot_id?: string | null
           sources?: Json
           target_users?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "product_research_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "product_research_snapshots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_research_project_id_product_id_fkey"
             columns: ["project_id", "product_id"]
@@ -592,6 +611,122 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "research_runs"
             referencedColumns: ["id", "project_id"]
+          },
+        ]
+      }
+      product_research_snapshots: {
+        Row: {
+          capabilities: Json
+          created_at: string
+          id: string
+          input_formats: Json
+          input_signature: string
+          key_features: Json
+          limitations: Json
+          official_best_practices: Json
+          origin_product_research_id: string | null
+          origin_project_id: string
+          origin_research_run_id: string
+          output_formats: Json
+          positioning: string
+          pricing: Json | null
+          product_id: string
+          researched_at: string
+          search_model: string
+          search_prompt_version: string
+          search_provider: string
+          sources: Json
+          synthesis_model: string
+          synthesis_prompt_version: string
+          synthesis_provider: string
+          target_users: Json
+          valid_until: string
+          version: number
+        }
+        Insert: {
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          input_formats?: Json
+          input_signature: string
+          key_features?: Json
+          limitations?: Json
+          official_best_practices?: Json
+          origin_product_research_id?: string | null
+          origin_project_id: string
+          origin_research_run_id: string
+          output_formats?: Json
+          positioning: string
+          pricing?: Json | null
+          product_id: string
+          researched_at: string
+          search_model: string
+          search_prompt_version: string
+          search_provider: string
+          sources?: Json
+          synthesis_model: string
+          synthesis_prompt_version: string
+          synthesis_provider: string
+          target_users?: Json
+          valid_until: string
+          version: number
+        }
+        Update: {
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          input_formats?: Json
+          input_signature?: string
+          key_features?: Json
+          limitations?: Json
+          official_best_practices?: Json
+          origin_product_research_id?: string | null
+          origin_project_id?: string
+          origin_research_run_id?: string
+          output_formats?: Json
+          positioning?: string
+          pricing?: Json | null
+          product_id?: string
+          researched_at?: string
+          search_model?: string
+          search_prompt_version?: string
+          search_provider?: string
+          sources?: Json
+          synthesis_model?: string
+          synthesis_prompt_version?: string
+          synthesis_provider?: string
+          target_users?: Json
+          valid_until?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_research_snapshots_origin_product_research_id_fkey"
+            columns: ["origin_product_research_id"]
+            isOneToOne: true
+            referencedRelation: "product_research"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_research_snapshots_origin_project_id_fkey"
+            columns: ["origin_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_research_snapshots_origin_research_run_id_fkey"
+            columns: ["origin_research_run_id"]
+            isOneToOne: false
+            referencedRelation: "research_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_research_snapshots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -677,6 +812,9 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          evaluation_mode: string
+          quick_preparation_error: string | null
+          quick_preparation_status: string
           id: string
           intent: string
           name: string
@@ -687,6 +825,9 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          evaluation_mode?: string
+          quick_preparation_error?: string | null
+          quick_preparation_status?: string
           id?: string
           intent: string
           name: string
@@ -697,6 +838,9 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          evaluation_mode?: string
+          quick_preparation_error?: string | null
+          quick_preparation_status?: string
           id?: string
           intent?: string
           name?: string
@@ -1092,6 +1236,7 @@ export type Database = {
           project_id: string
           prompt_version: string | null
           provider: string | null
+          reuse_details: Json
           search_model: string | null
           search_prompt_version: string | null
           search_provider: string | null
@@ -1123,6 +1268,7 @@ export type Database = {
           project_id: string
           prompt_version?: string | null
           provider?: string | null
+          reuse_details?: Json
           search_model?: string | null
           search_prompt_version?: string | null
           search_provider?: string | null
@@ -1154,6 +1300,7 @@ export type Database = {
           project_id?: string
           prompt_version?: string | null
           provider?: string | null
+          reuse_details?: Json
           search_model?: string | null
           search_prompt_version?: string | null
           search_provider?: string | null
@@ -1702,12 +1849,17 @@ export type Database = {
       }
       create_benchmark_project: {
         Args: {
+          p_evaluation_mode?: string
           p_intent: string
           p_name: string
           p_owner_id?: string
           p_products: Json
         }
         Returns: string
+      }
+      set_project_evaluation_mode: {
+        Args: { p_evaluation_mode: string; p_project_id: string }
+        Returns: undefined
       }
       create_protocol_draft: {
         Args: {

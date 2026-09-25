@@ -85,6 +85,8 @@ AI 根据 Project Intent + Research + Common Capabilities 生成：
 - testCases[]
 - rubric[]
 
+项目默认使用快速模式：每次只生成 1 个最有代表性的核心 TestCase，降低等待时间并让用户尽快进入真实测试。专业模式保留 2–4 个 Case、完整配置、逐项复核和专业报告能力；Protocol 锁定前可切换模式。
+
 TestCase：
 
 - title
@@ -95,7 +97,7 @@ TestCase：
 - observationFocus
 - executionRules
 
-Protocol 草稿生成后，用户可以删除不合适的 TestCase，并按剩余任务继续测评。系统至少保留 1 个 TestCase，不要求用户必须执行 3 个任务；锁定后仍保持不可修改。
+历史多任务 Protocol 草稿仍可删除不合适的 TestCase，并按剩余任务继续测评。系统至少保留 1 个 TestCase；新 Protocol 默认只生成 1 个核心任务，锁定后仍保持不可修改。
 
 Rubric：
 
@@ -139,7 +141,7 @@ Best-practice testing 以后再做独立模式。
 - manuallyEdited
 - notes
 
-用户上传 Raw Artifact：image / PDF / text。
+用户上传 Raw Artifact：image / PDF / Word / PPT / Excel / text / video。只要每个 TestRun 至少存在一个通过文件签名与大小校验的 Artifact，就允许进入分析；预期输出类型只作执行参考，不作为阻塞条件。
 
 Artifact 是实验原始证据，不能由 Report/Publish 重新生成替代。
 
@@ -196,6 +198,15 @@ AI Score 属于原始实验记录，不允许人工覆盖。
 - 保存修改历史
 - 支持 revert
 - 0 项人工修改正常
+
+快速模式默认接受高置信度且证据正常的 AI Score，只展示低置信度、结论冲突、证据不足、解析失败或疑似事实错误的异常项。没有异常时自动 Lock 与 Reveal；有异常时由用户一次确认后继续。专业模式保留完整逐项复核。
+
+## 12.1 产品调研复用
+
+- completed ProductResearch 会登记为产品级不可变快照，默认有效期 90 天。
+- 新项目优先复制每个产品最新快照到当前 ResearchRun，并保存 `snapshot_id`；不重复调用完整 AI 调研。
+- 过期快照显示“资料可能过期”，但不阻塞快速模式；用户可主动重新调研。
+- 重新调研创建新快照版本，不覆盖旧版本；历史 Project 始终引用当时使用的版本。
 
 ## 13. Lock & Reveal
 

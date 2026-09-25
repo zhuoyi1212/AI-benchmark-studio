@@ -67,7 +67,7 @@ export const reportRepository = {
     if (protocolError) throwRepositoryError("report.getProtocolResearch", protocolError);
     const { data, error } = await client
       .from("product_research")
-      .select("id, project_id, research_run_id, product_id, positioning, target_users, capabilities, key_features, pricing, official_best_practices, limitations, sources, created_at")
+      .select("id, project_id, research_run_id, product_id, positioning, target_users, capabilities, key_features, pricing, official_best_practices, limitations, input_formats, output_formats, sources, snapshot_id, reused_from_snapshot, created_at")
       .eq("research_run_id", protocol.research_run_id)
       .order("created_at", { ascending: true });
     if (error) throwRepositoryError("report.listResearch", error);

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { BlindReviewError, startProfessionalReview } from "@/lib/services/blind-review.service";
 import {
@@ -9,6 +10,8 @@ import {
   TestExecutionError,
   uploadTestArtifact,
 } from "@/lib/services/test-execution.service";
+import { advanceQuickEvaluation, QuickEvaluationError } from "@/lib/services/quick-evaluation.service";
+import { generateQuickBackgroundOutputs } from "@/lib/services/quick-background-outputs.service";
 
 const idSchema = z.string().uuid();
 
@@ -95,6 +98,34 @@ export async function startProfessionalReviewAction(
   revalidatePath(`/projects/${projectId.data}/review`);
   revalidatePath("/projects");
   redirect(`/projects/${projectId.data}/review`);
+}
+
+export async function advanceQuickEvaluationAction(
+  _previousState: TestExecutionActionState,
+  formData: FormData,
+): Promise<TestExecutionActionState> {
+  const projectId = idSchema.safeParse(formData.get("projectId"));
+  const protocolId = idSchema.safeParse(formData.get("protocolId"));
+  if (!projectId.success || !protocolId.success) return { ok: false, message: "项目或 Protocol 标识无效。" };
+
+  try {
+    const result = await advanceQuickEvaluation(projectId.data, protocolId.data);
+    revalidatePath(`/projects/${projectId.data}/test`);
+    revalidatePath(`/projects/${projectId.data}/review`);
+    revalidatePath("/projects");
+    if (result.next === "review") redirect(`/projects/${projectId.data}/review`);
+    after(async () => {
+      await generateQuickBackgroundOutputs(projectId.data);
+      revalidatePath(`/projects/${projectId.data}/results`);
+      revalidatePath(`/projects/${projectId.data}/report`);
+    });
+    redirect(`/projects/${projectId.data}/results`);
+  } catch (error) {
+    if (error instanceof QuickEvaluationError || error instanceof TestExecutionError || error instanceof BlindReviewError) {
+      return { ok: false, message: error.message };
+    }
+    throw error;
+  }
 }
 
 function parseInteger(value: FormDataEntryValue | null) {

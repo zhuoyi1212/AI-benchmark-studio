@@ -41,10 +41,10 @@ export default async function ProjectsPage() {
             <div className="absolute right-4 top-4 z-10">
               <ProjectCardActions projectId={project.id} projectName={project.name} />
             </div>
-            <Link href={getProjectHref(project.id, project.status)} className="block p-5 pr-16 sm:p-6 sm:pr-16">
+            <Link href={getProjectHref(project)} className="block p-5 pr-16 sm:p-6 sm:pr-16">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-3"><h3 className="text-[17px] font-semibold tracking-tight">{project.name}</h3><Badge variant="warning"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{statusLabels[project.status]}</Badge></div>
+                  <div className="flex flex-wrap items-center gap-3"><h3 className="text-[17px] font-semibold tracking-tight">{project.name}</h3><Badge variant="neutral">{project.evaluationMode === "quick" ? "快速模式" : "专业模式"}</Badge><Badge variant="warning"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{project.quickPreparation.status === "running" ? "自动准备中" : project.quickPreparation.status === "failed" ? "自动准备失败" : statusLabels[project.status]}</Badge></div>
                   <div className="mt-4 flex flex-wrap items-center gap-4">
                     <div className="flex -space-x-1.5">{project.products.map((product) => <ProductLogo key={product.id} initials={product.initials} name={product.name} className="h-7 w-7 rounded-md text-[10px] ring-2 ring-white" />)}</div>
                     <span className="text-xs text-muted-foreground">{project.products.map((product) => product.name).join(" · ")}</span>
@@ -71,12 +71,13 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
-function getProjectHref(projectId: string, status: ProjectStatus) {
-  if (["draft", "researching", "research_ready"].includes(status)) return `/projects/${projectId}/research`;
-  if (["protocol_draft", "protocol_locked"].includes(status)) return `/projects/${projectId}/protocol`;
-  if (status === "testing") return `/projects/${projectId}/test`;
-  if (["reviewing", "review_locked"].includes(status)) return `/projects/${projectId}/review`;
-  if (status === "completed") return `/projects/${projectId}/results`;
-  if (status === "reported") return `/projects/${projectId}/report`;
-  return `/projects/${projectId}/publish`;
+function getProjectHref(project: Awaited<ReturnType<typeof listProjectSummaries>>[number]) {
+  if (project.evaluationMode === "quick" && ["idle", "running", "failed"].includes(project.quickPreparation.status) && ["draft", "researching", "research_ready"].includes(project.status)) return `/projects/${project.id}/protocol`;
+  if (["draft", "researching", "research_ready"].includes(project.status)) return `/projects/${project.id}/research`;
+  if (["protocol_draft", "protocol_locked"].includes(project.status)) return `/projects/${project.id}/protocol`;
+  if (project.status === "testing") return `/projects/${project.id}/test`;
+  if (["reviewing", "review_locked"].includes(project.status)) return `/projects/${project.id}/review`;
+  if (project.status === "completed") return `/projects/${project.id}/results`;
+  if (project.status === "reported") return `/projects/${project.id}/report`;
+  return `/projects/${project.id}/publish`;
 }

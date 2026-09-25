@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createProject } from "@/lib/services/projects.service";
+import { isEvaluationMode } from "@/lib/project-mode";
+import { prepareQuickProject } from "@/lib/services/quick-project-preparation.service";
 
 const optionalHttpUrl = z
   .string()
@@ -20,6 +23,7 @@ const projectSchema = z
       name: z.string().trim().min(1, "请输入产品名称").max(120, "产品名称不能超过 120 个字符"),
       officialUrl: optionalHttpUrl,
     })).min(1, "至少添加 1 个产品").max(3, "最多添加 3 个产品"),
+    evaluationMode: z.custom<"quick" | "professional">(isEvaluationMode, "请选择有效的测评模式"),
   })
   .superRefine(({ products }, context) => {
     const normalizedNames = products.map((product) => product.name.toLocaleLowerCase().replace(/\s+/g, " "));
@@ -45,6 +49,7 @@ export async function createProjectAction(
       name,
       officialUrl: productWebsites[index] ?? "",
     })),
+    evaluationMode: formData.get("evaluationMode"),
   });
 
   if (!parsed.success) {
@@ -60,6 +65,7 @@ export async function createProjectAction(
         name: product.name,
         officialUrl: product.officialUrl || null,
       })),
+      evaluationMode: parsed.data.evaluationMode,
     });
   } catch (error) {
     if (error instanceof RepositoryError) {
@@ -69,6 +75,20 @@ export async function createProjectAction(
   }
 
   revalidatePath("/projects");
+  if (parsed.data.evaluationMode === "quick") {
+    after(async () => {
+      try {
+        await prepareQuickProject(projectId);
+        revalidatePath(`/projects/${projectId}`, "layout");
+      } catch (error) {
+        console.error("[QuickProjectPreparation] failed", {
+          projectId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+    redirect(`/projects/${projectId}/protocol`);
+  }
   redirect(`/projects/${projectId}/research`);
 }
 

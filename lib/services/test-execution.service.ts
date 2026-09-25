@@ -10,7 +10,6 @@ import {
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
-import type { ExpectedOutputType } from "@/lib/types/protocol";
 
 const maxArtifactBytes = 50 * 1024 * 1024;
 const maxTextArtifactBytes = 500_000;
@@ -24,6 +23,12 @@ const mimeTypeByExtension: Record<string, string> = {
   md: "text/markdown",
   json: "application/json",
   csv: "text/csv",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  doc: "application/msword",
+  xls: "application/vnd.ms-excel",
+  ppt: "application/vnd.ms-powerpoint",
   mp4: "video/mp4",
   webm: "video/webm",
   mov: "video/quicktime",
@@ -36,7 +41,7 @@ const executionMetadataSchema = z.object({
 });
 
 type SupportedArtifact = {
-  kind: "image" | "pdf" | "text" | "video";
+  kind: "image" | "pdf" | "text" | "video" | "document";
   mimeType: string;
   extension: string;
 };
@@ -50,6 +55,12 @@ const supportedArtifacts: Record<string, SupportedArtifact> = {
   "text/markdown": { kind: "text", mimeType: "text/markdown", extension: "md" },
   "application/json": { kind: "text", mimeType: "application/json", extension: "json" },
   "text/csv": { kind: "text", mimeType: "text/csv", extension: "csv" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { kind: "document", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: "docx" },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { kind: "document", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": { kind: "document", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", extension: "pptx" },
+  "application/msword": { kind: "document", mimeType: "application/msword", extension: "doc" },
+  "application/vnd.ms-excel": { kind: "document", mimeType: "application/vnd.ms-excel", extension: "xls" },
+  "application/vnd.ms-powerpoint": { kind: "document", mimeType: "application/vnd.ms-powerpoint", extension: "ppt" },
   "video/mp4": { kind: "video", mimeType: "video/mp4", extension: "mp4" },
   "video/webm": { kind: "video", mimeType: "video/webm", extension: "webm" },
   "video/quicktime": { kind: "video", mimeType: "video/quicktime", extension: "mov" },
@@ -77,6 +88,7 @@ export async function getTestExecutionWorkspace(projectId: string): Promise<Test
       project: {
         id: protocolWorkspace.research.project.id,
         name: protocolWorkspace.research.project.name,
+        evaluationMode: protocolWorkspace.research.project.evaluationMode,
         products: protocolWorkspace.research.project.products.map(({ id, name, initials }) => ({ id, name, initials })),
       },
       protocol,
@@ -139,9 +151,8 @@ export async function finalizeTestExecution(projectId: string, protocolId: strin
   for (const run of workspace.testRuns) {
     const testCase = workspace.protocol.testCases.find((item) => item.id === run.testCaseId);
     if (!testCase) throw new TestExecutionError("测试项与锁定 Protocol 不一致。");
-    const missing = missingEvidenceTypes(testCase.expectedOutputTypes, run.artifacts);
-    if (missing.length > 0) {
-      throw new TestExecutionError(`「${testCase.title}」仍缺少可验证的原始结果：${missing.join("、")}。`);
+    if (run.artifacts.length === 0) {
+      throw new TestExecutionError(`「${testCase.title}」仍未上传原始结果。`);
     }
   }
 
@@ -198,7 +209,7 @@ function normalizeAndValidateFile(file: File) {
     mimeType = inferredMimeType;
   }
   if (!supportedArtifacts[mimeType]) {
-    throw new TestExecutionError("支持 PNG、JPEG、WebP、PDF、TXT、MD、JSON、CSV、MP4、WebM 或 MOV 文件。");
+    throw new TestExecutionError("支持图片、PDF、Word、Excel、PPT、文本和常用视频文件。");
   }
   if (supportedArtifacts[mimeType].kind === "text" && file.size > maxTextArtifactBytes) {
     throw new TestExecutionError("文本结果不能超过 500 KB；请只保留完成任务和评分所需的原始内容。");
@@ -208,6 +219,8 @@ function normalizeAndValidateFile(file: File) {
 
 function validateFileSignature(bytes: Uint8Array, mimeType: string) {
   const textMime = ["text/plain", "text/markdown", "application/json", "text/csv"].includes(mimeType);
+  const openXmlMime = mimeType.startsWith("application/vnd.openxmlformats-officedocument.");
+  const legacyOfficeMime = ["application/msword", "application/vnd.ms-excel", "application/vnd.ms-powerpoint"].includes(mimeType);
   const matches = mimeType === "image/png"
     ? startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     : mimeType === "image/jpeg"
@@ -220,20 +233,12 @@ function validateFileSignature(bytes: Uint8Array, mimeType: string) {
             ? startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])
             : mimeType === "video/mp4" || mimeType === "video/quicktime"
               ? ascii(bytes, 4, 8) === "ftyp"
+              : openXmlMime
+                ? startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])
+                : legacyOfficeMime
+                  ? startsWith(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
               : textMime && isValidUtf8Text(bytes);
   if (!matches) throw new TestExecutionError("文件内容与声明的文件类型不一致。");
-}
-
-function missingEvidenceTypes(expected: ExpectedOutputType[], artifacts: TestArtifact[]) {
-  const has = (kind: TestArtifact["kind"]) => artifacts.some((artifact) => artifact.kind === kind);
-  return expected.filter((type) => {
-    if (type === "text") return !has("text");
-    if (type === "image") return !has("image");
-    if (type === "document") return !has("pdf");
-    if (type === "video") return !has("video");
-    if (type === "code") return !has("text");
-    return artifacts.length === 0;
-  }).map((type) => ({ text: "文本", image: "图片", document: "PDF 文档", video: "视频", code: "代码文本", mixed: "原始结果" })[type]);
 }
 
 function startsWith(bytes: Uint8Array, signature: number[]) { return signature.every((value, index) => bytes[index] === value); }

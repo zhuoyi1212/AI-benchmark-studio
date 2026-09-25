@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Check, Eye, EyeOff, LoaderCircle, LockKeyhole, Pencil, RotateCcw, Scale, ShieldCheck } from "lucide-react";
 import {
   lockHumanReviewAction,
+  completeQuickReviewAction,
   revealHumanReviewAction,
   revertHumanOverrideAction,
   saveHumanOverrideAction,
@@ -24,11 +25,12 @@ import type { HumanReviewScore, HumanReviewWorkspace } from "@/lib/services/huma
 import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 import { cn } from "@/lib/utils";
 
-type Filter = "all" | "adjusted";
+type Filter = "all" | "adjusted" | "anomalies";
 const initialState: HumanReviewActionState = { message: null };
 
 export function HumanReviewPanel({ workspace, workflowState }: { workspace: HumanReviewWorkspace; workflowState: ProjectWorkflowState }) {
-  const [filter, setFilter] = useState<Filter>("all");
+  const quickMode = workspace.evaluationMode === "quick";
+  const [filter, setFilter] = useState<Filter>(quickMode ? "anomalies" : "all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
   const editingScore = workspace.scores.find((score) => score.judgeScoreId === editingId) ?? null;
@@ -36,29 +38,31 @@ export function HumanReviewPanel({ workspace, workflowState }: { workspace: Huma
   const [overrideState, overrideAction] = useActionState(saveHumanOverrideAction, initialState);
   const [revertState, revertAction] = useActionState(revertHumanOverrideAction, initialState);
   const [lockState, lockAction] = useActionState(lockHumanReviewAction, initialState);
+  const [quickState, quickAction] = useActionState(completeQuickReviewAction, initialState);
 
   if (workspace.status !== "reviewing") return <><div className="mx-auto w-full max-w-[1180px] px-6 pt-8 lg:px-10 lg:pt-10 [&>nav]:mb-0"><WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} /></div><LockedReview workspace={workspace} /></>;
-  const visibleScoreCount = filter === "adjusted" ? workspace.summary.adjusted : workspace.summary.total;
+  const visibleScoreCount = filter === "adjusted" ? workspace.summary.adjusted : filter === "anomalies" ? workspace.summary.anomalies : workspace.summary.total;
 
   return (
     <div className="page-shell">
       <WorkflowSteps projectId={workspace.projectId} workflowState={workflowState} />
-      <PageHeader eyebrow={`Human Review / Protocol v${workspace.protocolVersion}`} title="人工复核 AI 评分" description="默认接受 AI Judge 结果；仅在证据与评分明显不一致时修改具体 Rubric 维度。" action={<Badge variant="success"><EyeOff className="h-3 w-3" />产品身份已隐藏</Badge>} />
+      <PageHeader eyebrow={`Human Review / Protocol v${workspace.protocolVersion}`} title={quickMode ? "处理异常评分" : "人工复核 AI 评分"} description={quickMode ? `已自动接受 ${workspace.summary.total - workspace.summary.anomalies} 项高置信度评分，只需检查异常项。` : "默认接受 AI Judge 结果；仅在证据与评分明显不一致时修改具体 Rubric 维度。"} action={<Badge variant="success"><EyeOff className="h-3 w-3" />产品身份已隐藏</Badge>} />
       <section className="mb-7 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div className="flex items-center gap-3 bg-white p-5"><span className="grid h-10 w-10 place-items-center rounded-lg bg-blue-50 text-blue-600"><Scale className="h-5 w-5" /></span><div><div className="text-sm font-semibold">人工复核</div><div className="mt-0.5 flex items-center gap-1 text-[11px] text-emerald-700"><Check className="h-3 w-3" />评分矩阵完整</div></div></div>
         <SummaryMetric label="评分项" value={workspace.summary.total} />
         <SummaryMetric label="人工调整" value={workspace.summary.adjusted} accent />
-        <SummaryMetric label="接受 AI 评分" value={workspace.summary.accepted} />
+        <SummaryMetric label={quickMode ? "异常评分" : "接受 AI 评分"} value={quickMode ? workspace.summary.anomalies : workspace.summary.accepted} />
       </section>
       <div className="mb-7 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" /><div><p className="text-sm font-semibold text-blue-950">Blind 状态持续生效</p><p className="mt-1 text-xs leading-5 text-blue-800/70">复核期间只显示匿名 Sample。AI 原始评分不可修改；每次人工修正与恢复都会追加审计记录。</p></div></div>
 
       <Tabs defaultValue={workspace.testCases[0]?.id}>
-        <div className="mb-5 flex flex-col justify-between gap-3 lg:flex-row lg:items-center"><div><h2 className="section-title">逐项复核</h2><p className="mt-1 text-xs text-muted-foreground">综合分由 {workspace.rubric.length} 项 Rubric 权重自动计算，不可直接修改。</p></div><div className="flex flex-wrap items-center gap-2"><div className="inline-flex rounded-md border bg-white p-0.5"><button type="button" className={cn("rounded px-3 py-1.5 text-xs", filter === "all" ? "bg-slate-100 font-medium text-slate-950" : "text-muted-foreground")} onClick={() => setFilter("all")}>全部评分</button><button type="button" className={cn("rounded px-3 py-1.5 text-xs", filter === "adjusted" ? "bg-blue-50 font-medium text-blue-700" : "text-muted-foreground")} onClick={() => setFilter("adjusted")}>仅看人工修改</button></div><TabsList>{workspace.testCases.map((item, index) => <TabsTrigger key={item.id} value={item.id}>Case {index + 1}</TabsTrigger>)}</TabsList></div></div>
+        <div className="mb-5 flex flex-col justify-between gap-3 lg:flex-row lg:items-center"><div><h2 className="section-title">逐项复核</h2><p className="mt-1 text-xs text-muted-foreground">综合分由 {workspace.rubric.length} 项 Rubric 权重自动计算，不可直接修改。</p></div><div className="flex flex-wrap items-center gap-2"><div className="inline-flex rounded-md border bg-white p-0.5">{quickMode && <button type="button" className={cn("rounded px-3 py-1.5 text-xs", filter === "anomalies" ? "bg-amber-50 font-medium text-amber-800" : "text-muted-foreground")} onClick={() => setFilter("anomalies")}>仅看异常</button>}<button type="button" className={cn("rounded px-3 py-1.5 text-xs", filter === "all" ? "bg-slate-100 font-medium text-slate-950" : "text-muted-foreground")} onClick={() => setFilter("all")}>全部评分</button><button type="button" className={cn("rounded px-3 py-1.5 text-xs", filter === "adjusted" ? "bg-blue-50 font-medium text-blue-700" : "text-muted-foreground")} onClick={() => setFilter("adjusted")}>仅看人工修改</button></div><TabsList>{workspace.testCases.map((item, index) => <TabsTrigger key={item.id} value={item.id}>Case {index + 1}</TabsTrigger>)}</TabsList></div></div>
         {workspace.testCases.map((testCase) => <TabsContent key={testCase.id} value={testCase.id}><div className="mb-3 flex items-center justify-between gap-4"><div className="text-xs text-muted-foreground">CASE {String(testCase.position).padStart(2, "0")} · {testCase.title}</div><div className="text-[11px] text-muted-foreground">当前筛选 {visibleScoreCount} 项</div></div><CaseReview workspace={workspace} testCaseId={testCase.id} filter={filter} onEdit={setEditingId} revertAction={revertAction} /></TabsContent>)}
       </Tabs>
       {revertState.message && <p role="alert" className="mt-3 text-right text-xs text-red-600">{revertState.message}</p>}
 
-      <div className="sticky bottom-5 z-20 mt-8 flex flex-col items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 pl-5 text-white shadow-xl sm:flex-row sm:items-center"><div><p className="text-xs font-medium">{workspace.summary.adjusted} 项使用人工修正 · {workspace.summary.accepted} 项接受 AI 评分</p><p className="mt-0.5 text-[10px] text-slate-400">锁定后普通编辑关闭，并进入产品身份揭晓阶段</p></div><Button className="w-full bg-white text-slate-950 hover:bg-slate-100 sm:w-auto" size="lg" onClick={() => setLockDialogOpen(true)}><LockKeyhole className="h-4 w-4" />确认并锁定最终评分</Button></div>
+      <div className="sticky bottom-5 z-20 mt-8 flex flex-col items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 pl-5 text-white shadow-xl sm:flex-row sm:items-center"><div><p className="text-xs font-medium">{workspace.summary.adjusted} 项使用人工修正 · {workspace.summary.accepted} 项接受 AI 评分</p><p className="mt-0.5 text-[10px] text-slate-400">{quickMode ? "确认后锁定评分、揭晓身份，并在后台生成候选 Findings" : "锁定后普通编辑关闭，并进入产品身份揭晓阶段"}</p></div>{quickMode ? <form action={quickAction}><ReviewIds workspace={workspace} /><SubmitButton label="确认异常处理并继续" /></form> : <Button className="w-full bg-white text-slate-950 hover:bg-slate-100 sm:w-auto" size="lg" onClick={() => setLockDialogOpen(true)}><LockKeyhole className="h-4 w-4" />确认并锁定最终评分</Button>}</div>
+      {quickState.message && <p role="alert" className="mt-3 text-right text-xs text-red-600">{quickState.message}</p>}
 
       <Dialog open={editingScore !== null} onOpenChange={(open) => !open && setEditingId(null)}>
         <DialogContent>
@@ -78,7 +82,7 @@ export function HumanReviewPanel({ workspace, workflowState }: { workspace: Huma
 function CaseReview({ workspace, testCaseId, filter, onEdit, revertAction }: { workspace: HumanReviewWorkspace; testCaseId: string; filter: Filter; onEdit: (id: string) => void; revertAction: (payload: FormData) => void }) {
   const visibleSamples = workspace.samples.map((sample) => ({
     ...sample,
-    scores: workspace.scores.filter((score) => score.testCaseId === testCaseId && score.blindSampleId === sample.sampleId && (filter === "all" || score.humanOverride)),
+    scores: workspace.scores.filter((score) => score.testCaseId === testCaseId && score.blindSampleId === sample.sampleId && (filter === "all" || (filter === "adjusted" && score.humanOverride) || (filter === "anomalies" && score.reviewFlags.length > 0))),
   })).filter((sample) => sample.scores.length > 0);
   if (visibleSamples.length === 0) return <div className="grid min-h-56 place-items-center rounded-lg border border-dashed bg-white text-center"><div><Check className="mx-auto h-5 w-5 text-emerald-600" /><p className="mt-2 text-sm font-medium">此 Case 没有人工修改</p><p className="mt-1 text-xs text-muted-foreground">全部评分均采用 AI Judge 结果。</p></div></div>;
   return <div className="grid gap-4 xl:grid-cols-3">{visibleSamples.map((sample) => <Card key={sample.sampleId} className="overflow-hidden shadow-none"><div className="flex items-center justify-between border-b bg-slate-50/70 px-4 py-3"><div><div className="text-sm font-semibold">{sample.label}</div><div className="mt-0.5 text-[10px] text-muted-foreground">综合分自动计算</div></div><div className="text-right"><div className="text-xl font-semibold tabular-nums">{calculateCaseScore(workspace, sample.sampleId, testCaseId).toFixed(1)}</div><div className="text-[9px] text-muted-foreground">Final Score</div></div></div><div className="divide-y px-4">{sample.scores.map((score) => <ScoreItem key={score.judgeScoreId} workspace={workspace} score={score} onEdit={() => onEdit(score.judgeScoreId)} revertAction={revertAction} />)}</div></Card>)}</div>;

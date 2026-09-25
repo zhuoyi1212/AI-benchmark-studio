@@ -22,6 +22,7 @@ export type HumanReviewScore = {
     updatedAt: string;
   } | null;
   revisionCount: number;
+  reviewFlags: Array<"low_confidence" | "evidence_risk" | "judge_conflict" | "parse_risk" | "fact_risk">;
 };
 
 export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
@@ -31,7 +32,7 @@ export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
   lockedAt: string | null;
   revealedAt: string | null;
   scores: HumanReviewScore[];
-  summary: { total: number; adjusted: number; accepted: number; auditEvents: number };
+  summary: { total: number; adjusted: number; accepted: number; auditEvents: number; anomalies: number };
   revealedMappings: Array<{
     sampleId: string;
     sampleLabel: string;
@@ -93,6 +94,7 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
           updatedAt: activeEvent.created_at,
         } : null,
         revisionCount: eventCountByScore.get(score.id) ?? 0,
+        reviewFlags: identifyReviewFlags(score),
       };
     });
     const adjusted = scores.filter((score) => score.humanOverride !== null).length;
@@ -109,6 +111,7 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
       projectId: judge.projectId,
       protocolId: judge.protocolId,
       protocolVersion: judge.protocolVersion,
+      evaluationMode: judge.evaluationMode,
       samples: judge.samples,
       testCases: judge.testCases,
       rubric: judge.rubric,
@@ -119,7 +122,13 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
       lockedAt: session.locked_at,
       revealedAt: session.revealed_at,
       scores,
-      summary: { total: scores.length, adjusted, accepted: scores.length - adjusted, auditEvents: events.length },
+      summary: {
+        total: scores.length,
+        adjusted,
+        accepted: scores.length - adjusted,
+        auditEvents: events.length,
+        anomalies: scores.filter((score) => score.reviewFlags.length > 0).length,
+      },
       revealedMappings,
     };
   } catch (error) {
@@ -127,6 +136,19 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
     if (error instanceof RepositoryError) throw new HumanReviewError("人工复核数据暂时无法读取，请刷新后重试。");
     throw error;
   }
+}
+
+function identifyReviewFlags(score: JudgeReviewWorkspace["latestRun"] extends infer Run
+  ? Run extends { scores: Array<infer Score> } ? Score : never
+  : never): HumanReviewScore["reviewFlags"] {
+  const flags: HumanReviewScore["reviewFlags"] = [];
+  const text = `${score.reason} ${score.evidence.join(" ")}`;
+  if (score.confidence < 0.8) flags.push("low_confidence");
+  if (score.evidence.length === 0 || /证据不足|缺少.{0,8}证据|无法核验|不可验证/i.test(text)) flags.push("evidence_risk");
+  if (/结论冲突|相互矛盾|前后矛盾|inconsistent|conflict/i.test(text)) flags.push("judge_conflict");
+  if (/解析失败|无法解析|文件损坏|无法读取|空白文件/i.test(text)) flags.push("parse_risk");
+  if (/事实错误|疑似错误|无法确认事实|事实存疑/i.test(text)) flags.push("fact_risk");
+  return flags;
 }
 
 export async function saveHumanOverride(

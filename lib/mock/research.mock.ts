@@ -12,6 +12,7 @@ export const mockResearchResponse: ResearchResponse = {
       capabilities: ["文稿生成", "智能排版", "在线分享"],
       keyFeatures: ["生成速度快", "卡片式编辑", "交互式内容"],
       pricing: { summary: "$10 / 月起", freePlan: "400 AI credits", paidFrom: "10", currency: "USD" },
+      inputFormats: ["文本", "PDF"], outputFormats: ["演示文稿", "网页"],
       sources: [{ title: "Gamma 官网", url: "https://gamma.app", sourceType: "official_website", snippet: "", siteName: "Gamma", publishedAt: null }],
     },
     {
@@ -21,6 +22,7 @@ export const mockResearchResponse: ResearchResponse = {
       capabilities: ["Magic Design", "模板设计", "多人协作"],
       keyFeatures: ["模板丰富", "素材生态完整", "编辑自由度高"],
       pricing: { summary: "$15 / 月起", freePlan: "基础模板与有限 AI 次数", paidFrom: "15", currency: "USD" },
+      inputFormats: ["文本", "图片"], outputFormats: ["图片", "PDF", "PPT"],
       sources: [{ title: "Canva 官网", url: "https://canva.com", sourceType: "official_website", snippet: "", siteName: "Canva", publishedAt: null }],
     },
     {
@@ -30,6 +32,7 @@ export const mockResearchResponse: ResearchResponse = {
       capabilities: ["Smart Slides", "自动布局", "品牌控制"],
       keyFeatures: ["版式稳定", "企业模板", "品牌一致性"],
       pricing: { summary: "$12 / 月起", freePlan: "14 天试用", paidFrom: "12", currency: "USD" },
+      inputFormats: ["文本"], outputFormats: ["演示文稿", "PDF"],
       sources: [{ title: "Beautiful.ai 官网", url: "https://beautiful.ai", sourceType: "official_website", snippet: "", siteName: "Beautiful.ai", publishedAt: null }],
     },
   ],

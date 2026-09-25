@@ -1,5 +1,6 @@
 import type { Database as GeneratedDatabase } from "@/lib/types/database.generated";
 import type { AIProviderName } from "@/lib/ai/types";
+import type { EvaluationMode } from "@/lib/project-mode";
 
 /**
  * Domain-refined row types layered over the generated Supabase catalog.
@@ -31,6 +32,9 @@ export type ProjectRow = {
   name: string;
   intent: string;
   status: ProjectStatus;
+  evaluation_mode: EvaluationMode;
+  quick_preparation_status: "idle" | "running" | "completed" | "failed";
+  quick_preparation_error: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -87,6 +91,7 @@ export type ResearchRunRow = {
   comparability_output_tokens: number | null;
   comparability_latency_ms: number | null;
   comparability_estimated_cost: number | null;
+  reuse_details: Json;
 };
 
 export type ProductResearchRow = {
@@ -101,7 +106,40 @@ export type ProductResearchRow = {
   pricing: Json | null;
   official_best_practices: Json;
   limitations: Json;
+  input_formats: Json;
+  output_formats: Json;
   sources: Json;
+  snapshot_id: string | null;
+  reused_from_snapshot: boolean;
+  created_at: string;
+};
+
+export type ProductResearchSnapshotRow = {
+  id: string;
+  product_id: string;
+  version: number;
+  origin_project_id: string;
+  origin_research_run_id: string;
+  origin_product_research_id: string | null;
+  positioning: string;
+  target_users: Json;
+  capabilities: Json;
+  key_features: Json;
+  pricing: Json | null;
+  official_best_practices: Json;
+  limitations: Json;
+  input_formats: Json;
+  output_formats: Json;
+  sources: Json;
+  search_provider: AIProviderName;
+  search_model: string;
+  search_prompt_version: string;
+  synthesis_provider: AIProviderName;
+  synthesis_model: string;
+  synthesis_prompt_version: string;
+  input_signature: string;
+  researched_at: string;
+  valid_until: string;
   created_at: string;
 };
 
@@ -175,7 +213,7 @@ export type TestRunRow = {
 export type TestArtifactRow = {
   id: string;
   test_run_id: string;
-  kind: "image" | "pdf" | "text" | "video";
+  kind: "image" | "pdf" | "text" | "video" | "document";
   bucket_id: "benchmark-artifacts";
   storage_path: string;
   file_name: string;
@@ -432,6 +470,7 @@ export type DatabaseTableRows = {
   project_products: ProjectProductRow;
   research_runs: ResearchRunRow;
   product_research: ProductResearchRow;
+  product_research_snapshots: ProductResearchSnapshotRow;
   protocols: ProtocolRow;
   test_cases: TestCaseRow;
   rubric_dimensions: RubricDimensionRow;

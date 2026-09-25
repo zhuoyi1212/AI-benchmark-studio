@@ -102,6 +102,7 @@ export const aiTaskService = {
   researchProducts,
   evaluateComparability: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("comparability", request),
   generateProtocol: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("protocol", request),
+  generateProfessionalProtocol: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("protocol_professional", request),
   judgeSamples: <Schema extends ZodType>(
     testCaseId: string,
     artifacts: JudgeArtifactDescriptor[],
@@ -113,6 +114,7 @@ export const aiTaskService = {
   discoverContentIdeas: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("content_discovery", request),
   generateCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post", request),
   humanizeCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_humanize", request),
+  factCheckTextCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check_text", request),
   factCheckCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check", request),
   understandScreenshots: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("screenshot_understanding", request),
   extractArtifactText: (request: OCRRequest) => runOCR(request),

@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowRight, Globe2, LoaderCircle, Plus, X } from "lucide-react";
+import { ArrowRight, Globe2, LoaderCircle, Plus, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createProjectAction, type CreateProjectActionState } from "@/app/projects/new/actions";
+import type { EvaluationMode } from "@/lib/project-mode";
 
 type DraftProduct = { key: number; name: string; website: string };
 
@@ -16,6 +17,8 @@ export function ProjectForm() {
   const [products, setProducts] = useState<DraftProduct[]>([{ key: 1, name: "", website: "" }]);
   const [nextKey, setNextKey] = useState(2);
   const [intent, setIntent] = useState("");
+  const [evaluationMode, setEvaluationMode] = useState<EvaluationMode>("quick");
+  const [showDetails, setShowDetails] = useState(false);
   const singleMode = products.length === 1;
 
   const updateProduct = (key: number, field: "name" | "website", value: string) => {
@@ -29,7 +32,17 @@ export function ProjectForm() {
 
   return (
     <form action={formAction}>
+      <input type="hidden" name="evaluationMode" value={evaluationMode} />
       <div className="space-y-7">
+        <div>
+          <span className="mb-2 block text-sm font-medium">测评模式</span>
+          <div className="grid grid-cols-2 rounded-lg border bg-slate-50 p-1" role="radiogroup" aria-label="测评模式">
+            {(["quick", "professional"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={evaluationMode === mode} onClick={() => setEvaluationMode(mode)} className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${evaluationMode === mode ? "bg-white text-blue-700 shadow-sm" : "text-muted-foreground hover:text-slate-900"}`}>{mode === "quick" ? "快速模式" : "专业模式"}</button>)}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">{evaluationMode === "quick" ? "默认复用产品调研，只生成一个核心任务，并在上传完成后自动推进评分与 Findings。" : "保留多个 Case、完整评分复核、结果分析和深度报告。"}</p>
+          {evaluationMode === "quick" && <Button type="button" variant="ghost" size="sm" className="mt-1 px-0 text-xs" onClick={() => setShowDetails((value) => !value)}><Settings2 className="h-3.5 w-3.5" />详细设置</Button>}
+          {showDetails && evaluationMode === "quick" && <div className="mt-2 rounded-md border bg-white p-3 text-xs leading-5 text-muted-foreground">同一 Prompt、同一输入、每个产品执行一次；上传任一有效原始 Artifact 后即可分析。Protocol 锁定规则保持不变。</div>}
+        </div>
         <div className="rounded-lg border bg-slate-50 p-4">
           <div className="text-xs font-semibold text-slate-900">{singleMode ? "单品体验" : "横向对比"}</div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">

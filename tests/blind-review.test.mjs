@@ -8,7 +8,7 @@ async function read(relativePath) {
 
 const [migration, quickMigration, identityGuard, initialSchema, repository, service, testService, page, testPage] = await Promise.all([
   read("supabase/migrations/202608170009_blind_layer_lifecycle.sql"),
-  read("supabase/migrations/20260920060000_quick_findings_flow.sql"),
+  read("supabase/migrations/20260920072407_quick_findings_flow.sql"),
   read("supabase/migrations/202608170011_blind_protocol_identity_guard.sql"),
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
   read("lib/repositories/blind-review.repository.ts"),

@@ -6,8 +6,9 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, schema, repository, service, aiConfig, page, actions, actionComponent, researchPage, protocolView, testPage, inputRoute] = await Promise.all([
+const [migration, regenerationMigration, schema, repository, service, aiConfig, page, actions, actionComponent, researchPage, protocolView, testPage, inputRoute] = await Promise.all([
   read("supabase/migrations/202608170007_protocol_lifecycle.sql"),
+  read("supabase/migrations/20260925090000_allow_protocol_regeneration_from_downstream.sql"),
   read("lib/ai/schemas/protocol.schemas.ts"),
   read("lib/repositories/protocols.repository.ts"),
   read("lib/services/protocols.service.ts"),
@@ -26,7 +27,7 @@ test("creates and exposes every required Protocol input instead of returning fil
   assert.match(schema, /z\.literal\("application\/pdf"\)/);
   assert.match(service, /attachEveryRequiredInput: true/);
   assert.match(service, /不得只写文件名或要求用户自行准备/);
-  assert.match(service, /maxTokens: 6500/);
+  assert.match(service, /maxTokens: evaluationMode === "quick" \? 4500 : 9000/);
   assert.match(protocolView, /artifact\.downloadUrl/);
   assert.match(testPage, /任务输入/);
   assert.match(inputRoute, /renderProtocolInputArtifact/);
@@ -41,6 +42,18 @@ test("persists one complete dynamic Protocol draft atomically", () => {
   assert.match(migration, /coalesce\(max\(version\), 0\) \+ 1/);
   assert.match(repository, /\.rpc\("create_protocol_draft"/);
   assert.doesNotMatch(service + repository + page + actions, /@\/lib\/mock|mockProtocol|\/projects\/demo/);
+});
+
+test("allows a downstream project to return and generate a new Protocol version", () => {
+  for (const status of ["testing", "reviewing", "review_locked", "completed", "reported", "published"]) {
+    assert.match(regenerationMigration, new RegExp(`'${status}'`));
+  }
+  assert.match(regenerationMigration, /set status = 'protocol_draft'/);
+  assert.doesNotMatch(regenerationMigration, /delete from public\.(protocols|test_runs|test_artifacts)/i);
+  assert.match(page, /canRegenerate=\{canGenerate\}/);
+  assert.match(page, /preserveHistory=\{displayedProtocol\.status === "locked"/);
+  assert.match(testPage, /返回调整任务/);
+  assert.match(testPage, /重新生成任务/);
 });
 
 test("generates from the selected completed ResearchRun without test output", () => {
@@ -67,14 +80,14 @@ test("models native product capabilities before designing realistic tasks", () =
   }
   assert.match(service, /coreCapabilitiesCount: "3-8"/);
   assert.match(service, /任何普通聊天机器人都能基本完成的泛化任务/);
-  assert.match(service, /defaultCasesUsingNativeOrDifferentiatingWorkflow: 2/);
+  assert.match(service, /chooseOneHighestValueNativeOrDifferentiatingWorkflow: evaluationMode === "quick"/);
   assert.match(service, /真实用户可能提出并希望产品端到端完成的任务/);
   assert.match(service, /写作产品才以写作改写为核心/);
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v10"/);
-  assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v11-quick"/);
+  assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
 });
 
 test("requires explainable cases and a final generic-task quality gate", () => {
@@ -89,10 +102,12 @@ test("requires explainable cases and a final generic-task quality gate", () => {
   assert.match(service, /eachCaseInternallyAnswers/);
 });
 
-test("deepens single-product coverage while preserving comparison fairness", () => {
-  assert.match(service, /testCaseCount >= 2 && testCaseCount <= 4/);
-  assert.match(service, /caseCount: \{ default: 3, min: 2, max: 4/);
-  assert.match(service, /useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true/);
+test("uses one focused task by default while preserving comparison fairness", () => {
+  assert.match(service, /testCaseCount === 1/);
+  assert.match(service, /mode: evaluationMode/);
+  assert.match(service, /\? \{ default: 1, min: 1, max: 1 \}/);
+  assert.match(service, /: \{ default: 3, min: 2, max: 4 \}/);
+  assert.match(service, /chooseOneHighestValueNativeOrDifferentiatingWorkflow: evaluationMode === "quick"/);
   assert.match(service, /rubricCount: \{ default: 4, min: 3, max: 5/);
   assert.match(service, /everyDimensionApplicableToEveryTestCase: true/);
   assert.match(service, /每个全局 Rubric 维度都必须能依据每个 TestCase/);
@@ -103,7 +118,7 @@ test("deepens single-product coverage while preserving comparison fairness", () 
 });
 
 test("keeps TestCase and Rubric dynamic while enforcing protocol invariants", () => {
-  assert.match(schema, /testCases:[\s\S]*\.min\(2\)\.max\(4\)/);
+  assert.match(schema, /testCases:[\s\S]*\.min\(1\)\.max\(4\)/);
   assert.match(schema, /rubric:[\s\S]*\.min\(3\)\.max\(5\)/);
   assert.match(schema, /Rubric weights must total exactly 100/);
   assert.match(schema, /generatedProtocolDraftContentSchema/);

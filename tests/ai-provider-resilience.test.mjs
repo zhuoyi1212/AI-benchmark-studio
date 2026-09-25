@@ -103,7 +103,7 @@ test("returns distinct safe Protocol messages for timeout, 429, 5xx, auth, and s
 });
 
 test("failed regeneration cannot replace or partially create the existing Protocol", () => {
-  const generateIndex = protocolService.indexOf("await aiTaskService.generateProtocol");
+  const generateIndex = protocolService.indexOf("const generated = await generationTask");
   const validationIndex = protocolService.indexOf("assertProtocolFitsMode", generateIndex);
   const createIndex = protocolService.indexOf("protocolsRepository.createDraft", validationIndex);
   assert.ok(generateIndex > 0 && validationIndex > generateIndex && createIndex > validationIndex);
@@ -117,13 +117,14 @@ test("regenerate remains readable and single-product copy avoids comparison sema
   assert.match(actionComponent, /hover:bg-slate-100 hover:text-slate-950/);
   assert.match(actionComponent, /disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70/);
   assert.match(actionComponent, /disabled=\{pending\}/);
-  assert.match(actionComponent, /LoaderCircle[\s\S]*正在生成 Protocol\.\.\./);
+  assert.match(actionComponent, /LoaderCircle[\s\S]*正在快速生成\.\.\./);
   assert.match(actionComponent, /RefreshCw[\s\S]*重新生成新版本/);
   assert.match(actionComponent, /!pending && state\.message/);
   assert.match(button, /outline: "border bg-white hover:bg-accent"/);
   assert.match(view, /测试计划检查通过/);
   assert.match(view, /快速测评主线/);
-  assert.match(view, /专业评分配置（可选）/);
+  assert.match(view, /详细 Rubric/);
+  assert.match(view, /评分 Rubric/);
 });
 
 test("Protocol input omits raw Research snippets and JSON mode stays explicit", () => {
@@ -135,7 +136,7 @@ test("Protocol input omits raw Research snippets and JSON mode stays explicit", 
   assert.match(router, /Return exactly one valid JSON object/);
   assert.match(router, /Do not use Markdown or code fences/);
   assert.match(router, /Do not stop before closing the root JSON object/);
-  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v10"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "high"/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v11-quick"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
   assert.match(protocolService, /\[ProtocolPerformance\]/);
   assert.match(protocolService, /attempts: generated\.attemptPerformance/);
 });

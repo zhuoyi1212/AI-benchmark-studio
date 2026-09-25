@@ -71,13 +71,13 @@ test("Judge failures are persisted and retry creates an auditable run", () => {
   assert.doesNotMatch(judgeService, /mock|fallback/i);
 });
 
-test("professional analysis still requires Review reveal while quick Findings do not", () => {
+test("professional analysis and quick Findings both preserve Review reveal", () => {
   assert.match(reviewMigration, /status = 'locked'/);
   assert.match(reviewService, /只有锁定最终评分后才能揭晓产品身份/);
   assert.match(resultService, /review\.status !== "revealed"/);
   assert.match(resultsPage, /getExperienceFindingsWorkspace/);
-  assert.match(resultsPage, /不需要先跑 AI Judge/);
-  assert.doesNotMatch(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
+  assert.match(resultsPage, /已完成的 Blind Judge/);
+  assert.match(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
 });
 
 test("invalid Human Override values and missing reasons are rejected", () => {
@@ -127,14 +127,14 @@ test("full route E2E uses real services and mocks only the local external AI bou
   assert.match(providerMock, /Search context: \$\{query\}/);
 });
 
-test("full route E2E verifies Quick Findings and Findings Publish before optional Professional Review", () => {
+test("full route E2E verifies Blind Review before Quick Findings and Findings Publish", () => {
   const flow = e2eRoute.slice(e2eRoute.indexOf("async function runSingleProductFlow"));
   const findings = flow.indexOf("generateExperienceFindings");
   const confirmation = flow.indexOf("confirmExperienceFindings");
   const quickPublish = flow.indexOf('quickPublish.sourceType === "findings"');
   const professional = flow.indexOf("startProfessionalReview");
-  assert.ok(findings >= 0 && confirmation > findings && quickPublish > confirmation && professional > quickPublish);
-  assert.match(e2eRoute, /Quick Findings must not initialize Blind Samples/);
+  assert.ok(professional >= 0 && findings > professional && confirmation > findings && quickPublish > confirmation);
+  assert.match(e2eRoute, /Quick Findings requires completed Blind Review/);
   assert.match(e2eRoute, /quickPublishReady: publish\.pack\?\.status === "ready"/);
   assert.match(e2eRunner, /ExperienceFindings/);
   assert.match(e2eRunner, /CommunityPostDraft/);

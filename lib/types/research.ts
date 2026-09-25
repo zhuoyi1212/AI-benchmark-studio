@@ -25,7 +25,17 @@ export type ProductResearch = {
   };
   officialBestPractices?: string[];
   limitations?: string[];
+  inputFormats: string[];
+  outputFormats: string[];
   sources: ResearchSource[];
+  snapshot?: {
+    id: string;
+    version: number;
+    researchedAt: string;
+    validUntil: string;
+    reused: boolean;
+    stale: boolean;
+  };
 };
 
 export type ComparabilityResult = {

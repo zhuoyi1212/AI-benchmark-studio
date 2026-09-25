@@ -2,7 +2,7 @@ export type TestRunStatus = "pending" | "uploaded" | "invalid" | "ready_for_revi
 
 export type TestArtifact = {
   id: string;
-  kind: "image" | "pdf" | "text" | "video";
+  kind: "image" | "pdf" | "text" | "video" | "document";
   fileName: string;
   fileType: string;
   sizeBytes: number;
@@ -30,6 +30,7 @@ export type TestExecutionWorkspace = {
   project: {
     id: string;
     name: string;
+    evaluationMode: import("@/lib/project-mode").EvaluationMode;
     products: Array<{ id: string; name: string; initials: string }>;
   };
   protocol: import("@/lib/types/protocol").TestProtocol;

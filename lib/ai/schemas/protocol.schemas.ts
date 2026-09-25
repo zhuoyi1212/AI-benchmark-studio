@@ -83,7 +83,7 @@ const aiRubricSchema = intelligentRubricSchema.omit({ position: true });
 const generatedProtocolContentShape = z.object({
   title: z.string().trim().min(1).max(200),
   goal: detailedText,
-  testCases: z.array(aiTestCaseSchema).min(2).max(4),
+  testCases: z.array(aiTestCaseSchema).min(1).max(4),
   rubric: z.array(aiRubricSchema).min(3).max(5),
 });
 
@@ -95,7 +95,7 @@ export const generatedProtocolSchema = z.object({
   goal: detailedText,
   testMode: z.literal("standardized"),
   rules: z.array(protocolRuleSchema).length(mandatoryProtocolRuleIds.length),
-  testCases: z.array(intelligentTestCaseSchema).min(2).max(4),
+  testCases: z.array(intelligentTestCaseSchema).min(1).max(4),
   rubric: z.array(intelligentRubricSchema).min(3).max(5),
 }).superRefine((protocol, context) => {
   const ruleIds = protocol.rules.map((rule) => rule.id);

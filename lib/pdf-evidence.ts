@@ -8,6 +8,40 @@ export class PdfEvidenceError extends Error {}
 export const maxPdfEvidencePages = 32;
 export const maxPdfEvidenceBytes = 20 * 1024 * 1024;
 
+export async function extractPdfText(bytes: Uint8Array, characterBudget = 120_000): Promise<string | null> {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const loading = getDocument({
+    data: new Uint8Array(bytes),
+    useSystemFonts: false,
+  });
+  try {
+    const pdf = await loading.promise;
+    const pages: string[] = [];
+    for (let number = 1; number <= pdf.numPages; number += 1) {
+      const page = await pdf.getPage(number);
+      try {
+        const content = await page.getTextContent();
+        const text = content.items
+          .map((item) => "str" in item ? item.str : "")
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (text) pages.push(`[PDF page ${number}] ${text}`);
+        if (pages.join("\n").length > characterBudget) throw new PdfEvidenceError("PDF 文本超出本次分析大小上限，请拆分后重试。");
+      } finally {
+        page.cleanup();
+      }
+    }
+    const text = pages.join("\n");
+    return text.length >= 20 ? text : null;
+  } catch (error) {
+    if (error instanceof PdfEvidenceError) throw error;
+    return null;
+  } finally {
+    await loading.destroy();
+  }
+}
+
 // Render actual pages in memory. These are transport representations of the
 // original PDF, never newly generated or persisted experiment artifacts.
 export async function renderPdfEvidence(bytes: Uint8Array, pageBudget = maxPdfEvidencePages, byteBudget = maxPdfEvidenceBytes): Promise<string[]> {

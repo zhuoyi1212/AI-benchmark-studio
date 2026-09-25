@@ -7,6 +7,7 @@ import {
   type ProjectProgressRow,
 } from "@/lib/repositories/projects.repository";
 import type { ProjectRow } from "@/lib/types/database";
+import type { EvaluationMode } from "@/lib/project-mode";
 
 export type ProjectProductSummary = {
   id: string;
@@ -16,6 +17,8 @@ export type ProjectProductSummary = {
 };
 
 export type ProjectSummary = Pick<ProjectRow, "id" | "name" | "intent" | "status" | "created_at" | "updated_at"> & {
+  evaluationMode: EvaluationMode;
+  quickPreparation: { status: ProjectRow["quick_preparation_status"]; error: string | null };
   progress: { completed: number; total: number; percent: number };
   products: ProjectProductSummary[];
 };
@@ -37,6 +40,8 @@ export async function listProjectSummaries(): Promise<ProjectSummary[]> {
     name: project.name,
     intent: project.intent,
     status: project.status,
+    evaluationMode: project.evaluation_mode,
+    quickPreparation: { status: project.quick_preparation_status, error: project.quick_preparation_error },
     created_at: project.created_at,
     updated_at: project.updated_at,
     progress: calculateProgress(runsByProject.get(project.id) ?? []),
@@ -56,6 +61,8 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
     name: project.name,
     intent: project.intent,
     status: project.status,
+    evaluationMode: project.evaluation_mode,
+    quickPreparation: { status: project.quick_preparation_status, error: project.quick_preparation_error },
     created_at: project.created_at,
     updated_at: project.updated_at,
     progress: calculateProgress(runs),
@@ -73,6 +80,14 @@ export async function createProject(record: CreateProjectRecord): Promise<string
       officialUrl: product.officialUrl?.trim() || null,
     })),
   });
+}
+
+export async function setProjectEvaluationMode(projectId: string, evaluationMode: EvaluationMode): Promise<void> {
+  await projectsRepository.setEvaluationMode(projectId, evaluationMode);
+}
+
+export async function setQuickPreparationStatus(projectId: string, status: ProjectRow["quick_preparation_status"], errorMessage: string | null = null): Promise<void> {
+  await projectsRepository.setQuickPreparation(projectId, status, errorMessage);
 }
 
 export async function softDeleteProject(projectId: string): Promise<boolean> {

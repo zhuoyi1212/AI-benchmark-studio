@@ -30,6 +30,12 @@ test("persists selected or custom angle and validated publish config", () => {
   assert.match(schema, /id: z\.literal\("custom"\)/); assert.match(schema, /imageCount: z\.coerce\.number\(\)\.int\(\)\.min\(0\)\.max\(9\)/);
   assert.match(migration, /Selected ContentIdea does not belong/); assert.match(editor, /自定义核心观点/);
 });
+test("keeps a visible publish action beside the selected idea", () => {
+  assert.match(editor, /sticky top-4 z-30 mb-5/);
+  assert.match(editor, /已选：/);
+  assert.match(editor, /<HiddenConfig config=\{config\} \/>/);
+  assert.match(editor, /正在生成发布稿/);
+});
 test("only recommends and persists real image TestArtifacts", () => {
   assert.match(service, /mimeType\.startsWith\("image\/"\)/); assert.match(service, /orderedRealScreenshotReferences/);
   assert.match(migration, /publish_pack_artifacts/); assert.match(migration, /\(recommendation->>'artifactId'\)::uuid/);
@@ -77,8 +83,13 @@ test("keeps community writing grounded in confirmed Findings instead of score-fi
   assert.match(service, /evidenceGroundedPostSchema/);
   assert.match(service, /atLeastOneEvidenceGroundedIdea/);
 });
+
+test("quick mode cannot fall back to an unconfirmed background report for Publish", () => {
+  assert.match(service, /quick\?\.evaluationMode === "quick"/);
+  assert.match(service, /return null/);
+});
 test("enters Publish from confirmed Findings while retaining Report fallback", async () => {
-  const quickMigration = await read("supabase/migrations/20260920060000_quick_findings_flow.sql");
+  const quickMigration = await read("supabase/migrations/20260920072407_quick_findings_flow.sql");
   assert.match(quickMigration, /begin_findings_publish_pack/);
   assert.match(quickMigration, /PublishPack requires confirmed Findings/);
   assert.match(repository, /beginFromFindings/);

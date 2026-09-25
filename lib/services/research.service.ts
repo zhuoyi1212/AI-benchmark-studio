@@ -14,7 +14,7 @@ import { researchRepository, type ProductResearchWrite } from "@/lib/repositorie
 import { createInputSignature } from "@/lib/signatures";
 import { getProjectMode } from "@/lib/project-mode";
 import { getProjectSummary, type ProjectProductSummary, type ProjectSummary } from "@/lib/services/projects.service";
-import type { Json, ProductResearchRow, ResearchRunRow } from "@/lib/types/database";
+import type { Json, ProductResearchRow, ProductResearchSnapshotRow, ResearchRunRow } from "@/lib/types/database";
 import type { ComparabilityResult, ProductResearch, ResearchResponse, ResearchSource } from "@/lib/types/research";
 
 const storedSourceSchema = z.object({
@@ -34,6 +34,11 @@ export type ResearchWorkspace = {
   latestRun: ResearchRunRow | null;
   completedResult: ResearchResponse | null;
   runCount: number;
+  reuseSummary: {
+    reusedCount: number;
+    freshCount: number;
+    staleCount: number;
+  } | null;
 };
 
 type CompletedProductResearch = {
@@ -60,20 +65,40 @@ export async function getResearchWorkspace(projectId: string): Promise<ResearchW
     latestRun: runs[0] ?? null,
     completedResult: completedRun ? await readCompletedResult(project, completedRun) : null,
     runCount: runs.length,
+    reuseSummary: completedRun ? readReuseSummary(completedRun) : null,
   };
 }
 
-export async function executeProductResearch(projectId: string): Promise<string> {
+export async function executeProductResearch(
+  projectId: string,
+  options: { forceRefresh?: boolean } = {},
+): Promise<string> {
   const project = await getProjectSummary(projectId);
   if (!project) throw new ResearchExecutionError("项目不存在或已归档。 ");
   if (project.products.length < 1 || project.products.length > 3) {
     throw new ResearchExecutionError("产品调研要求项目包含 1–3 个产品。");
   }
 
+  const latestSnapshots = options.forceRefresh
+    ? []
+    : await researchRepository.listLatestSnapshots(project.products.map((product) => product.id));
+  const snapshotsByProduct = new Map(latestSnapshots.map((snapshot) => [snapshot.product_id, snapshot]));
+  const freshProducts = project.products.filter((product) => !snapshotsByProduct.has(product.id));
+  const reusedSnapshots = project.products
+    .map((product) => snapshotsByProduct.get(product.id))
+    .filter((snapshot): snapshot is ProductResearchSnapshotRow => Boolean(snapshot));
   const inputSnapshot = {
     projectId: project.id,
     intent: project.intent,
+    evaluationMode: project.evaluationMode,
     products: project.products.map(({ id, name, officialUrl }) => ({ id, name, officialUrl })),
+    researchReuse: reusedSnapshots.map((snapshot) => ({
+      productId: snapshot.product_id,
+      snapshotId: snapshot.id,
+      version: snapshot.version,
+      validUntil: snapshot.valid_until,
+    })),
+    forceRefresh: options.forceRefresh === true,
   } satisfies Json;
   const inputSignature = createInputSignature(inputSnapshot);
   const projectMode = getProjectMode(project.products);
@@ -82,11 +107,32 @@ export async function executeProductResearch(projectId: string): Promise<string>
   try {
     const activeRunId = await researchRepository.begin(project.id, inputSnapshot, inputSignature);
     researchRunId = activeRunId;
+    await researchRepository.recordReuseDetails(activeRunId, {
+      reused: reusedSnapshots.map((snapshot) => ({
+        productId: snapshot.product_id,
+        snapshotId: snapshot.id,
+        version: snapshot.version,
+        researchedAt: snapshot.researched_at,
+        validUntil: snapshot.valid_until,
+        stale: isSnapshotStale(snapshot),
+        searchProvider: snapshot.search_provider,
+        searchModel: snapshot.search_model,
+        searchPromptVersion: snapshot.search_prompt_version,
+        synthesisProvider: snapshot.synthesis_provider,
+        synthesisModel: snapshot.synthesis_model,
+        synthesisPromptVersion: snapshot.synthesis_prompt_version,
+      })),
+      freshProductIds: freshProducts.map((product) => product.id),
+      forceRefresh: options.forceRefresh === true,
+    });
     const completedProducts = await Promise.all(
-      project.products.map((product) => researchOneProduct(project, product, activeRunId)),
+      freshProducts.map((product) => researchOneProduct(project, product, activeRunId)),
     );
 
-    await researchRepository.insertProductResearch(completedProducts.map((item) => item.write));
+    await researchRepository.insertProductResearch([
+      ...reusedSnapshots.map((snapshot) => snapshotToProjectResearch(snapshot, project.id, activeRunId)),
+      ...completedProducts.map((item) => item.write),
+    ]);
     const persistedResearch = await researchRepository.listProductResearch(activeRunId);
     const validatedComparabilitySchema = comparabilityResultSchema.superRefine((result, context) => {
       if (result.commonCapabilities.length === 0) {
@@ -128,8 +174,12 @@ export async function executeProductResearch(projectId: string): Promise<string>
       maxTokens: 6000,
     });
 
-    const synthesisRoute = requireSingleRoute(completedProducts.map((item) => item.route), "Research synthesis");
-    const searchRoute = requireSingleRoute(completedProducts.map((item) => item.searchRoute), "Research search");
+    const synthesisRoute = completedProducts.length > 0
+      ? requireSingleRoute(completedProducts.map((item) => item.route), "Research synthesis")
+      : snapshotSynthesisRoute(requireSnapshot(reusedSnapshots[0]));
+    const searchRoute = completedProducts.length > 0
+      ? requireSingleRoute(completedProducts.map((item) => item.searchRoute), "Research search")
+      : snapshotSearchRoute(requireSnapshot(reusedSnapshots[0]));
     await researchRepository.complete({
       researchRunId: activeRunId,
       searchRoute,
@@ -175,7 +225,7 @@ async function researchOneProduct(
         content: JSON.stringify({
           projectIntent: project.intent,
           product: { name: product.name, submittedOfficialUrl: product.officialUrl },
-          requestedFields: ["positioning", "targetUsers", "capabilities", "keyFeatures", "pricing", "officialBestPractices", "limitations", "sourceUrls"],
+          requestedFields: ["positioning", "targetUsers", "capabilities", "keyFeatures", "pricing", "officialBestPractices", "limitations", "inputFormats", "outputFormats", "sourceUrls"],
         }),
       },
     ],
@@ -197,7 +247,11 @@ async function researchOneProduct(
       pricing: result.data.pricing,
       official_best_practices: result.data.officialBestPractices,
       limitations: result.data.limitations,
+      input_formats: result.data.inputFormats,
+      output_formats: result.data.outputFormats,
       sources,
+      snapshot_id: null,
+      reused_from_snapshot: false,
     },
   };
 }
@@ -269,18 +323,39 @@ async function readCompletedResult(project: ProjectSummary, run: ResearchRunRow)
   const comparability = comparabilityResultSchema.safeParse(run.comparability);
   if (!comparability.success) throw new ResearchExecutionError("已保存的可比性结果无法通过校验。");
   const rows = await researchRepository.listProductResearch(run.id);
+  const explicitSnapshotIds = rows
+    .map((row) => row.snapshot_id)
+    .filter((id): id is string => Boolean(id));
+  const snapshots = [
+    ...await researchRepository.listSnapshotsByIds(explicitSnapshotIds),
+    ...await researchRepository.listLatestSnapshots(rows.map((row) => row.product_id)),
+  ];
+  const snapshotsById = new Map(snapshots.map((snapshot) => [snapshot.id, snapshot]));
+  const snapshotsByOrigin = new Map(
+    snapshots
+      .filter((snapshot) => snapshot.origin_product_research_id)
+      .map((snapshot) => [snapshot.origin_product_research_id!, snapshot]),
+  );
   const rowsByProduct = new Map(rows.map((row) => [row.product_id, row]));
   return {
     projectId: project.id,
     researchRunId: run.id,
     version: run.version,
-    products: project.products.map((product) => mapStoredProduct(product, requireProductRow(rowsByProduct.get(product.id)))),
+    products: project.products.map((product) => {
+      const row = requireProductRow(rowsByProduct.get(product.id));
+      const snapshot = row.snapshot_id ? snapshotsById.get(row.snapshot_id) : snapshotsByOrigin.get(row.id);
+      return mapStoredProduct(product, row, snapshot);
+    }),
     comparability: comparability.data,
     generatedAt: run.completed_at ?? run.updated_at,
   };
 }
 
-function mapStoredProduct(product: ProjectProductSummary, row: ProductResearchRow): ProductResearch {
+function mapStoredProduct(
+  product: ProjectProductSummary,
+  row: ProductResearchRow,
+  snapshot: ProductResearchSnapshotRow | undefined,
+): ProductResearch {
   return {
     productId: product.id,
     name: product.name,
@@ -293,7 +368,17 @@ function mapStoredProduct(product: ProjectProductSummary, row: ProductResearchRo
     pricing: mapStoredPricing(storedPricingSchema.parse(row.pricing)),
     officialBestPractices: storedTextListSchema.parse(row.official_best_practices),
     limitations: storedTextListSchema.parse(row.limitations),
+    inputFormats: storedTextListSchema.parse(row.input_formats),
+    outputFormats: storedTextListSchema.parse(row.output_formats),
     sources: storedSourcesSchema.parse(row.sources),
+    snapshot: snapshot ? {
+      id: snapshot.id,
+      version: snapshot.version,
+      researchedAt: snapshot.researched_at,
+      validUntil: snapshot.valid_until,
+      reused: row.reused_from_snapshot,
+      stale: isSnapshotStale(snapshot),
+    } : undefined,
   };
 }
 
@@ -306,7 +391,71 @@ function toComparabilityInput(row: ProductResearchRow) {
     keyFeatures: row.key_features,
     pricing: row.pricing,
     limitations: row.limitations,
+    inputFormats: row.input_formats,
+    outputFormats: row.output_formats,
     sources: row.sources,
+  };
+}
+
+function snapshotToProjectResearch(
+  snapshot: ProductResearchSnapshotRow,
+  projectId: string,
+  researchRunId: string,
+): ProductResearchWrite {
+  return {
+    project_id: projectId,
+    research_run_id: researchRunId,
+    product_id: snapshot.product_id,
+    positioning: snapshot.positioning,
+    target_users: snapshot.target_users,
+    capabilities: snapshot.capabilities,
+    key_features: snapshot.key_features,
+    pricing: snapshot.pricing,
+    official_best_practices: snapshot.official_best_practices,
+    limitations: snapshot.limitations,
+    input_formats: snapshot.input_formats,
+    output_formats: snapshot.output_formats,
+    sources: snapshot.sources,
+    snapshot_id: snapshot.id,
+    reused_from_snapshot: true,
+  };
+}
+
+function snapshotSearchRoute(snapshot: ProductResearchSnapshotRow) {
+  return {
+    provider: snapshot.search_provider,
+    model: snapshot.search_model,
+    promptVersion: snapshot.search_prompt_version,
+  };
+}
+
+function snapshotSynthesisRoute(snapshot: ProductResearchSnapshotRow) {
+  return {
+    provider: snapshot.synthesis_provider,
+    model: snapshot.synthesis_model,
+    promptVersion: snapshot.synthesis_prompt_version,
+  };
+}
+
+function requireSnapshot(snapshot: ProductResearchSnapshotRow | undefined) {
+  if (!snapshot) throw new ResearchExecutionError("调研运行既没有可复用快照，也没有需要重新调研的产品。");
+  return snapshot;
+}
+
+function isSnapshotStale(snapshot: ProductResearchSnapshotRow) {
+  return Date.parse(snapshot.valid_until) <= Date.now();
+}
+
+function readReuseSummary(run: ResearchRunRow) {
+  const details = z.object({
+    reused: z.array(z.object({ stale: z.boolean() })).default([]),
+    freshProductIds: z.array(z.string()).default([]),
+  }).safeParse(run.reuse_details);
+  if (!details.success) return { reusedCount: 0, freshCount: 0, staleCount: 0 };
+  return {
+    reusedCount: details.data.reused.length,
+    freshCount: details.data.freshProductIds.length,
+    staleCount: details.data.reused.filter((item) => item.stale).length,
   };
 }
 

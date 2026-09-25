@@ -34,9 +34,10 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
   const completedReportIds = new Set(snapshot.reports
     .filter((report) => report.status === "completed" && completedAnalysisIds.has(report.resultAnalysisId))
     .map((report) => report.id));
+  const reportCanPublish = snapshot.evaluationMode === "professional" && completedReportIds.size > 0;
   const publishCompleted = snapshot.publishPacks.some((pack) => pack.status === "ready" && (
     (pack.findingsId !== null && confirmedFindingIds.has(pack.findingsId))
-    || (pack.reportId !== null && completedReportIds.has(pack.reportId))
+    || (snapshot.evaluationMode === "professional" && pack.reportId !== null && completedReportIds.has(pack.reportId))
   ));
 
   const researchCompleted = completedResearch.length > 0;
@@ -57,9 +58,9 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
         !researchCompleted ? "请先完成产品调研" : "当前产品不适合标准化横向测评"),
       test: stage(testCompleted, protocolCompleted, "请先锁定测评方案"),
       review: stage(reviewCompleted, testCompleted, "请先完成测试执行"),
-      results: stage(resultsCompleted, testCompleted, "请先完成真实测试并保存原始证据"),
+      results: stage(resultsCompleted, reviewCompleted, "请先完成 Blind Judge、必要的异常复核和揭盲"),
       report: stage(reportCompleted, completedAnalysisIds.size > 0, "请先完成可选的专业评分与结果分析"),
-      publish: stage(publishCompleted, resultsCompleted || reportCompleted, "请先确认测评发现，或完成专业深度报告"),
+      publish: stage(publishCompleted, resultsCompleted || reportCanPublish, snapshot.evaluationMode === "quick" ? "请先人工确认测评发现" : "请先确认测评发现，或完成专业深度报告"),
     },
   };
 }

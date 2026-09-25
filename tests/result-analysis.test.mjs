@@ -58,12 +58,12 @@ test("marks old analysis stale when its Final Score signature differs", () => {
   assert.match(migration, /current_signature := private\.final_score_signature/);
 });
 
-test("professional Result Analysis stays available as an optional path behind Findings", () => {
+test("professional Result Analysis runs in the background without blocking Findings", () => {
   assert.match(page, /getExperienceFindingsWorkspace/);
   assert.match(page, /getResultsWorkspace/);
-  assert.match(page, /专业测评模式（可选）/);
+  assert.match(page, /专业报告（后台生成）/);
   assert.match(page, /ResultAnalysisAction/);
-  assert.match(page, /不需要先跑 AI Judge/);
+  assert.match(page, /专业报告在后台生成/);
   assert.match(service, /buildCaseEvidence/);
   assert.match(service, /sanitizePublicEvidence/);
   assert.doesNotMatch(service + repository + page + actions, /@\/lib\/mock|mockFinalResultAnalysis|\/projects\/demo/);

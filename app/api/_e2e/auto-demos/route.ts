@@ -262,8 +262,8 @@ async function createOrResumeDemo(scenario: DemoScenario) {
     protocol = await getProtocolWorkspace(projectId);
   }
   if (!protocol?.protocol) throw new Error(`${name}: Protocol was not created`);
-  if (protocol.protocol.testCases.length < 2 || protocol.protocol.testCases.length > 3) {
-    throw new Error(`${name}: expected 2-3 TestCases, received ${protocol.protocol.testCases.length}`);
+  if (protocol.protocol.testCases.length < 1 || protocol.protocol.testCases.length > 3) {
+    throw new Error(`${name}: expected 1-3 TestCases, received ${protocol.protocol.testCases.length}`);
   }
   const unsupportedTypes = protocol.protocol.testCases.flatMap((testCase) => testCase.expectedOutputTypes)
     .filter((type) => !["text", "code", "mixed"].includes(type));

@@ -10,6 +10,7 @@ async function read(relativePath) {
 function snapshot(overrides = {}) {
   return {
     projectId: "project-1",
+    evaluationMode: "quick",
     productCount: 1,
     researchRuns: [],
     protocols: [],
@@ -59,7 +60,7 @@ test("Case C: an Artifact-backed complete Test matrix remains completed while br
     testRuns: [1, 2, 3, 4].map((index) => ({ id: `run-${index}`, protocolId: "protocol-1", status: "ready_for_review" })),
     artifactRunIds: ["run-1", "run-2", "run-3", "run-4"],
   }));
-  assertOnlyAccessible(state, ["research", "protocol", "test", "review", "results"]);
+  assertOnlyAccessible(state, ["research", "protocol", "test", "review"]);
   assert.equal(state.stages.protocol.completed, true);
   assert.equal(state.stages.test.completed, true);
   assert.equal(state.stages.results.completed, false);
@@ -101,7 +102,7 @@ test("Case E: regeneration history stays reachable while new versions do not ove
   assert.equal(state.stages.protocol.completed, true);
   assert.equal(state.stages.test.completed, true);
   assert.equal(state.stages.review.accessible, true);
-  assert.equal(state.stages.results.accessible, true);
+  assert.equal(state.stages.results.accessible, false);
 });
 
 test("single-product Research is never blocked by comparison comparability", () => {
@@ -110,7 +111,7 @@ test("single-product Research is never blocked by comparison comparability", () 
   assert.equal(deriveWorkflowState(snapshot({ productCount: 2, researchRuns })).stages.protocol.accessible, false);
 });
 
-test("confirmed Findings unlock Publish without Judge, Review, Result Analysis, or Report", () => {
+test("historical confirmed Findings remain reachable without rewriting old lineage", () => {
   const state = deriveWorkflowState(snapshot({
     researchRuns: [{ id: "research-1", version: 1, status: "completed", comparability: { status: "not_applicable" } }],
     protocols: [{ id: "protocol-1", researchRunId: "research-1", version: 1, status: "locked" }],
@@ -123,6 +124,22 @@ test("confirmed Findings unlock Publish without Judge, Review, Result Analysis, 
   assert.equal(state.stages.publish.accessible, true);
   assert.equal(state.stages.review.completed, false);
   assert.equal(state.stages.report.completed, false);
+});
+
+test("quick mode never unlocks Publish from a background professional report alone", () => {
+  const base = {
+    researchRuns: [{ id: "research-1", version: 1, status: "completed", comparability: { status: "not_applicable" } }],
+    protocols: [{ id: "protocol-1", researchRunId: "research-1", version: 1, status: "locked" }],
+    testCases: [{ id: "case-1", protocolId: "protocol-1" }],
+    testRuns: [{ id: "run-1", protocolId: "protocol-1", status: "ready_for_review" }],
+    artifactRunIds: ["run-1"],
+    judgeRuns: [{ id: "judge-1", protocolId: "protocol-1", status: "completed" }],
+    reviewSessions: [{ id: "review-1", protocolId: "protocol-1", judgeRunId: "judge-1", status: "revealed" }],
+    resultAnalyses: [{ id: "analysis-1", reviewSessionId: "review-1", status: "completed" }],
+    reports: [{ id: "report-1", resultAnalysisId: "analysis-1", status: "completed" }],
+  };
+  assert.equal(deriveWorkflowState(snapshot(base)).stages.publish.accessible, false);
+  assert.equal(deriveWorkflowState(snapshot({ ...base, evaluationMode: "professional" })).stages.publish.accessible, true);
 });
 
 test("the shared component derives active stage from pathname and never links locked stages", async () => {

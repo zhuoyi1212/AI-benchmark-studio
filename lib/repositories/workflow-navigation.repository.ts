@@ -6,6 +6,7 @@ import type { Json } from "@/lib/types/database";
 
 export type WorkflowNavigationSnapshot = {
   projectId: string;
+  evaluationMode: "quick" | "professional";
   productCount: number;
   researchRuns: Array<{ id: string; version: number; status: string; comparability: Json | null }>;
   protocols: Array<{ id: string; researchRunId: string; version: number; status: string }>;
@@ -24,7 +25,7 @@ export const workflowNavigationRepository = {
   async load(projectId: string): Promise<WorkflowNavigationSnapshot | null> {
     const client = getSupabaseServerClient();
     const [projectResult, productsResult, researchResult, protocolsResult, testRunsResult, judgeRunsResult, reviewsResult, findingsResult, analysesResult, reportsResult, packsResult] = await Promise.all([
-      client.from("projects").select("id").eq("id", projectId).is("deleted_at", null).maybeSingle(),
+      client.from("projects").select("id, evaluation_mode").eq("id", projectId).is("deleted_at", null).maybeSingle(),
       client.from("project_products").select("product_id").eq("project_id", projectId),
       client.from("research_runs").select("id, version, status, comparability").eq("project_id", projectId).order("version", { ascending: false }),
       client.from("protocols").select("id, research_run_id, version, status").eq("project_id", projectId).order("version", { ascending: false }),
@@ -72,6 +73,7 @@ export const workflowNavigationRepository = {
 
     return {
       projectId,
+      evaluationMode: projectResult.data.evaluation_mode,
       productCount: products.length,
       researchRuns: researchRuns.map((run) => ({ id: run.id, version: run.version, status: run.status, comparability: run.comparability })),
       protocols: protocols.map((protocol) => ({ id: protocol.id, researchRunId: protocol.research_run_id, version: protocol.version, status: protocol.status })),

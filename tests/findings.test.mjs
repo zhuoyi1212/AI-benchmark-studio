@@ -5,7 +5,7 @@ import test from "node:test";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 const [migration, publishSourceMigration, schema, repository, service, page, editor, testPage, publishService, publishRepository] = await Promise.all([
-  read("supabase/migrations/20260920060000_quick_findings_flow.sql"),
+  read("supabase/migrations/20260920072407_quick_findings_flow.sql"),
   read("supabase/migrations/20260923090000_allow_findings_publish_pack_source.sql"),
   read("lib/ai/schemas/findings.schemas.ts"),
   read("lib/repositories/findings.repository.ts"),
@@ -17,7 +17,7 @@ const [migration, publishSourceMigration, schema, repository, service, page, edi
   read("lib/repositories/publish.repository.ts"),
 ]);
 
-test("persists Findings independently from Judge, Review, Result Analysis, and Report", () => {
+test("persists Findings independently from Result Analysis and Report", () => {
   assert.match(migration, /create table public\.experience_findings/);
   assert.match(migration, /protocol_id uuid not null/);
   assert.match(migration, /human_output jsonb/);
@@ -45,6 +45,7 @@ test("Findings are evidence-backed observations rather than scores", () => {
   assert.match(service, /mimeType === "application\/pdf" && hasTextArtifact/);
   assert.match(service, /Image omitted because this TestRun has a text Artifact/);
   assert.match(service, /renderPdfEvidence\(await readArtifactBytes\(artifact\)/);
+  assert.match(service, /extractPdfText\(await readArtifactBytes\(artifact\), maxTextCharacters\)/);
   assert.match(service, /original PDF page/);
   assert.match(service, /maxImagesPerVisionRequest = 2/);
   assert.match(service, /aiTaskService\.understandScreenshots/);
@@ -58,7 +59,9 @@ test("Findings are evidence-backed observations rather than scores", () => {
   assert.match(service, /providerCode=\$\{error\.providerCode\}/);
   assert.match(service, /images=\$\{error\.requestImageCount\}/);
   assert.match(service, /realArtifactReferences/);
-  assert.doesNotMatch(service, /getHumanReviewWorkspace|judgeRepository|resultAnalysisRepository|getReportWorkspace/);
+  assert.match(service, /normalizeSingleRunReferences/);
+  assert.match(service, /test\.testRuns\.length !== 1/);
+  assert.doesNotMatch(service, /judgeRepository|resultAnalysisRepository|getReportWorkspace/);
 });
 
 test("human review confirms or edits Findings instead of changing scores", () => {
@@ -72,21 +75,22 @@ test("human review confirms or edits Findings instead of changing scores", () =>
   assert.match(page, /FindingsEditor/);
 });
 
-test("real test can go directly to Findings while professional scoring stays optional", () => {
-  assert.match(testPage, /提炼测评发现/);
-  assert.match(testPage, /专业评分（可选）/);
-  assert.match(page, /不需要先跑 AI Judge/);
-  assert.match(page, /专业测评模式（可选）/);
+test("quick test auto-runs Blind Judge before generating Findings", () => {
+  assert.doesNotMatch(testPage, /href=\{`\/projects\/\$\{project\.id\}\/results`\}/);
+  assert.match(testPage, /QuickAutoAdvance/);
+  assert.match(page, /已完成的 Blind Judge/);
+  assert.match(page, /专业报告（后台生成）/);
   assert.match(page, /生成社区内容/);
 });
 
-test("Quick Findings opens without Blind Samples or a professional scoring run", () => {
+test("Quick Findings requires a revealed Blind Review", () => {
   assert.match(page, /getExperienceFindingsWorkspace\(projectId\)/);
   assert.match(page, /workflowState\.stages\.review\.completed/);
+  assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/review`\)/);
   assert.match(page, /workflowState\.stages\.review\.completed\s*\?\s*await readOptionalProfessionalResults\(projectId\)\s*:\s*null/);
   const pageLoad = page.slice(0, page.indexOf("async function readOptionalProfessionalResults"));
   assert.doesNotMatch(pageLoad, /Promise\.all\(\[[\s\S]*getResultsWorkspace\(projectId\)/);
-  assert.match(page, /专业测评模式（可选）/);
+  assert.match(page, /专业报告（后台生成）/);
 });
 
 test("a professional Results read failure cannot fail the Quick Findings page", () => {
@@ -96,13 +100,15 @@ test("a professional Results read failure cannot fail the Quick Findings page", 
   assert.match(page, /return null;/);
 });
 
-test("Quick Findings has no professional repository dependency", () => {
+test("Quick Findings validates Review through the service boundary", () => {
   assert.doesNotMatch(service, /blindReviewRepository|judgeRepository|resultAnalysisRepository|reportRepository/);
-  assert.doesNotMatch(service, /getBlindReviewWorkspace|getJudgeReviewWorkspace|getHumanReviewWorkspace|getResultsWorkspace|getReportWorkspace/);
+  assert.doesNotMatch(service, /getBlindReviewWorkspace|getJudgeReviewWorkspace|getResultsWorkspace|getReportWorkspace/);
   const generation = service.slice(service.indexOf("export async function generateExperienceFindings"), service.indexOf("export async function buildRawFindingsEvidenceContent"));
-  assert.doesNotMatch(generation, /blindReviewRepository|judgeRepository|humanReviewRepository|resultAnalysisRepository|reportRepository|getBlindReviewWorkspace|getJudgeReviewWorkspace|getHumanReviewWorkspace|getResultsWorkspace|getReportWorkspace/i);
+  assert.doesNotMatch(generation, /blindReviewRepository|judgeRepository|humanReviewRepository|resultAnalysisRepository|reportRepository|getBlindReviewWorkspace|getJudgeReviewWorkspace|getResultsWorkspace|getReportWorkspace/i);
   assert.match(generation, /getTestExecutionWorkspace/);
   assert.match(generation, /getResearchWorkspace/);
+  assert.match(generation, /readHumanReview/);
+  assert.match(generation, /review\.status !== "revealed"/);
   assert.match(generation, /buildArtifactContent/);
 });
 

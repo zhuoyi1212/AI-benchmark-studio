@@ -2,19 +2,26 @@ import "server-only";
 
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { AIUsage, AITaskRoute } from "@/lib/ai/types";
+import type { AIProviderName, AIUsage, AITaskRoute } from "@/lib/ai/types";
 import type { ComparabilityResult } from "@/lib/types/research";
-import type { Json, ProductResearchRow, ResearchRunRow } from "@/lib/types/database";
+import type { Json, ProductResearchRow, ProductResearchSnapshotRow, ResearchRunRow } from "@/lib/types/database";
 
-const researchRunColumns = "id, project_id, version, status, model, provider, prompt_version, input_snapshot, input_signature, comparability, error_message, started_at, completed_at, created_at, updated_at, input_tokens, output_tokens, latency_ms, estimated_cost, search_provider, search_model, search_prompt_version, comparability_provider, comparability_model, comparability_prompt_version, comparability_input_tokens, comparability_output_tokens, comparability_latency_ms, comparability_estimated_cost";
-const productResearchColumns = "id, project_id, research_run_id, product_id, positioning, target_users, capabilities, key_features, pricing, official_best_practices, limitations, sources, created_at";
+const researchRunColumns = "id, project_id, version, status, model, provider, prompt_version, input_snapshot, input_signature, comparability, error_message, started_at, completed_at, created_at, updated_at, input_tokens, output_tokens, latency_ms, estimated_cost, search_provider, search_model, search_prompt_version, comparability_provider, comparability_model, comparability_prompt_version, comparability_input_tokens, comparability_output_tokens, comparability_latency_ms, comparability_estimated_cost, reuse_details";
+const productResearchColumns = "id, project_id, research_run_id, product_id, positioning, target_users, capabilities, key_features, pricing, official_best_practices, limitations, input_formats, output_formats, sources, snapshot_id, reused_from_snapshot, created_at";
+const snapshotColumns = "id, product_id, version, origin_project_id, origin_research_run_id, origin_product_research_id, positioning, target_users, capabilities, key_features, pricing, official_best_practices, limitations, input_formats, output_formats, sources, search_provider, search_model, search_prompt_version, synthesis_provider, synthesis_model, synthesis_prompt_version, input_signature, researched_at, valid_until, created_at";
 
 export type ProductResearchWrite = Omit<ProductResearchRow, "id" | "created_at">;
 
+type RouteIdentity = {
+  provider: AIProviderName;
+  model: string;
+  promptVersion: string;
+};
+
 export type CompleteResearchRunRecord = {
   researchRunId: string;
-  searchRoute: AITaskRoute;
-  synthesisRoute: AITaskRoute;
+  searchRoute: RouteIdentity;
+  synthesisRoute: RouteIdentity;
   synthesisUsage: AIUsage;
   comparabilityRoute: AITaskRoute;
   comparabilityUsage: AIUsage;
@@ -49,6 +56,40 @@ export const researchRepository = {
       .eq("research_run_id", researchRunId);
     if (error) throwRepositoryError("research.listProductResearch", error);
     return data;
+  },
+
+  async listLatestSnapshots(productIds: string[]): Promise<ProductResearchSnapshotRow[]> {
+    if (productIds.length === 0) return [];
+    const { data, error } = await getSupabaseServerClient()
+      .from("product_research_snapshots")
+      .select(snapshotColumns)
+      .in("product_id", productIds)
+      .order("version", { ascending: false });
+    if (error) throwRepositoryError("research.listLatestSnapshots", error);
+    const latest = new Map<string, ProductResearchSnapshotRow>();
+    for (const snapshot of data) {
+      if (!latest.has(snapshot.product_id)) latest.set(snapshot.product_id, snapshot);
+    }
+    return [...latest.values()];
+  },
+
+  async listSnapshotsByIds(snapshotIds: string[]): Promise<ProductResearchSnapshotRow[]> {
+    if (snapshotIds.length === 0) return [];
+    const { data, error } = await getSupabaseServerClient()
+      .from("product_research_snapshots")
+      .select(snapshotColumns)
+      .in("id", snapshotIds);
+    if (error) throwRepositoryError("research.listSnapshotsByIds", error);
+    return data;
+  },
+
+  async recordReuseDetails(researchRunId: string, details: Json): Promise<void> {
+    const { error } = await getSupabaseServerClient()
+      .from("research_runs")
+      .update({ reuse_details: details })
+      .eq("id", researchRunId)
+      .eq("status", "running");
+    if (error) throwRepositoryError("research.recordReuseDetails", error);
   },
 
   async insertProductResearch(records: ProductResearchWrite[]): Promise<void> {

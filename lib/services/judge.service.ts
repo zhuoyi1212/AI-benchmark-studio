@@ -54,6 +54,7 @@ export type JudgeReviewWorkspace = {
   projectId: string;
   protocolId: string;
   protocolVersion: number;
+  evaluationMode: import("@/lib/project-mode").EvaluationMode;
   samples: Array<{ sampleId: string; label: string }>;
   testCases: JudgeTestCase[];
   rubric: JudgeRubric[];
@@ -108,6 +109,7 @@ export async function getJudgeReviewWorkspace(projectId: string): Promise<JudgeR
     projectId,
     protocolId: context.protocolId,
     protocolVersion: context.protocolVersion,
+    evaluationMode: context.evaluationMode,
     samples: context.samples,
     testCases: context.testCases,
     rubric: context.rubric,
@@ -239,6 +241,7 @@ async function loadJudgeContext(projectId: string) {
     projectId,
     protocolId: protocol.id,
     protocolVersion: protocol.version,
+    evaluationMode: blind.evaluationMode,
     rules,
     samples: blind.samples,
     testCases: testCaseRows.map(mapTestCase),

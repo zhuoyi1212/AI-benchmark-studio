@@ -22,9 +22,9 @@ test("derives single versus comparison mode from the 1-3 product project", () =>
   assert.match(research, /comparabilityDoesNotGateSingleProductExperience/);
 });
 
-test("single research can generate a 2-4 case experience protocol without weakening comparison gating", () => {
+test("single research can generate one quick experience task without weakening comparison gating", () => {
   assert.match(protocol, /projectMode === "comparison" && result\.comparability\.status === "not_comparable"/);
-  assert.match(protocol, /testCaseCount >= 2 && testCaseCount <= 4/);
+  assert.match(protocol, /testCaseCount === 1/);
   assert.match(protocol, /sharedCoreCapabilitiesOnly: true/);
   assert.match(protocol, /samePromptInputAndConditions: true/);
   assert.match(migration, /comparability->>'status' in \('comparable', 'partially_comparable'\)[\s\S]*count\(\*\).*project_products.*= 1/);

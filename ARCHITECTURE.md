@@ -308,6 +308,12 @@ AI 调用失败不能破坏已有实验记录，也不能 silent fallback 到 Mo
 
 `Project → Research → Protocol → TestRun/Artifact → Blind/Judge → Review → Analysis → Report → Publish`
 
+快速模式将主链缩短为：
+
+`Project → reusable ProductResearchSnapshot → 1-Case Protocol → Artifact → Blind/Judge → anomaly-only Review → confirmed Findings → Publish`
+
+`ProductResearchSnapshot` 是全局不可变版本；每个 ResearchRun 复制快照到项目级 ProductResearch 并保留 `snapshot_id`，因此协议只读取项目快照，历史项目不会随产品库更新而变化。专业 Report 可独立后台生成，不作为 confirmed Findings 进入 Publish 的前置条件。
+
 某阶段真实化后，真实 Project 不允许 silent fallback 到 Mock。Demo fixture/test fixture 可以保留。
 
 

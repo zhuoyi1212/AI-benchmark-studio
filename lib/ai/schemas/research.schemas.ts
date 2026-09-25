@@ -27,6 +27,8 @@ export const productResearchSynthesisSchema = z.object({
   }).nullable(),
   officialBestPractices: z.array(z.string().trim().min(1).max(500)).max(20),
   limitations: z.array(z.string().trim().min(1).max(500)).max(20),
+  inputFormats: z.array(z.string().trim().min(1).max(120)).max(20),
+  outputFormats: z.array(z.string().trim().min(1).max(120)).max(20),
   sourceUrls: z.array(z.string().url()).min(1).max(30),
 }).superRefine((research, context) => {
   if (isUnresolvedResearchPlaceholder(research.positioning)) {

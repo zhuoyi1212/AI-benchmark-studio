@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
+import { extractPdfText, maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
 import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { experienceFindingsOutputSchema, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
@@ -11,6 +11,7 @@ import { findingsRepository } from "@/lib/repositories/findings.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createInputSignature } from "@/lib/signatures";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
+import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
 import type { ExperienceFindingRow, Json } from "@/lib/types/database";
@@ -37,6 +38,7 @@ export type ExperienceFindingsWorkspace = {
   projectName: string;
   projectIntent: string;
   projectMode: ProjectMode;
+  evaluationMode: import("@/lib/project-mode").EvaluationMode;
   protocolId: string;
   protocolVersion: number;
   products: Array<{ id: string; name: string }>;
@@ -77,6 +79,7 @@ export async function getExperienceFindingsWorkspace(projectId: string): Promise
     projectName: test.project.name,
     projectIntent: research.project.intent,
     projectMode: getProjectMode(test.project.products),
+    evaluationMode: test.project.evaluationMode,
     protocolId: test.protocol.id,
     protocolVersion: test.protocol.version,
     products: test.project.products.map((product) => ({ id: product.id, name: product.name })),
@@ -99,6 +102,10 @@ export async function generateExperienceFindings(projectId: string): Promise<str
   if (!test || !research?.completedResult) throw new FindingsExecutionError("请先完成测试计划、真实测试和原始证据上传。");
   if (test.testRuns.length === 0 || test.testRuns.some((run) => run.status !== "ready_for_review" || run.artifacts.length === 0)) {
     throw new FindingsExecutionError("请先确认全部 TestRun 都已保存真实 Artifact。");
+  }
+  const review = await readHumanReview(projectId);
+  if (!review || review.status !== "revealed") {
+    throw new FindingsExecutionError("请先完成 Blind Judge、异常复核和揭盲，再生成候选 Findings。");
   }
 
   const snapshot = buildSnapshot(test, research.completedResult);
@@ -138,8 +145,9 @@ export async function generateExperienceFindings(projectId: string): Promise<str
       beforeExecute: (route) => findingsRepository.start(persisted.id, route),
     });
 
-    assertEvidenceReferences(result.data, test);
-    await findingsRepository.complete(persisted.id, result.data, result.usage);
+    const normalized = normalizeSingleRunReferences(result.data, test);
+    assertEvidenceReferences(normalized, test);
+    await findingsRepository.complete(persisted.id, normalized, result.usage);
     return persisted.id;
   } catch (error) {
     if (error instanceof AIProviderError) {
@@ -165,13 +173,28 @@ export async function generateExperienceFindings(projectId: string): Promise<str
   }
 }
 
-export async function buildRawFindingsEvidenceContent(projectId: string): Promise<AIMessageContent> {
+async function readHumanReview(projectId: string) {
+  try {
+    return await getHumanReviewWorkspace(projectId);
+  } catch (error) {
+    console.error("[FindingsReviewReadError]", {
+      projectId,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return null;
+  }
+}
+
+export async function buildRawFindingsEvidenceContent(
+  projectId: string,
+  options: { preferPdfText?: boolean } = {},
+): Promise<AIMessageContent> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
     getResearchWorkspace(projectId),
   ]);
   if (!test || !research?.completedResult) throw new FindingsExecutionError("无法读取当前真实测试证据。");
-  return buildArtifactContent(test, research.completedResult);
+  return buildArtifactContent(test, research.completedResult, options);
 }
 
 export async function confirmExperienceFindings(projectId: string, findingsId: string, value: unknown): Promise<void> {
@@ -246,6 +269,7 @@ function buildSnapshot(test: TestExecutionWorkspace, research: NonNullable<Await
 async function buildArtifactContent(
   test: TestExecutionWorkspace,
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
+  options: { preferPdfText?: boolean } = {},
 ): Promise<AIMessageContent> {
   const artifacts = test.testRuns.flatMap((run) => run.artifacts);
   const renderPdfs = artifacts.some((artifact) => normalizeMimeType(artifact.fileType).startsWith("image/"))
@@ -310,6 +334,13 @@ async function buildArtifactContent(
       });
       if (textMimeTypes.has(mimeType)) {
         content.push({ type: "text", text: await readTextArtifact(artifact) });
+      } else if (mimeType === "application/pdf" && options.preferPdfText) {
+        const text = await extractPdfText(await readArtifactBytes(artifact), maxTextCharacters);
+        if (text) {
+          content.push({ type: "text", text: `Extracted original PDF text for artifactId ${artifact.id}:\n${text}` });
+        } else {
+          content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
+        }
       } else if (mimeType.startsWith("image/")) {
         if (hasTextArtifact) {
           console.info("[FindingsEvidence] Image omitted because this TestRun has a text Artifact", {
@@ -339,7 +370,8 @@ async function buildArtifactContent(
         console.info("[FindingsEvidence] PDF retained as native file evidence", { testRunId: run.id, artifactId: artifact.id });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
       } else {
-        throw new FindingsExecutionError(`Findings 不支持此 Artifact 类型：${mimeType}`);
+        console.info("[FindingsEvidence] Artifact retained as native file evidence", { testRunId: run.id, artifactId: artifact.id, mimeType });
+        content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
       }
     }
   }
@@ -444,6 +476,21 @@ function assertEvidenceReferences(output: ExperienceFindingsOutput, test: TestEx
       return !artifact || artifact.productId !== finding.productId || artifact.testCaseId !== finding.testCaseId;
     })) throw new AIValidationError("findings", "realArtifactReferences");
   }
+}
+
+function normalizeSingleRunReferences(output: ExperienceFindingsOutput, test: TestExecutionWorkspace): ExperienceFindingsOutput {
+  if (test.testRuns.length !== 1 || test.testRuns[0]!.artifacts.length !== 1) return output;
+  const run = test.testRuns[0]!;
+  const artifactId = run.artifacts[0]!.id;
+  return {
+    ...output,
+    findings: output.findings.map((finding) => ({
+      ...finding,
+      productId: run.productId,
+      testCaseId: run.testCaseId,
+      evidenceArtifactIds: [artifactId],
+    })),
+  };
 }
 
 function flattenArtifacts(test: TestExecutionWorkspace): FindingsArtifact[] {

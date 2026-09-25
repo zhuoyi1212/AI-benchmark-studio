@@ -86,7 +86,7 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="testRunId" value={run.id} />
           <div tabIndex={0} aria-label="粘贴图片区域" className="rounded-lg border border-dashed p-3 outline-none focus:ring-2 focus:ring-blue-200">
-            <Field label="结果文件"><Input type="file" multiple disabled={pending} onChange={event => { addFiles(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ""; }} accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/json,text/csv,video/mp4,video/webm,video/quicktime,.md,.json,.csv,.mov" /></Field>
+            <Field label="结果文件"><Input type="file" multiple disabled={pending} onChange={event => { addFiles(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ""; }} accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/json,text/csv,video/mp4,video/webm,video/quicktime,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.md,.json,.csv,.mov" /></Field>
             <p className="mt-2 text-xs text-muted-foreground">可多选、继续添加，或在此按 ⌘V / Ctrl+V 粘贴截图。</p>
           </div>
           {entries.length > 0 && <ul aria-label="待上传文件" className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">{entries.map(entry => <li key={entry.id} className="flex items-start gap-2 text-xs">
@@ -102,7 +102,7 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
           </div>
           <label className="flex items-start gap-2.5 rounded-md border bg-slate-50 p-3 text-xs leading-5 text-slate-700"><input name="manuallyEdited" disabled={pending} type="checkbox" defaultChecked={run.manuallyEdited} className="mt-1" /><span><span className="font-medium">结果经过人工编辑</span><br /><span className="text-muted-foreground">标准化测试通常应保持未勾选；如有编辑，请如实记录。</span></span></label>
           <Field label="执行备注"><Textarea name="notes" disabled={pending} maxLength={2000} defaultValue={run.notes ?? ""} placeholder="可选：记录导出格式、异常或执行环境" /></Field>
-          <p className="text-[11px] leading-5 text-muted-foreground">图片、PDF 和视频单文件不超过 50 MB；文本不超过 500 KB。视频请上传产品直接生成的原始文件，不要先剪辑或二次导出。</p>
+          <p className="text-[11px] leading-5 text-muted-foreground">图片、PDF、Word、Excel、PPT 和视频单文件不超过 50 MB；文本不超过 500 KB。上传任一有效原始文件即可分析。</p>
           {message && <p role="alert" className="text-xs leading-5 text-red-600">{message}</p>}
           <div className="flex justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose><Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在上传...</> : <><UploadCloud className="h-4 w-4" />保存原始结果</>}</Button></div>
         </form>

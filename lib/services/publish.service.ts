@@ -1,6 +1,6 @@
 import "server-only";
 
-import { communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
+import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
@@ -187,8 +187,17 @@ export async function generateCommunityPost(
   const postInput = buildPostInput(source, selectedIdea, config);
   const inputSignature = createInputSignature(postInput);
   const confirmedFindings = source.kind === "findings" ? source.confirmedFindings.findings : [];
-  const expressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
+  const checkedExpressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
+    const normalized = normalizeFindingCategories(post, confirmedFindings);
+    for (const message of communityExpressionIssues(normalized, config, confirmedFindings)) {
+      if (message === "截图需引用最终正文中的实际段落与原文短句") continue;
+      if (source.kind === "findings" && isQuickLayoutOnlyIssue(message)) continue;
+      context.addIssue({ code: "custom", message });
+    }
+  });
+  const finalExpressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
     for (const message of communityExpressionIssues(post, config, confirmedFindings)) {
+      if (source.kind === "findings" && isQuickLayoutOnlyIssue(message)) continue;
       context.addIssue({ code: "custom", message });
     }
   });
@@ -265,6 +274,16 @@ export async function generateCommunityPost(
         "保留自然社区语言，不要把核对后的文章改回报告体。",
       ],
     };
+    const expectedHeadings = config.structure === "好用 / 一般 / 难用" && confirmedFindings.length
+      ? [...buildFindingSections(confirmedFindings).map((section) => section.heading), "个人感受"]
+      : [];
+    const forbiddenHeadings = config.structure === "好用 / 一般 / 难用" && confirmedFindings.length
+      ? [
+          ["good", "好用的功能"],
+          ["neutral", "体验一般的功能"],
+          ["problem", "不能用 / 用着难受的功能"],
+        ].filter(([category]) => !confirmedFindings.some((finding) => finding.category === category)).map(([, heading]) => heading)
+      : [];
 
     const factCheckMessages: AIMessage[] = [
       {
@@ -277,25 +296,40 @@ export async function generateCommunityPost(
           "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
           "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
           "contentBrief 和 languagePass 必须保留；事实核对只能收缩或修正事实表述，不得把文章改回报告体。",
+          expectedHeadings.length
+            ? `最终正文必须按此顺序逐字保留章节标题：${expectedHeadings.join(" → ")}。${forbiddenHeadings.length ? `正文禁止出现这些空类别标题：${forbiddenHeadings.join("、")}。` : "不要增加不存在 Finding 的类别。"}`
+            : "保留 draft 已有正文结构。",
           "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
           "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
         ].join("\n"),
       },
       { role: "user", content: JSON.stringify(factCheckInput) },
     ];
-    if (source.kind === "findings") {
-      factCheckMessages.push({ role: "user" as const, content: await buildRawFindingsEvidenceContent(projectId) });
-    }
+    const rawEvidence = source.kind === "findings"
+      ? await buildRawFindingsEvidenceContent(projectId, { preferPdfText: true })
+      : null;
+    if (rawEvidence) factCheckMessages.push({ role: "user" as const, content: rawEvidence });
+    const requiresVision = Array.isArray(rawEvidence)
+      && rawEvidence.some((item) => item.type === "image_url" || item.type === "file_url");
+    const factCheck = requiresVision
+      ? aiTaskService.factCheckCommunityPost
+      : aiTaskService.factCheckTextCommunityPost;
 
-    const checkedResult = await aiTaskService.factCheckCommunityPost({
-      schema: expressionSchema,
+    const checkedResult = await factCheck({
+      schema: checkedExpressionSchema,
       schemaName: "EvidenceCheckedCommunityPost",
       messages: factCheckMessages,
-      maxTokens: 8_000,
-      maxAttempts: 2,
+      maxTokens: 3_500,
+      maxAttempts: requiresVision ? 1 : 3,
     });
 
-    const post = normalizeScreenshotRecommendations(checkedResult.data, selectedIdea, imageArtifacts, config.imageCount);
+    const post = finalExpressionSchema.parse(normalizePostForValidation(
+      checkedResult.data,
+      selectedIdea,
+      imageArtifacts,
+      config.imageCount,
+      confirmedFindings,
+    ));
     assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
     await publishRepository.complete(pack.id, post, combineUsage(draftResult.usage, humanizedResult.usage, checkedResult.usage));
     return pack.id;
@@ -343,6 +377,7 @@ async function getPublishSource(projectId: string) {
       screenshots,
     };
   }
+  if (quick?.evaluationMode === "quick") return null;
 
   const report = await getReportWorkspace(projectId);
   if (!report?.report || report.report.status !== "completed" || !report.report.content) return null;
@@ -548,6 +583,39 @@ function normalizeScreenshotRecommendations(
     });
   }
   return { ...post, screenshotRecommendations: valid.slice(0, imageCount).map((item, index) => ({ ...item, order: index + 1 })) };
+}
+
+function normalizePostForValidation(
+  post: CommunityPostOutput,
+  idea: SelectedContentIdea,
+  artifacts: ReportEvidence[],
+  imageCount: number,
+  findings: Array<{ category: "good" | "neutral" | "problem" }>,
+): CommunityPostOutput {
+  const normalized = normalizeScreenshotRecommendations(post, idea, artifacts, imageCount);
+  return normalizeFindingCategories(normalized, findings);
+}
+
+function normalizeFindingCategories(
+  post: CommunityPostOutput,
+  findings: Array<{ category: "good" | "neutral" | "problem" }>,
+): CommunityPostOutput {
+  const normalized = post;
+  if (!normalized.editorialPlan) return normalized;
+  const has = (category: "good" | "neutral" | "problem") => findings.some((finding) => finding.category === category);
+  return {
+    ...normalized,
+    editorialPlan: {
+      ...normalized.editorialPlan,
+      highlights: has("good") ? normalized.editorialPlan.highlights : [],
+      neutralPoints: has("neutral") ? normalized.editorialPlan.neutralPoints : [],
+      painPoints: has("problem") ? normalized.editorialPlan.painPoints : [],
+    },
+  };
+}
+
+function isQuickLayoutOnlyIssue(message: string) {
+  return message === "补齐 openingAngle 与 closingTakeaway" || message.startsWith("按顺序保留章节：");
 }
 
 function withAvailableImageCount(config: PublishConfig, availableImageCount: number): PublishConfig {

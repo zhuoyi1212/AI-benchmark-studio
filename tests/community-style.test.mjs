@@ -71,8 +71,13 @@ test('old posts and configs remain readable without new editorial fields', () =>
 test('generation and final raw Artifact fact-check both retain expression rules', async () => {
   const service = await readFile(new URL('../lib/services/publish.service.ts', import.meta.url), 'utf8');
   assert.equal((service.match(/config.stylePreset === "真实体验" \? experienceWritingRules/g) ?? []).length, 2);
-  assert.match(service, /buildRawFindingsEvidenceContent\(projectId\)/);
-  assert.match(service, /schema: expressionSchema/);
+  assert.match(service, /buildRawFindingsEvidenceContent\(projectId, \{ preferPdfText: true \}\)/);
+  assert.match(service, /factCheckTextCommunityPost/);
+  assert.match(service, /requiresVision/);
+  assert.match(service, /schema: communityPostHumanizedSchema/);
+  assert.match(service, /schema: checkedExpressionSchema/);
+  assert.match(service, /normalizePostForValidation/);
+  assert.match(service, /expectedHeadings/);
   assert.match(service, /communityExpressionIssues\(post, config, confirmedFindings\)/);
   assert.match(service, /一个学校网站失败/);
   const repository = await readFile(new URL('../lib/repositories/publish.repository.ts', import.meta.url), 'utf8');
@@ -108,6 +113,7 @@ test('Quick Publish reaches ready through draft, language pass, and raw evidence
       generateCommunityPost: async options => { draftCalls++; await options.beforeExecute?.(route); return { data: options.schema.parse({ ...generated, languagePass: undefined, factCheck: undefined }), route, usage }; },
       humanizeCommunityPost: async options => { humanizeCalls++; assert.ok(draftCalls); return { data: options.schema.parse({ ...generated, factCheck: undefined }), route, usage }; },
       factCheckCommunityPost: async options => { checks++; assert.equal(options.messages.at(-1).content, 'RAW-ARTIFACT'); return { data: options.schema.parse(generated), route, usage }; },
+      factCheckTextCommunityPost: async options => { checks++; assert.equal(options.messages.at(-1).content, 'RAW-ARTIFACT'); return { data: options.schema.parse(generated), route, usage }; },
     } },
     '@/lib/repositories/publish.repository': { publishRepository: {
       listByFindings: async () => [{ id, status: 'draft', content_ideas: [idea] }],

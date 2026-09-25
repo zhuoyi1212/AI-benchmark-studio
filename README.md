@@ -50,7 +50,7 @@ Research
 Quick Findings 需要应用最新 Supabase migration：
 
 ```text
-20260920060000_quick_findings_flow.sql
+20260920072407_quick_findings_flow.sql
 ```
 
 该迁移新增 `experience_findings`，并让 `publish_packs` 可以二选一绑定 `findings_id` 或 `report_id`，不会删除已有 Report / Judge / Review 数据。

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import {
   HumanReviewError,
@@ -9,7 +10,9 @@ import {
   revealHumanReview,
   revertHumanOverride,
   saveHumanOverride,
+  getHumanReviewWorkspace,
 } from "@/lib/services/human-review.service";
+import { generateQuickBackgroundOutputs } from "@/lib/services/quick-background-outputs.service";
 
 const idSchema = z.string().uuid();
 const scoreSchema = z.coerce.number().min(0).max(10).refine((value) => Number.isInteger(value * 10), "评分最多保留一位小数。");
@@ -83,6 +86,33 @@ export async function revealHumanReviewAction(
     throw error;
   }
   refreshReview(input.data.projectId);
+}
+
+export async function completeQuickReviewAction(
+  _previousState: HumanReviewActionState,
+  formData: FormData,
+): Promise<HumanReviewActionState> {
+  const input = reviewIdsSchema.safeParse(Object.fromEntries(formData));
+  if (!input.success) return { message: "复核会话标识无效。" };
+  try {
+    const workspace = await getHumanReviewWorkspace(input.data.projectId);
+    if (!workspace || workspace.reviewSessionId !== input.data.reviewSessionId || workspace.evaluationMode !== "quick") {
+      return { message: "当前快速复核会话已变化，请刷新页面。" };
+    }
+    await lockHumanReview(input.data.projectId, input.data.reviewSessionId);
+    await revealHumanReview(input.data.projectId, input.data.reviewSessionId);
+    after(async () => {
+      await generateQuickBackgroundOutputs(input.data.projectId);
+      revalidatePath(`/projects/${input.data.projectId}/results`);
+      revalidatePath(`/projects/${input.data.projectId}/report`);
+    });
+  } catch (error) {
+    if (error instanceof HumanReviewError) return { message: error.message };
+    throw error;
+  }
+  revalidatePath(`/projects/${input.data.projectId}/review`);
+  revalidatePath("/projects");
+  redirect(`/projects/${input.data.projectId}/results`);
 }
 
 function refreshReview(projectId: string): never {

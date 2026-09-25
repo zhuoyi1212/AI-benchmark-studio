@@ -59,6 +59,10 @@ test("finalizes only a complete Artifact-backed matrix without auto-starting sco
   assert.doesNotMatch(service, /blindReviewRepository/);
   assert.match(actions, /startProfessionalReviewAction/);
   assert.match(actionComponent, /ProfessionalReviewAction/);
+  assert.match(service, /run\.artifacts\.length === 0/);
+  assert.doesNotMatch(service, /missingEvidenceTypes/);
+  assert.match(page, /至少上传 1 个原始文件即可进入分析/);
+  assert.match(page, /输出参考/);
 });
 
 test("real Test Execution route validates actions and never imports demo data", () => {
@@ -70,10 +74,10 @@ test("real Test Execution route validates actions and never imports demo data", 
   assert.match(actionComponent, /直接粘贴文本/);
   assert.match(actionComponent, /name="rawText"/);
   assert.match(actions, /TestExecutionError/);
-  assert.match(actionComponent, /image\/png,image\/jpeg,image\/webp,application\/pdf,text\/plain,text\/markdown,application\/json,text\/csv,video\/mp4,video\/webm,video\/quicktime/);
-  assert.match(page, /提炼测评发现/);
-  assert.match(page, /专业评分（可选）/);
-  assert.match(page, /\/results/);
+  assert.match(actionComponent, /\.doc,\.docx,\.xls,\.xlsx,\.ppt,\.pptx/);
+  assert.match(page, /QuickAutoAdvance/);
+  assert.match(page, /开始 Blind Judge/);
+  assert.doesNotMatch(page, /href=\{`\/projects\/\$\{project\.id\}\/results`\}/);
   assert.doesNotMatch(page + actions + actionComponent + service + repository, /@\/lib\/mock|mockTestRuns|\/projects\/demo/);
 });
 

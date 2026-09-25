@@ -105,19 +105,23 @@ erDiagram
 - 状态：`pending → running → completed | failed`。
 - failed run 保留 error；retry 创建新 run，不覆盖旧 run。
 - completed 前必须包含当前 Project 的全部产品；完成或失败后 run 与逐产品输出不可再修改。
+- `projects.evaluation_mode` 保存 quick / professional；`quick_preparation_status/error` 保存快速方案自动准备的可恢复状态。
+- `product_research_snapshots` 是产品级不可变版本，保存能力、限制、输入输出格式、来源、AI 路由、签名和有效期。
+- Project 仍以自己的 `product_research` 作为协议输入；复用时通过 `snapshot_id` 固定引用并设置 `reused_from_snapshot=true`，`research_runs.reuse_details` 记录复用、过期及新调研明细。
 
 ### Protocol
 
 - Protocol 必须引用具体 `research_run_id`。
 - 多产品项目只有 completed 且可比性为 comparable/partially comparable 的 ResearchRun 才能创建 Protocol。
-- 单产品项目保留 Comparability 兼容字段，但不以其 status 阻塞体验 Protocol；Protocol 生成 1–3 个可留证体验 Case。
+- 单产品项目保留 Comparability 兼容字段，但不以其 status 阻塞体验 Protocol；快速模式默认生成 1 个可留证核心 Case，历史多任务版本继续保留。
 - 新版本先以 `draft` 创建；数据库拒绝直接插入 locked Protocol。
+- 项目进入测试、评分、报告或发布阶段后仍可创建新的 Protocol version；旧 Protocol、TestRun 与后续产物保留为历史，新版本创建后项目回到 `protocol_draft`。
 - Lock 时数据库检查：至少 1 个 TestCase、至少 1 个 Rubric、Rubric 总权重恰好 100。
 - locked 后 Protocol、TestCase、Rubric 的 UPDATE/DELETE/INSERT 均被 trigger 阻止；修改方案必须创建新 version。
 
 ### Quick Findings
 
-- 完整 `Product × TestCase` TestRun 矩阵确认后，可以直接创建 `experience_findings`，不要求先初始化 Blind Layer。
+- 完整 `Product × TestCase` TestRun 矩阵确认后，快速模式自动初始化 Blind Layer、运行 Judge，并默认接受高置信度正常评分；异常项经一次人工处理后 Lock / Reveal。
 - AI Findings 只输出 `good / neutral / problem` 三类可观察发现，每条必须绑定同一产品、同一 TestCase 的真实 Artifact。
 - AI 生成完成不等于快速测评完成；只有用户确认或修改 Findings 后，项目才进入快速测评完成态。
 - 人工确认稿作为社区内容的编辑主线，不覆盖 AI 原始 Findings；已确认记录不原地改写。

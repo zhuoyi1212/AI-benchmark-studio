@@ -5,11 +5,13 @@ import { blindReviewRepository } from "@/lib/repositories/blind-review.repositor
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import { SupabaseRequestTimeoutError, withSupabaseRequestTimeout } from "@/lib/supabase/server";
 import type { BlindSample } from "@/lib/types/review";
+import type { EvaluationMode } from "@/lib/project-mode";
 
 export type BlindReviewWorkspace = {
   projectId: string;
   protocolId: string;
   protocolVersion: number;
+  evaluationMode: EvaluationMode;
   samples: BlindSample[];
   testCases: Array<{ id: string; position: number; title: string }>;
 };
@@ -85,6 +87,7 @@ export async function getBlindReviewWorkspace(projectId: string): Promise<BlindR
       projectId,
       protocolId: protocol.id,
       protocolVersion: protocol.version,
+      evaluationMode: protocolWorkspace.research.project.evaluationMode,
       samples: samples.map((sample) => ({ sampleId: sample.id, label: sample.label })),
       testCases: protocol.testCases.map((testCase, index) => ({ id: testCase.id, position: index + 1, title: testCase.title })),
     };

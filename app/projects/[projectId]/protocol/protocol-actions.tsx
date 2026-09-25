@@ -62,11 +62,11 @@ export function GenerateProtocolAction({ projectId, regenerate = false, experien
           <DialogTrigger asChild><Button type="button" variant="outline" className="border-slate-300 bg-white text-slate-950 hover:bg-slate-100 hover:text-slate-950"><RefreshCw className="h-4 w-4" />重新生成新版本</Button></DialogTrigger>
           <DialogContent>
             <DialogTitle>生成新的 Protocol 版本？</DialogTitle>
-            <DialogDescription>生成新的 Protocol 后，现有测试、评分、报告和发布包仍将保留为历史版本；若要使用新 Protocol，需要重新锁定并执行后续流程。</DialogDescription>
+            <DialogDescription>快速模式会生成 1 个新的核心任务。现有测试、评分、报告和发布包仍将保留为历史版本；新 Protocol 需要重新锁定后再执行。</DialogDescription>
             <form action={formAction} className="mt-6 flex justify-end gap-2">
               <input type="hidden" name="projectId" value={projectId} />
               <DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose>
-              <Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在生成...</> : "确认生成新版本"}</Button>
+              <Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在快速生成...</> : "确认快速生成"}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -78,7 +78,7 @@ export function GenerateProtocolAction({ projectId, regenerate = false, experien
     <form action={formAction} className="flex flex-col items-end gap-2" aria-busy={pending}>
       <input type="hidden" name="projectId" value={projectId} />
       <Button type="submit" size={regenerate ? "default" : "lg"} variant={regenerate ? "outline" : "default"} className={regenerate ? "border-slate-300 bg-white text-slate-950 hover:bg-slate-100 hover:text-slate-950 disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70" : undefined} disabled={pending} aria-disabled={pending}>
-        {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />正在生成 Protocol...</> : regenerate ? <><RefreshCw className="h-4 w-4" aria-hidden="true" />重新生成新版本</> : <><Sparkles className="h-4 w-4" aria-hidden="true" />生成{experienceMode ? "体验" : "测评"}方案</>}
+        {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />正在快速生成...</> : regenerate ? <><RefreshCw className="h-4 w-4" aria-hidden="true" />重新生成新版本</> : <><Sparkles className="h-4 w-4" aria-hidden="true" />快速生成{experienceMode ? "体验" : "测评"}方案</>}
       </Button>
       {!pending && state.message && <p role="alert" className={`max-w-sm text-right text-xs leading-5 ${regenerate ? "text-red-300" : "text-red-600"}`}>{state.message}</p>}
     </form>

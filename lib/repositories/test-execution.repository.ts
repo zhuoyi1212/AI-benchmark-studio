@@ -17,7 +17,7 @@ export type RunExecutionMetadata = {
 
 export type ArtifactRecord = {
   id: string;
-  kind: "image" | "pdf" | "text" | "video";
+  kind: "image" | "pdf" | "text" | "video" | "document";
   storagePath: string;
   fileName: string;
   mimeType: string;

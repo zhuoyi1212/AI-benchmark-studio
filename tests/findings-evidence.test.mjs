@@ -46,6 +46,7 @@ function serviceFixture(artifacts, overrides={}) {
   return createLoader(root, {
     '@/lib/services/test-execution.service':{getTestExecutionWorkspace:async()=>testWorkspace},
     '@/lib/services/research.service':{getResearchWorkspace:async()=>({completedResult:{products:[]}})},
+    '@/lib/services/human-review.service':{getHumanReviewWorkspace:async()=>({status:'revealed'})},
     ...overrides,
   })('@/lib/services/findings.service');
 }

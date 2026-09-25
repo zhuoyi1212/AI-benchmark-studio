@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, CircleDollarSign, ExternalLink, FlaskConical, LoaderCircle, Sparkles, Target, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, CircleDollarSign, ExternalLink, FileText, FlaskConical, LoaderCircle, Sparkles, Target, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -43,7 +43,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
   if (!workspace) notFound();
   if (!workflowState) notFound();
 
-  const { project, latestRun, completedResult, runCount } = workspace;
+  const { project, latestRun, completedResult, runCount, reuseSummary } = workspace;
   const projectMode = getProjectMode(project.products);
   const running = latestRun?.status === "pending" || latestRun?.status === "running";
   const latestFailed = latestRun?.status === "failed";
@@ -61,6 +61,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
 
       {running && <StatusBanner icon={LoaderCircle} title="正在调研产品" description={projectMode === "single" ? "正在检索真实来源、整理定位、能力、卖点、限制与值得体验的场景。刷新页面可查看最新状态。" : "正在检索真实来源、整理结构化产品信息并分析可比性。刷新页面可查看最新状态。"} spinning />}
       {latestFailed && <StatusBanner icon={FlaskConical} title={`ResearchRun v${latestRun.version} 未完成`} description={latestRun.error_message ?? "调研执行失败，可创建新的 ResearchRun 重试；历史运行不会被覆盖。"} error />}
+      {completedResult && reuseSummary && reuseSummary.reusedCount > 0 && <StatusBanner icon={CheckCircle2} title={`已复用 ${reuseSummary.reusedCount} 个产品调研版本`} description={reuseSummary.staleCount > 0 ? `${reuseSummary.staleCount} 份资料已超过默认有效期，但不会阻塞快速测评；可主动重新调研。` : "未重复调用完整产品调研，当前项目已固定引用这些历史快照。"} />}
       {runCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {runCount} 次 ResearchRun 历史；当前展示最近一次成功结果。</p>}
 
       {completedResult ? (
@@ -78,7 +79,7 @@ export default async function ResearchPage({ params }: ResearchPageProps) {
           </section>
           <div className="sticky bottom-5 z-20 mt-8 flex items-center justify-between rounded-lg border bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="text-xs text-muted-foreground">调研完成于 {formatDateTime(completedResult.generatedAt)}</div>
-            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry preserveHistory={workflowState.stages.protocol.completed} />{projectMode === "comparison" && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成{projectMode === "single" ? "体验" : "测评"}方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
+            <div className="flex items-center gap-2"><ResearchAction projectId={project.id} retry forceRefresh preserveHistory={workflowState.stages.protocol.completed} />{projectMode === "comparison" && completedResult.comparability.status === "not_comparable" ? <Button size="lg" disabled>暂不支持生成方案</Button> : <Button size="lg" asChild><Link href={`/projects/${project.id}/protocol`}>生成{projectMode === "single" ? "体验" : "测评"}方案<ArrowRight className="h-4 w-4" /></Link></Button>}</div>
           </div>
         </>
       ) : !running ? (
@@ -98,7 +99,7 @@ function ComparabilityCard({ comparability, mode }: { comparability: Comparabili
 }
 
 function ProductResearchCard({ product }: { product: ProductResearch }) {
-  return <Card className="p-5 shadow-none"><div className="flex items-center gap-3"><ProductLogo initials={product.initials} name={product.name} /><div className="min-w-0"><h3 className="font-semibold">{product.name}</h3><p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{product.positioning}</p></div></div><div className="mt-5 space-y-4 border-t pt-4"><Info icon={Sparkles} label="核心能力"><div className="flex flex-wrap gap-1.5">{product.capabilities.map((item) => <Badge key={item} variant="neutral">{item}</Badge>)}</div></Info><Info icon={Users} label="目标用户"><p>{product.targetUsers.join("、")}</p></Info><Info icon={CircleDollarSign} label="方案与价格"><p>{product.pricing?.freePlan ?? "未确认免费方案"}</p><p className="text-foreground">{product.pricing?.summary ?? "价格信息不足"}</p></Info><Info icon={Target} label="主要特点"><ul className="space-y-1">{product.keyFeatures.map((feature) => <li key={feature} className="flex items-start gap-1.5"><Check className="mt-1 h-3 w-3 shrink-0 text-emerald-600" />{feature}</li>)}</ul></Info></div><div className="mt-5 border-t pt-4"><div className="mb-2 text-[11px] font-medium text-slate-500">事实来源 · {product.sources.length}</div><div className="flex flex-wrap gap-1.5">{product.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer" title={source.title} className="inline-flex max-w-full items-center gap-1 rounded-full border bg-slate-50 px-2 py-1 text-[10px] text-slate-600 hover:border-blue-200 hover:text-blue-700"><span>{sourceTypeLabels[source.sourceType]}</span><ExternalLink className="h-2.5 w-2.5" /></a>)}</div></div></Card>;
+  return <Card className="p-5 shadow-none"><div className="flex items-center gap-3"><ProductLogo initials={product.initials} name={product.name} /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{product.name}</h3>{product.snapshot && <Badge variant={product.snapshot.stale ? "warning" : "success"}>调研 v{product.snapshot.version}{product.snapshot.reused ? " · 已复用" : ""}</Badge>}</div><p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{product.positioning}</p></div></div><div className="mt-5 space-y-4 border-t pt-4"><Info icon={Sparkles} label="核心能力"><div className="flex flex-wrap gap-1.5">{product.capabilities.map((item) => <Badge key={item} variant="neutral">{item}</Badge>)}</div></Info><Info icon={Users} label="目标用户"><p>{product.targetUsers.join("、")}</p></Info><Info icon={CircleDollarSign} label="方案与价格"><p>{product.pricing?.freePlan ?? "未确认免费方案"}</p><p className="text-foreground">{product.pricing?.summary ?? "价格信息不足"}</p></Info><Info icon={Target} label="主要特点"><ul className="space-y-1">{product.keyFeatures.map((feature) => <li key={feature} className="flex items-start gap-1.5"><Check className="mt-1 h-3 w-3 shrink-0 text-emerald-600" />{feature}</li>)}</ul></Info>{(product.inputFormats.length > 0 || product.outputFormats.length > 0) && <Info icon={FileText} label="格式"><p>输入：{product.inputFormats.join("、") || "未确认"}</p><p>输出：{product.outputFormats.join("、") || "未确认"}</p></Info>}</div><div className="mt-5 border-t pt-4"><div className="mb-2 text-[11px] font-medium text-slate-500">事实来源 · {product.sources.length}</div><div className="flex flex-wrap gap-1.5">{product.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer" title={source.title} className="inline-flex max-w-full items-center gap-1 rounded-full border bg-slate-50 px-2 py-1 text-[10px] text-slate-600 hover:border-blue-200 hover:text-blue-700"><span>{sourceTypeLabels[source.sourceType]}</span><ExternalLink className="h-2.5 w-2.5 shrink-0" /></a>)}</div></div></Card>;
 }
 
 function StatusBanner({ icon: Icon, title, description, error = false, spinning = false }: { icon: typeof LoaderCircle; title: string; description: string; error?: boolean; spinning?: boolean }) {

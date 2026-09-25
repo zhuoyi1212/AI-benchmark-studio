@@ -85,7 +85,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   let protocolWorkspace = requireValue(await getProtocolWorkspace(projectId), "Single Protocol workspace missing");
   assert(protocolWorkspace.protocol?.id === protocolId, "Generated Protocol was not persisted");
   assert(protocolWorkspace.protocol.status === "draft", "Generated Protocol must begin as draft");
-  assert(protocolWorkspace.protocol.testCases.length >= 2 && protocolWorkspace.protocol.testCases.length <= 4, "Single Protocol must contain 2-4 TestCases");
+  assert(protocolWorkspace.protocol.testCases.length === 1, "Quick single-product Protocol must contain exactly one TestCase");
   assert(protocolWorkspace.protocol.testCases.every((item) => item.expectedOutputTypes.includes(textOnlyEvidence ? "text" : "image")), "Expected output types were not persisted");
   assert(protocolWorkspace.protocol.testCases.every((item) => item.evidenceRequirements.length > 0), "Evidence requirements were not persisted");
 
@@ -147,20 +147,28 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(testWorkspace.testRuns.every((run) => run.projectId === projectId && run.protocolId === protocolId), "Artifact lineage left the current Project or Protocol");
   await finalizeTestExecution(projectId, protocolId);
 
+  await startProfessionalReview(projectId, protocolId);
+  const blind = requireValue(await getBlindReviewWorkspace(projectId), "Single Blind workspace missing");
+  assert(blind.samples.length === 1, "Single Project must retain one anonymous Sample");
+  await runBlindJudge(projectId);
+  let review = requireValue(await getHumanReviewWorkspace(projectId), "Single Human Review workspace missing");
+  assert(review.scores.length > 0, "Judge score matrix is empty");
+  assert(review.scores.every((score) => score.evidence.some((entry) => artifactIds.some((id) => entry.includes(id)))), "Judge Evidence must reference current Artifact IDs");
+  await lockHumanReview(projectId, review.reviewSessionId);
+  review = requireValue(await getHumanReviewWorkspace(projectId), "Locked Human Review workspace missing");
+  assert(review.status === "locked", "Human Review did not lock Final Scores");
+  await revealHumanReview(projectId, review.reviewSessionId);
+  review = requireValue(await getHumanReviewWorkspace(projectId), "Revealed Human Review workspace missing");
+  assert(review.status === "revealed" && review.revealedMappings?.length === 1, "Single identity reveal failed");
+
   const findingsId = await generateExperienceFindings(projectId);
   let findings = requireValue(await getExperienceFindingsWorkspace(projectId), "Quick Findings workspace missing");
   assert(findings.latest?.id === findingsId && findings.latest.status === "completed", "Quick Findings did not complete");
   assert(!findings.latest?.humanConfirmedAt, "Quick Findings must remain unconfirmed before the human confirmation step");
 
   const workflowBeforeConfirmation = requireValue(await getProjectWorkflowState(projectId), "Workflow state missing before Findings confirmation");
-  assert(!workflowBeforeConfirmation.stages.review.completed, "Quick Findings must not complete Professional Review");
-  assert(workflowBeforeConfirmation.stages.results.accessible, "Quick Findings must be accessible after Test completion");
-  try {
-    await getBlindReviewWorkspace(projectId);
-    throw new Error("Quick Findings must not initialize Blind Samples");
-  } catch (error) {
-    assert(error instanceof Error && error.message === "Blind Samples 尚未建立。", "Quick Findings unexpectedly initialized the professional Blind layer");
-  }
+  assert(workflowBeforeConfirmation.stages.review.completed, "Quick Findings requires completed Blind Review");
+  assert(workflowBeforeConfirmation.stages.results.accessible, "Quick Findings must be accessible after Blind Review");
 
   const generatedFindings = requireValue(findings.latest?.effectiveOutput, "Generated Findings output missing");
   await confirmExperienceFindings(projectId, findingsId, generatedFindings);
@@ -193,22 +201,6 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(quickPublishPost.body.includes("真实体验"), "Quick Publish copy must use Findings experience semantics");
   assert(quickPublishPost.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Quick Publish must only reference current Artifacts");
   assert(!textOnlyEvidence || quickPublishPost.screenshotRecommendations.length === 0, "Text-only Quick Publish must not fabricate screenshot recommendations");
-
-  // Professional scoring remains an explicit opt-in branch after the quick content path.
-  await startProfessionalReview(projectId, protocolId);
-
-  const blind = requireValue(await getBlindReviewWorkspace(projectId), "Single Blind workspace missing");
-  assert(blind.samples.length === 1, "Single Project must retain one anonymous Sample");
-  await runBlindJudge(projectId);
-  let review = requireValue(await getHumanReviewWorkspace(projectId), "Single Human Review workspace missing");
-  assert(review.scores.length > 0, "Judge score matrix is empty");
-  assert(review.scores.every((score) => score.evidence.some((entry) => artifactIds.some((id) => entry.includes(id)))), "Judge Evidence must reference current Artifact IDs");
-  await lockHumanReview(projectId, review.reviewSessionId);
-  review = requireValue(await getHumanReviewWorkspace(projectId), "Locked Human Review workspace missing");
-  assert(review.status === "locked", "Human Review did not lock Final Scores");
-  await revealHumanReview(projectId, review.reviewSessionId);
-  review = requireValue(await getHumanReviewWorkspace(projectId), "Revealed Human Review workspace missing");
-  assert(review.status === "revealed" && review.revealedMappings?.length === 1, "Single identity reveal failed");
 
   await generateFinalResultAnalysis(projectId);
   const results = requireValue(await getResultsWorkspace(projectId), "Single Results workspace missing");
@@ -260,7 +252,7 @@ async function runComparisonRegression(runId: string, projectIds: string[]) {
   assert(research.completedResult?.comparability.status === "comparable", "Comparable regression did not produce comparable Research");
   const protocolId = await generateProtocol(projectId);
   const workspace = requireValue(await getProtocolWorkspace(projectId), "Comparison Protocol workspace missing");
-  assert(workspace.protocol?.id === protocolId && workspace.protocol.testCases.length === 2, "Comparison Protocol must preserve multi-product TestCases");
+  assert(workspace.protocol?.id === protocolId && workspace.protocol.testCases.length === 1, "Quick comparison Protocol must contain exactly one TestCase");
   await lockProtocol(projectId, protocolId);
   return { projectId, productCount: research.project.products.length, comparabilityStatus: research.completedResult.comparability.status, protocolId, testCaseCount: workspace.protocol.testCases.length };
 }
@@ -296,7 +288,7 @@ async function verifySingleRoutes(origin: string, projectId: string, reportTitle
     ["protocol", ["已锁定"], []],
     ["test", ["测试数据已确认"], []],
     ["review", ["产品身份已揭晓"], []],
-    ["results", ["测评发现", "专业测评模式（可选）"], ["产品体验结果", "综合体验得分", "证据化 Case 素材"]],
+    ["results", ["测评发现", "专业报告（后台生成）"], ["产品体验结果", "综合体验得分", "证据化 Case 素材"]],
     ["report", ["体验报告已生成", reportTitle], ["综合冠军", "最终排名", "第一名"]],
     ["publish", ["已准备好", postTitle], ["综合冠军", "最终排名", "第一名"]],
   ] as const;

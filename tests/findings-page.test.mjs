@@ -37,12 +37,10 @@ function nodes(value) {
   return [value, ...nodes(value.props?.children)];
 }
 
-test('Quick Findings page opens without ever loading Blind/Judge/Review results', async () => {
+test('Quick Findings redirects to Review until Blind identity reveal is complete', async () => {
   const page = loadPage({ professional: async () => { throw new Error('Blind Samples 尚未建立。'); } });
-  const content = nodes(await page.render());
+  await assert.rejects(page.render(), /redirect:\/projects\/project\/review/);
   assert.equal(page.reads(), 0);
-  assert.ok(content.some(node => node.type === 'FindingsGenerationAction'));
-  assert.ok(content.some(node => node.type === 'ProfessionalReviewAction'));
 });
 
 test('professional results are loaded after reveal and preserve existing analysis action', async () => {
@@ -69,9 +67,9 @@ test('missing primary workflow redirects before any optional professional read',
   }
 });
 
-test('completed Quick Findings opens the human confirmation editor without professional reads', async () => {
-  const page = loadPage({ findings: { ...workspace, latest: { id: 'finding', status: 'completed', humanConfirmedAt: null, effectiveOutput: { findings: [] } } } });
+test('completed Quick Findings opens the human confirmation editor after reveal', async () => {
+  const page = loadPage({ revealed: true, findings: { ...workspace, latest: { id: 'finding', status: 'completed', humanConfirmedAt: null, effectiveOutput: { findings: [] } } } });
   const content = nodes(await page.render());
   assert.ok(content.some(node => node.type === 'FindingsEditor'));
-  assert.equal(page.reads(), 0);
+  assert.equal(page.reads(), 1);
 });

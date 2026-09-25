@@ -15,10 +15,11 @@ export async function startResearchAction(
 ): Promise<ResearchActionState> {
   const parsedProjectId = projectIdSchema.safeParse(formData.get("projectId"));
   if (!parsedProjectId.success) return { message: "项目标识无效。" };
+  const forceRefresh = formData.get("forceRefresh") === "true";
   const path = `/projects/${parsedProjectId.data}/research`;
 
   try {
-    await executeProductResearch(parsedProjectId.data);
+    await executeProductResearch(parsedProjectId.data, { forceRefresh });
   } catch (error) {
     if (error instanceof ResearchExecutionError) {
       revalidatePath(path);

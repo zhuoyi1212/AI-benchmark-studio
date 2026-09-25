@@ -12,6 +12,7 @@
 - Project list 读 DB
 - Test progress 由 TestRuns 推导
 - 不跳回固定 demo
+- 新建项目默认快速模式，项目设置可在 Protocol Lock 前切换快速/专业模式
 
 ## Research
 
@@ -22,12 +23,14 @@
 - 支持重新运行
 - 保留旧 run
 - 刷新后存在
+- completed 调研进入不可变产品快照；相同产品在新项目中复用最新版本且不重复完整调研
+- 过期快照只提醒不阻塞；主动重新调研创建新版本并保留旧版本引用
 
 ## Protocol
 
 - 基于指定 ResearchRun 生成
-- TestCase 数量动态
-- 草稿中的 TestCase 可由用户删除，至少保留 1 个，不强制执行 3 个任务
+- 默认快速生成恰好 1 个最有代表性的 TestCase
+- 历史多任务草稿仍可删除 TestCase，且至少保留 1 个
 - Rubric 数量动态
 - 不依赖固定 AI PPT 模板
 - 单项 weight > 0 且 <= 100
@@ -35,12 +38,14 @@
 - locked 后刷新仍 locked
 - locked version 不可原地修改
 - 未 locked 不能进入 Test
+- 专业模式生成 2–4 个 Case，快速模式固定 1 个 Case
 
 ## TestRun / Artifact
 
 - 每个 `Product × TestCase` 有真实 TestRun
 - TestRun 明确 projectId/protocolId/testCaseId/productId
-- 支持至少 image/PDF/text
+- 支持 image/PDF/Word/PPT/Excel/text/video
+- 只要存在有效 Artifact 就可分析，不因缺少独立文本文件或不匹配预期输出类型而阻塞
 - 文件进 Storage
 - DB 保存 metadata
 - Artifact 可追溯到 TestRun
@@ -79,6 +84,8 @@
 - 0 项修改正常
 - 保留完整 audit history
 - AI Score 不被覆盖
+- 快速模式自动接受高置信度正常项，只暂停并展示异常评分
+- Findings 必须人工确认；专业报告后台生成不阻塞社区内容
 
 ## Review State
 

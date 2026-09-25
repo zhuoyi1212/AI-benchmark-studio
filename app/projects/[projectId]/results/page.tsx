@@ -4,9 +4,9 @@ import { connection } from "next/server";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, FileText, FlaskConical, ShieldCheck, Sparkles } from "lucide-react";
 import { FindingsEditor } from "@/app/projects/[projectId]/results/findings-editor";
 import { FindingsGenerationAction } from "@/app/projects/[projectId]/results/findings-generation-action";
-import { ProfessionalReviewAction } from "@/app/projects/[projectId]/test/test-actions";
 import { ResultAnalysisAction } from "@/app/projects/[projectId]/results/result-analysis-action";
 import { PageHeader } from "@/components/page-header";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
   ]);
   if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
+  if (!workflowState.stages.review.completed) redirect(`/projects/${projectId}/review`);
   const professionalResult = workflowState.stages.review.completed
     ? await readOptionalProfessionalResults(projectId)
     : null;
@@ -44,6 +45,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
   const confirmed = Boolean(ready && run.humanConfirmedAt);
 
   return <div className="page-shell">
+    {workspace.evaluationMode === "quick" && (!run || run.status === "pending" || run.status === "running") && <AutoRefresh maxRefreshes={run ? 100 : 10} />}
     <WorkflowSteps projectId={projectId} workflowState={workflowState} />
     <Link href={`/projects/${projectId}/test`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
       <ArrowLeft className="h-3.5 w-3.5" />返回真实测试
@@ -51,7 +53,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
     <PageHeader
       eyebrow={`Findings / Test Plan v${workspace.protocolVersion}`}
       title="测评发现"
-      description="直接从真实 TestRun 和原始 Artifact 提炼值得写进内容的发现。这里不需要先跑 AI Judge，也不要求先生成综合评分。"
+      description="基于已完成的 Blind Judge、锁定评分与原始 Artifact 提炼候选发现；专业报告在后台生成，不阻塞社区内容。"
       action={confirmed
         ? <Badge variant="success"><Check className="h-3 w-3" />已人工确认 · 可直接生成内容</Badge>
         : <Badge variant="neutral"><Sparkles className="h-3 w-3" />快速测评模式</Badge>}
@@ -61,7 +63,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
-    <ProfessionalMode projectId={projectId} protocolId={workspace.protocolId} professional={professional} unavailable={professionalUnavailable} />
+    <ProfessionalMode projectId={projectId} professional={professional} unavailable={professionalUnavailable} />
   </div>;
 }
 
@@ -89,7 +91,7 @@ function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace
     <FlaskConical className="mx-auto h-7 w-7 text-blue-600" />
     <h2 className="mt-4 text-xl font-semibold">{failed ? "上次 Findings 提炼失败" : running ? "正在读取真实测试证据" : "从测试证据里提炼真正值得讲的东西"}</h2>
     <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
-      AI 会直接读取你上传的文本、截图、PDF 或视频 Artifact，按“好用 / 一般 / 问题”提炼具体观察，不先打分，也不从分数倒推结论。
+      AI 会读取你上传的文本、截图、PDF、Office 文档或视频 Artifact，按“好用 / 一般 / 问题”提炼具体观察，并保留证据边界。
     </p>
     <div className="mt-6">
       {running ? <div className="text-sm text-blue-700">Findings 正在生成，刷新后查看结果。</div>
@@ -168,18 +170,18 @@ function FindingCard({
   </Card>;
 }
 
-function ProfessionalMode({ projectId, protocolId, professional, unavailable }: { projectId: string; protocolId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>>; unavailable: boolean }) {
+function ProfessionalMode({ projectId, professional, unavailable }: { projectId: string; professional: Awaited<ReturnType<typeof getResultsWorkspace>>; unavailable: boolean }) {
   const analysis = professional?.latestAnalysis;
   const complete = analysis?.status === "completed" && !analysis.stale && analysis.output;
   return <section className="mt-10 rounded-lg border border-dashed bg-slate-50/50 p-5">
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
       <div>
-        <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-slate-500" />专业测评模式（可选）</div>
-        <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">需要结构化评分、Blind Judge、人工复核或深度报告时再进入。它不会阻塞 Findings 和社区内容。</p>
+        <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-slate-500" />专业报告（后台生成）</div>
+        <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">完整结果分析和深度报告独立生成，不会阻塞 Findings 和社区内容。</p>
       </div>
       <div className="flex flex-wrap gap-2">
         {unavailable ? <div className="text-xs text-red-600"><p role="alert">专业评分暂时无法读取，测评发现仍可继续。</p><Link className="mt-1 inline-block underline" href={`/projects/${projectId}/review`}>查看专业评分</Link></div>
-          : !professional && <ProfessionalReviewAction projectId={projectId} protocolId={protocolId} label="进入专业评分" />}
+          : !professional && <ResultAnalysisAction projectId={projectId} retry={false} />}
         {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}
         {complete && <Button variant="outline" asChild><Link href={`/projects/${projectId}/report`}><FileText className="h-4 w-4" />生成深度报告</Link></Button>}
       </div>

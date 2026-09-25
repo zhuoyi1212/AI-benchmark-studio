@@ -17,7 +17,7 @@ import {
 } from "@/lib/repositories/protocols.repository";
 import { testExecutionRepository } from "@/lib/repositories/test-execution.repository";
 import { createInputSignature } from "@/lib/signatures";
-import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
+import { getProjectMode, type EvaluationMode } from "@/lib/project-mode";
 import { getResearchWorkspace, type ResearchWorkspace } from "@/lib/services/research.service";
 import type { ProtocolRow, RubricDimensionRow } from "@/lib/types/database";
 import type { RubricDimension, TestCase, TestProtocol, TestRule } from "@/lib/types/protocol";
@@ -92,6 +92,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
   const result = research?.completedResult;
   if (!research || !result) throw new ProtocolExecutionError("请先完成产品调研，再生成测评方案。");
   const projectMode = getProjectMode(research.project.products);
+  const evaluationMode = research.project.evaluationMode;
   if (projectMode === "comparison" && result.comparability.status === "not_comparable") {
     throw new ProtocolExecutionError("当前产品不适合标准化横向测试，不能生成 Protocol。");
   }
@@ -102,6 +103,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       name: research.project.name,
       intent: research.project.intent,
       mode: projectMode,
+      evaluationMode,
       products: research.project.products.map(({ id, name, officialUrl }) => ({ id, name, officialUrl })),
     },
     researchRun: {
@@ -122,6 +124,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
     },
     invariants: {
       projectMode,
+      evaluationMode,
       rubricWeightTotal: 100,
     },
   };
@@ -156,14 +159,26 @@ export async function generateProtocol(projectId: string): Promise<string> {
         && serialized.includes(product.name.trim().toLocaleLowerCase("zh-CN")))) {
         context.addIssue({ code: "custom", path: ["root"], message: "Protocol must use blind-neutral wording and omit every tested product name" });
       }
-      if (isAutoDemo && protocol.testCases.length > 3) {
-        context.addIssue({ code: "custom", path: ["testCases"], message: "AUTO DEMO Protocol must contain 2-3 focused experience tasks" });
+      const validCaseCount = evaluationMode === "quick"
+        ? protocol.testCases.length === 1
+        : protocol.testCases.length >= 2 && protocol.testCases.length <= 4;
+      if (!validCaseCount) {
+        context.addIssue({
+          code: "custom",
+          path: ["testCases"],
+          message: evaluationMode === "quick"
+            ? "Quick Protocol must contain exactly one focused task"
+            : "Professional Protocol must contain 2-4 distinct tasks",
+        });
       }
       if (isAutoDemo && protocol.testCases.some((testCase) => testCase.expectedOutputTypes.some((type) => !["text", "code", "mixed"].includes(type)))) {
         context.addIssue({ code: "custom", path: ["testCases"], message: "AUTO DEMO Protocol must use text, code, or mixed Evidence only" });
       }
     });
-    const generated = await aiTaskService.generateProtocol({
+    const generationTask = evaluationMode === "quick"
+      ? aiTaskService.generateProtocol
+      : aiTaskService.generateProfessionalProtocol;
+    const generated = await generationTask({
       schema: protocolContentSchema,
       schemaName: "ProtocolContent",
       messages: [
@@ -178,13 +193,16 @@ export async function generateProtocol(projectId: string): Promise<string> {
           content: JSON.stringify({
             ...generationContext,
             requirements: {
-              caseCount: { default: 3, min: 2, max: 4, useTwoOnlyWhenFewerThanThreeDistinctTestableCoreWorkflows: true, fourthOnlyForDistinctUncoveredCapability: !isAutoDemo, ...(isAutoDemo ? { max: 3 } : {}) },
+              mode: evaluationMode,
+              caseCount: evaluationMode === "quick"
+                ? { default: 1, min: 1, max: 1 }
+                : { default: 3, min: 2, max: 4 },
               rubricCount: { default: 4, min: 3, max: 5 },
               capabilityModeling: { sequence: capabilityModelingSequence, coreCapabilitiesCount: "3-8", inferTypeFromResearch: true },
               qualityGate: {
                 checks: taskQualityChecks,
                 deprioritizeUnlessCoreToProduct: genericTasksToDeprioritize,
-                defaultCasesUsingNativeOrDifferentiatingWorkflow: 2,
+                chooseOneHighestValueNativeOrDifferentiatingWorkflow: evaluationMode === "quick",
               },
               eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
               caseOutput: { selfContainedPrompt: true, attachEveryRequiredInput: true, allowedInputArtifactTypes: ["application/pdf", "text/plain", "text/csv"], pdfContentLanguage: "printable English and numbers", expectedOutputTypes, evidenceMustSupportScoring: true },
@@ -194,10 +212,10 @@ export async function generateProtocol(projectId: string): Promise<string> {
           }),
         },
       ],
-      maxTokens: 6500,
+      maxTokens: evaluationMode === "quick" ? 4500 : 9000,
     });
     const protocol = normalizeGeneratedProtocol(generated.data);
-    assertProtocolFitsMode(protocol.testCases.length, projectMode);
+    assertProtocolFitsMode(protocol.testCases.length, evaluationMode);
     const protocolId = await protocolsRepository.createDraft({
       projectId,
       researchRunId: result.researchRunId,
@@ -206,7 +224,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
       usage: generated.usage,
       inputSignature,
     });
-    logProtocolPerformance(projectMode, generated, protocol.testCases.length, protocol.rubric.length, Math.round(performance.now() - generationStartedAt));
+    logProtocolPerformance(evaluationMode, generated, protocol.testCases.length, protocol.rubric.length, Math.round(performance.now() - generationStartedAt));
     return protocolId;
   } catch (error) {
     if (error instanceof ProtocolExecutionError) throw error;
@@ -240,7 +258,7 @@ function normalizeRubricWeights(rubric: GeneratedProtocolContent["rubric"]): Gen
 }
 
 function logProtocolPerformance(
-  mode: ProjectMode,
+  mode: EvaluationMode,
   generated: Awaited<ReturnType<typeof aiTaskService.generateProtocol>>,
   testCaseCount: number,
   rubricCount: number,
@@ -262,10 +280,8 @@ function logProtocolPerformance(
   });
 }
 
-function assertProtocolFitsMode(testCaseCount: number, mode: ProjectMode) {
-  const valid = mode === "single"
-    ? testCaseCount >= 2 && testCaseCount <= 4
-    : testCaseCount >= 2 && testCaseCount <= 4;
+function assertProtocolFitsMode(testCaseCount: number, mode: EvaluationMode) {
+  const valid = mode === "quick" ? testCaseCount === 1 : testCaseCount >= 2 && testCaseCount <= 4;
   if (!valid) throw new AIValidationError("protocol", `${mode}ProjectTestCaseCount`);
 }
 
