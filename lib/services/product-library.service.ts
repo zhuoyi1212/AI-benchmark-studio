@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { isVisibleProductLibraryEntry } from "@/lib/product-library-visibility";
 import { productLibraryRepository } from "@/lib/repositories/product-library.repository";
 import type { ProductResearchSnapshotRow } from "@/lib/types/database";
 import type { ResearchSource } from "@/lib/types/research";
@@ -27,7 +28,7 @@ export type ProductLibraryItem = {
 };
 
 export async function listProductLibrary(): Promise<ProductLibraryItem[]> {
-  const products = await productLibraryRepository.listProducts();
+  const products = (await productLibraryRepository.listProducts()).filter(isVisibleProductLibraryEntry);
   const productIds = products.map((product) => product.id);
   const [snapshots, links] = await Promise.all([
     productLibraryRepository.listSnapshots(productIds),
