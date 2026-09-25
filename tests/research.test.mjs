@@ -6,8 +6,9 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, neutralMigration, repository, service, page, action, actionComponent, taskService, schema, config, quickPreparation, protocolAction] = await Promise.all([
+const [migration, rerunMigration, neutralMigration, repository, service, page, action, actionComponent, taskService, schema, config, quickPreparation, protocolAction] = await Promise.all([
   read("supabase/migrations/202608170005_research_run_lifecycle.sql"),
+  read("supabase/migrations/20260926090000_allow_research_rerun_from_downstream.sql"),
   read("supabase/migrations/202608170006_provider_neutral_research_completion.sql"),
   read("lib/repositories/research.repository.ts"),
   read("lib/services/research.service.ts"),
@@ -45,6 +46,9 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(taskService, /isPreferredOfficialSource \|\| sourceMentionsProduct/);
   assert.match(taskService, /officialSearchSourceRequired/);
   assert.match(taskService, /buildSubmittedOfficialSources/);
+  assert.match(taskService, /fetchOfficialPage/);
+  assert.match(taskService, /assertPublicHostname/);
+  assert.match(taskService, /extractOfficialPageContent/);
   assert.match(taskService, /仅用于确认产品身份和官网地址，不得单独用于证明产品功能、价格或能力/);
   assert.match(taskService, /\.\.\.submittedOfficialSources/);
   assert.match(service, /`"\$\{product\.name\}"`/);
@@ -63,6 +67,14 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(taskService, /Source URL must exactly reference one of the retrieved sources/);
   assert.match(service, /allowedSourceUrls: product\.officialUrl/);
   assert.match(taskService, /officialSources\.length >= 3 \? officialSources : relevantSources/);
+});
+
+test("allows a new versioned ResearchRun after downstream work exists", () => {
+  assert.match(rerunMigration, /create or replace function public\.begin_product_research/);
+  assert.match(rerunMigration, /where id = p_project_id\s+and deleted_at is null\s+for update/);
+  assert.match(rerunMigration, /status in \('pending', 'running'\)/);
+  assert.match(rerunMigration, /set status = 'researching'/);
+  assert.doesNotMatch(rerunMigration, /status in \('draft', 'researching', 'research_ready'\)/);
 });
 
 test("research placeholder guard does not reject normal product descriptions containing uncertainty words", async () => {

@@ -104,6 +104,7 @@ erDiagram
 - 每次运行创建新的 `research_runs.version`。
 - 状态：`pending → running → completed | failed`。
 - failed run 保留 error；retry 创建新 run，不覆盖旧 run。
+- 项目进入 Protocol、测试、评分或发布阶段后仍可主动重新调研；新 ResearchRun 开始后项目回到 `researching`，旧 ResearchRun 与下游产物保留为历史。
 - completed 前必须包含当前 Project 的全部产品；完成或失败后 run 与逐产品输出不可再修改。
 - `projects.evaluation_mode` 保存 quick / professional；`quick_preparation_status/error` 保存快速方案自动准备的可恢复状态。
 - `product_research_snapshots` 是产品级不可变版本，保存能力、限制、输入输出格式、来源、AI 路由、签名和有效期。

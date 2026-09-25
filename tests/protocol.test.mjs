@@ -83,6 +83,8 @@ test("models native product capabilities before designing realistic tasks", () =
   assert.match(service, /chooseOneHighestValueNativeOrDifferentiatingWorkflow: evaluationMode === "quick"/);
   assert.match(service, /真实用户可能提出并希望产品端到端完成的任务/);
   assert.match(service, /写作产品才以写作改写为核心/);
+  assert.match(service, /禁止凭空发明旅行、写作、编程等无关领域/);
+  assert.match(service, /关系沟通或情感产品测情境理解、沟通策略、边界与安全性/);
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
