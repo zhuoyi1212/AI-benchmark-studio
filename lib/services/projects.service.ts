@@ -6,6 +6,7 @@ import {
   type ProjectProductListRow,
   type ProjectProgressRow,
 } from "@/lib/repositories/projects.repository";
+import { isInternalValidationProject } from "@/lib/project-visibility";
 import type { ProjectRow } from "@/lib/types/database";
 import type { EvaluationMode } from "@/lib/project-mode";
 
@@ -25,8 +26,11 @@ export type ProjectSummary = Pick<ProjectRow, "id" | "name" | "intent" | "status
 
 const completedStatuses = new Set<ProjectProgressRow["status"]>(["uploaded", "ready_for_review"]);
 
-export async function listProjectSummaries(): Promise<ProjectSummary[]> {
-  const projects = await projectsRepository.listActive();
+export async function listProjectSummaries(options: { includeInternal?: boolean } = {}): Promise<ProjectSummary[]> {
+  const activeProjects = await projectsRepository.listActive();
+  const projects = options.includeInternal
+    ? activeProjects
+    : activeProjects.filter((project) => !isInternalValidationProject(project));
   const projectIds = projects.map((project) => project.id);
   const [runs, productRows] = await Promise.all([
     projectsRepository.listProgressRows(projectIds),

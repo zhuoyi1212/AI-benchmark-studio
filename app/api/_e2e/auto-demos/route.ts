@@ -170,7 +170,7 @@ export async function POST(request: Request) {
 
 async function republishExistingDemo(scenario: DemoScenario, maxAttempts: number, rediscover: boolean, postCount: number) {
   const name = `AUTO DEMO · ${scenario.productName} · ${scenario.productType}`;
-  const existing = (await listProjectSummaries()).find((project) => project.name === name);
+  const existing = (await listProjectSummaries({ includeInternal: true })).find((project) => project.name === name);
   if (!existing) throw new Error(`${name}: existing project was not found`);
   const report = await getReportWorkspace(existing.id);
   if (!report?.report?.content || report.report.status !== "completed") {
@@ -246,7 +246,7 @@ function normalizePostCount(value: unknown) {
 
 async function createOrResumeDemo(scenario: DemoScenario) {
   const name = `AUTO DEMO · ${scenario.productName} · ${scenario.productType}`;
-  const existing = (await listProjectSummaries()).find((project) => project.name === name);
+  const existing = (await listProjectSummaries({ includeInternal: true })).find((project) => project.name === name);
   const projectId = existing?.id ?? await createProject({
     name,
     intent: `${scenario.intent}\n目标体验观点：${scenario.viewpoint}\n事实边界：${simulationDisclosure}`,

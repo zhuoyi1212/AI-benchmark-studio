@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, ChevronDown, Database, FlaskConical, LayoutDashboard, Menu, Settings, X } from "lucide-react";
+import { Boxes, ChevronDown, Database, FlaskConical, LayoutDashboard, Menu, Settings, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 
 const nav = [
   { label: "我的测评", href: "/projects", icon: LayoutDashboard },
-  { label: "Benchmark", href: "/benchmark", icon: BarChart3 },
   { label: "产品库", href: "/products", icon: Boxes },
 ];
 
