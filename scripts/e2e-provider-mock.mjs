@@ -121,6 +121,8 @@ function buildStructuredOutput(schemaName, messages) {
       pricing: { summary: "提供基础体验方案。", freePlan: "可用于有限体验", paidFrom: null, currency: null },
       officialBestPractices: ["使用明确输入并保留原始输出"],
       limitations: ["最终表现需要通过真实 Artifact 验证"],
+      inputFormats: ["自然语言文本"],
+      outputFormats: ["结构化文本", "图片"],
       sourceUrls: sources.map((source) => source.url),
     };
   }
@@ -143,7 +145,7 @@ function buildStructuredOutput(schemaName, messages) {
   if (schemaName === "TestProtocol" || schemaName === "ProtocolContent") {
     const input = findJsonMessage(messages, (value) => value.project?.mode);
     const single = input.project.mode === "single";
-    const caseCount = 2;
+    const caseCount = input.requirements?.mode === "quick" ? 1 : 2;
     const protocol = {
       title: single ? "单产品核心能力体验方案" : "同类产品标准化横评方案",
       goal: single ? `通过真实任务和原始${textOnlyEvidence ? "文本证据" : "截图"}验证核心能力、使用体验与明显限制。` : "在统一输入、Prompt 与证据要求下比较同类产品表现。",
@@ -343,7 +345,7 @@ function buildStructuredOutput(schemaName, messages) {
       ...input.draft,
       body: input.draft.body
         .replace("本次测试先聚焦一个具体问题：", "我这次主要想看一件事：")
-        .replace("从真实体验看，", "实际用下来，"),
+        .replace("从真实体验看，", "真实体验下来，"),
       languagePass: {
         status: "polished",
         changedSentenceCount: 2,

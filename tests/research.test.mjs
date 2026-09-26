@@ -103,7 +103,7 @@ test("real research route exposes failed and retry states without mock fallback"
   assert.match(actionComponent, /重新调研/);
   assert.match(action, /resumeQuickProjectPreparation/);
   assert.match(quickPreparation, /project\.status === "research_ready"/);
-  assert.match(quickPreparation, /\["idle", "failed"\]\.includes/);
+  assert.match(quickPreparation, /\["idle", "failed", "completed"\]\.includes/);
   assert.match(protocolAction, /resumeQuickProjectPreparation/);
   assert.doesNotMatch(page + action + service + repository, /@\/lib\/mock|mockResearchResponse|\/projects\/demo/);
 });

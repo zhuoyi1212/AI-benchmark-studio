@@ -8,7 +8,7 @@ import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { GenerateProtocolAction } from "@/app/projects/[projectId]/protocol/protocol-actions";
+import { AutoPrepareQuickProtocol, GenerateProtocolAction } from "@/app/projects/[projectId]/protocol/protocol-actions";
 import { ProtocolView } from "@/app/projects/[projectId]/protocol/protocol-view";
 import { getProjectMode } from "@/lib/project-mode";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
@@ -34,10 +34,15 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
   const canGenerate = Boolean(completedResearch) && (projectMode === "single" || completedResearch!.comparability.status !== "not_comparable");
   const preparationTimedOut = research.project.quickPreparation.status === "running"
     && Date.now() - new Date(research.project.updated_at).getTime() > 10 * 60 * 1000;
-  const autoPreparing = !preparationTimedOut && (research.project.quickPreparation.status === "running"
-    || (research.project.evaluationMode === "quick" && !protocol && research.project.quickPreparation.status === "idle"));
+  const activeResearch = research.latestRun?.status === "pending" || research.latestRun?.status === "running";
+  const autoPreparing = !preparationTimedOut && research.project.quickPreparation.status === "running" && activeResearch;
   const preparationFailed = research.project.quickPreparation.status === "failed" || preparationTimedOut;
   const currentProtocol = protocol && protocol.researchRunId === completedResearch?.researchRunId ? protocol : null;
+  const shouldAutoStart = research.project.evaluationMode === "quick" && !currentProtocol
+    && (research.project.quickPreparation.status === "idle"
+      || research.project.quickPreparation.status === "failed"
+      || (research.project.quickPreparation.status === "running" && !research.latestRun)
+      || (research.project.quickPreparation.status === "completed" && research.project.status === "research_ready"));
   const displayedProtocol = autoPreparing ? null : currentProtocol;
 
   return (
@@ -61,7 +66,7 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
             <div className="grid h-11 w-11 place-items-center rounded-lg bg-blue-50 text-blue-700"><Sparkles className="h-5 w-5" /></div>
             <h2 className="mt-4 text-lg font-semibold">生成第一版{projectMode === "single" ? "体验" : "测评"}方案</h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{research.project.evaluationMode === "quick" ? "快速模式生成 1 个最有代表性、可执行、可留证的核心任务。" : "专业模式生成 2–4 个覆盖不同能力的任务，并保留完整 Rubric。"}</p>
-            <div className="mt-6">{autoPreparing ? <Button size="lg" disabled><LoaderCircle className="h-4 w-4 animate-spin" />正在自动准备方案...</Button> : canGenerate ? <GenerateProtocolAction projectId={projectId} experienceMode={projectMode === "single"} /> : <Button asChild variant="outline"><Link href={`/projects/${projectId}/research`}>返回完成{projectMode === "single" ? "产品调研" : "可比性检查"}</Link></Button>}</div>
+            <div className="mt-6">{autoPreparing ? <Button size="lg" disabled><LoaderCircle className="h-4 w-4 animate-spin" />正在自动准备方案...</Button> : shouldAutoStart ? <AutoPrepareQuickProtocol projectId={projectId} retry={preparationFailed} /> : canGenerate ? <GenerateProtocolAction projectId={projectId} experienceMode={projectMode === "single"} /> : <Button asChild variant="outline"><Link href={`/projects/${projectId}/research`}>返回完成{projectMode === "single" ? "产品调研" : "可比性检查"}</Link></Button>}</div>
           </Card>
           <aside className="h-fit rounded-lg border bg-slate-50 p-5">
             <div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-blue-700" /><h2 className="text-sm font-semibold">生成边界</h2></div>

@@ -6,16 +6,23 @@ async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-const [migration, research, protocol, config, projectForm, quickEvaluation, humanReview, testService, upload, productsPage] = await Promise.all([
+const [migration, backgroundAnalysisMigration, backgroundAnalysisRepair, research, protocol, config, projectForm, projectAction, protocolPage, protocolActions, quickEvaluation, humanReview, testService, upload, findingsPage, findingsAction, productsPage] = await Promise.all([
   read("supabase/migrations/20260925101034_quick_mode_research_reuse.sql"),
+  read("supabase/migrations/20260926115303_allow_background_analysis_after_publish.sql"),
+  read("supabase/migrations/20260926130400_restore_result_analysis_protocol_evidence.sql"),
   read("lib/services/research.service.ts"),
   read("lib/services/protocols.service.ts"),
   read("lib/ai/config.ts"),
   read("app/projects/new/project-form.tsx"),
+  read("app/projects/new/actions.ts"),
+  read("app/projects/[projectId]/protocol/page.tsx"),
+  read("app/projects/[projectId]/protocol/protocol-actions.tsx"),
   read("lib/services/quick-evaluation.service.ts"),
   read("lib/services/human-review.service.ts"),
   read("lib/services/test-execution.service.ts"),
   read("app/projects/[projectId]/test/quick-auto-advance.tsx"),
+  read("app/projects/[projectId]/results/page.tsx"),
+  read("app/projects/[projectId]/results/findings-generation-action.tsx"),
   read("app/products/page.tsx"),
 ]);
 
@@ -53,6 +60,25 @@ test("quick upload advances through Blind Judge and only pauses anomalies", () =
   assert.match(humanReview, /parse_risk/);
   assert.match(humanReview, /fact_risk/);
   assert.match(upload, /撤销自动开始/);
+  assert.match(upload, /const \[cancelled, setCancelled\] = useState\(false\)/);
+  assert.match(upload, /attemptedRef\.current/);
+});
+
+test("quick mode resumes every non-human workflow gate from the current page", () => {
+  assert.doesNotMatch(projectAction, /after\(/);
+  assert.match(projectAction, /setQuickPreparationStatus\(projectId, "idle"\)/);
+  assert.match(projectAction, /redirect\(`\/projects\/\$\{projectId\}\/protocol`\)/);
+  assert.match(protocolPage, /shouldAutoStart/);
+  assert.match(protocolPage, /quickPreparation\.status === "running" && !research\.latestRun/);
+  assert.match(protocolPage, /AutoPrepareQuickProtocol/);
+  assert.match(protocolActions, /formRef\.current\?\.requestSubmit\(\)/);
+  assert.match(findingsPage, /autoStart=\{workspace\.evaluationMode === "quick"\}/);
+  assert.match(findingsAction, /if \(!autoStart \|\| attemptedRef\.current\) return/);
+  assert.match(findingsAction, /formRef\.current\?\.requestSubmit\(\)/);
+  assert.match(backgroundAnalysisMigration, /status in \('completed', 'reported', 'published'\)/);
+  assert.match(backgroundAnalysisMigration, /'expectedOutputTypes', test_case\.expected_output_types/);
+  assert.match(backgroundAnalysisMigration, /'evidenceRequirements', test_case\.evidence_requirements/);
+  assert.match(backgroundAnalysisRepair, /Unable to restore Result Analysis protocol evidence fields/);
 });
 
 test("accepts Office artifacts as original evidence without expected-output gating", () => {

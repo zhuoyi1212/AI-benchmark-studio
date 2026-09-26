@@ -10,12 +10,15 @@ const initialState: TestExecutionActionState = { ok: false, message: null };
 export function QuickAutoAdvance({ projectId, protocolId, countdown = true }: { projectId: string; protocolId: string; countdown?: boolean }) {
   const [state, formAction, pending] = useActionState(advanceQuickEvaluationAction, initialState);
   const [seconds, setSeconds] = useState(countdown ? 5 : 0);
-  const [cancelled, setCancelled] = useState(!countdown);
+  const [cancelled, setCancelled] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
     if (cancelled || pending) return;
     if (seconds <= 0) {
+      if (attemptedRef.current) return;
+      attemptedRef.current = true;
       formRef.current?.requestSubmit();
       return;
     }
@@ -28,7 +31,7 @@ export function QuickAutoAdvance({ projectId, protocolId, countdown = true }: { 
     <input type="hidden" name="protocolId" value={protocolId} />
     <div className="flex items-center gap-2">
       {!cancelled && !pending && <Button type="button" variant="ghost" onClick={() => setCancelled(true)}><Undo2 className="h-4 w-4" />撤销自动开始</Button>}
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" disabled={pending} onClick={() => { attemptedRef.current = true; }}>
         {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在匿名评分...</> : <><ShieldCheck className="h-4 w-4" />{cancelled ? "开始匿名分析" : `${seconds} 秒后自动分析`}</>}
       </Button>
     </div>

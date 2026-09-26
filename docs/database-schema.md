@@ -123,6 +123,7 @@ erDiagram
 ### Quick Findings
 
 - 完整 `Product × TestCase` TestRun 矩阵确认后，快速模式自动初始化 Blind Layer、运行 Judge，并默认接受高置信度正常评分；异常项经一次人工处理后 Lock / Reveal。
+- 快速链路允许先完成 Findings 与社区发布；项目处于 `completed`、`reported` 或 `published` 时均可在后台补齐可选的专业分析。
 - AI Findings 只输出 `good / neutral / problem` 三类可观察发现，每条必须绑定同一产品、同一 TestCase 的真实 Artifact。
 - AI 生成完成不等于快速测评完成；只有用户确认或修改 Findings 后，项目才进入快速测评完成态。
 - 人工确认稿作为社区内容的编辑主线，不覆盖 AI 原始 Findings；已确认记录不原地改写。

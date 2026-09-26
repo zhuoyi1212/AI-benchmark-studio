@@ -20,7 +20,7 @@ export async function resumeQuickProjectPreparation(projectId: string): Promise<
   const project = await getProjectSummary(projectId);
   const canResume = project?.evaluationMode === "quick"
     && project.status === "research_ready"
-    && ["idle", "failed"].includes(project.quickPreparation.status);
+    && ["idle", "failed", "completed"].includes(project.quickPreparation.status);
   if (!canResume) return false;
 
   await setQuickPreparationStatus(projectId, "running");

@@ -9,12 +9,38 @@ import {
   removeDraftTestCase,
   ProtocolExecutionError,
 } from "@/lib/services/protocols.service";
-import { resumeQuickProjectPreparation } from "@/lib/services/quick-project-preparation.service";
+import { prepareQuickProject, resumeQuickProjectPreparation } from "@/lib/services/quick-project-preparation.service";
+import { ResearchExecutionError } from "@/lib/services/research.service";
 
 const projectIdSchema = z.string().uuid();
 const protocolIdSchema = z.string().uuid();
 
 export type ProtocolActionState = { message: string | null };
+
+export async function prepareQuickProtocolAction(
+  _previousState: ProtocolActionState,
+  formData: FormData,
+): Promise<ProtocolActionState> {
+  const projectId = projectIdSchema.safeParse(formData.get("projectId"));
+  if (!projectId.success) return { message: "项目标识无效。" };
+  const path = `/projects/${projectId.data}/protocol`;
+
+  try {
+    const resumed = await resumeQuickProjectPreparation(projectId.data);
+    if (!resumed) await prepareQuickProject(projectId.data);
+  } catch (error) {
+    if (error instanceof ResearchExecutionError || error instanceof ProtocolExecutionError) {
+      revalidatePath(path);
+      revalidatePath("/projects");
+      return { message: error.message };
+    }
+    throw error;
+  }
+
+  revalidatePath(path);
+  revalidatePath("/projects");
+  redirect(path);
+}
 
 export async function generateProtocolAction(
   _previousState: ProtocolActionState,

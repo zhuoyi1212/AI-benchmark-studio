@@ -45,7 +45,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
   const confirmed = Boolean(ready && run.humanConfirmedAt);
 
   return <div className="page-shell">
-    {workspace.evaluationMode === "quick" && (!run || run.status === "pending" || run.status === "running") && <AutoRefresh maxRefreshes={run ? 100 : 10} />}
+    {workspace.evaluationMode === "quick" && (run?.status === "pending" || run?.status === "running") && <AutoRefresh maxRefreshes={100} />}
     <WorkflowSteps projectId={projectId} workflowState={workflowState} />
     <Link href={`/projects/${projectId}/test`} className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
       <ArrowLeft className="h-3.5 w-3.5" />返回真实测试
@@ -59,7 +59,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ projec
         : <Badge variant="neutral"><Sparkles className="h-3 w-3" />快速测评模式</Badge>}
     />
 
-    {!run || run.status !== "completed" ? <GenerationState workspace={workspace} /> : !run.humanConfirmedAt && run.effectiveOutput
+    {!run || run.status !== "completed" ? <GenerationState workspace={workspace} autoStart={workspace.evaluationMode === "quick"} /> : !run.humanConfirmedAt && run.effectiveOutput
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
@@ -83,7 +83,7 @@ async function readOptionalProfessionalResults(projectId: string): Promise<{
   }
 }
 
-function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace }) {
+function GenerationState({ workspace, autoStart }: { workspace: ExperienceFindingsWorkspace; autoStart: boolean }) {
   const run = workspace.latest;
   const failed = run?.status === "failed";
   const running = run?.status === "pending" || run?.status === "running";
@@ -95,7 +95,7 @@ function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace
     </p>
     <div className="mt-6">
       {running ? <div className="text-sm text-blue-700">Findings 正在生成，刷新后查看结果。</div>
-        : <FindingsGenerationAction projectId={workspace.projectId} retry={failed} />}
+        : <FindingsGenerationAction projectId={workspace.projectId} retry={failed} autoStart={autoStart} />}
     </div>
     {failed && run?.errorMessage && <p className="mt-3 text-xs text-red-600">{run.errorMessage}</p>}
   </Card>;

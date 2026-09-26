@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { LoaderCircle, LockKeyhole, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,34 @@ import {
 import {
   generateProtocolAction,
   lockProtocolAction,
+  prepareQuickProtocolAction,
   removeDraftTestCaseAction,
   type ProtocolActionState,
 } from "@/app/projects/[projectId]/protocol/actions";
 
 const initialState: ProtocolActionState = { message: null };
+
+export function AutoPrepareQuickProtocol({ projectId, retry = false }: { projectId: string; retry?: boolean }) {
+  const [state, formAction, pending] = useActionState(prepareQuickProtocolAction, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const attemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (attemptedRef.current) return;
+    attemptedRef.current = true;
+    formRef.current?.requestSubmit();
+  }, []);
+
+  return <form ref={formRef} action={formAction} className="flex flex-col items-center gap-2">
+    <input type="hidden" name="projectId" value={projectId} />
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在自动准备方案...</>
+        : retry ? <><RefreshCw className="h-4 w-4" />重试自动准备</>
+          : <><Sparkles className="h-4 w-4" />继续自动准备</>}
+    </Button>
+    {state.message && <p role="alert" className="max-w-md text-center text-xs leading-5 text-red-600">{state.message}</p>}
+  </form>;
+}
 
 export function RemoveTestCaseAction({ projectId, protocolId, testCaseId, title, disabled = false }: {
   projectId: string;

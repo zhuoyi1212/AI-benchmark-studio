@@ -79,7 +79,7 @@ try {
   assert.ok(result.single.testCases.every((item) => item.expectedOutputTypes.includes(textOnlyEvidence ? "text" : "image") && item.evidenceRequirements.length > 0));
   if (protocolOnly) {
     assert.equal(result.single.protocolOnly, true);
-    assert.ok(result.single.testCases.length >= 2 && result.single.testCases.length <= 4);
+    assert.equal(result.single.testCases.length, 1);
     assert.ok(result.single.rubricCount >= 3 && result.single.rubricCount <= 5);
   } else {
     assert.equal(result.single.resultMode, "single");
@@ -94,7 +94,7 @@ try {
   }
   assert.equal(result.comparison.productCount, 2);
   assert.equal(result.comparison.comparabilityStatus, "comparable");
-  assert.equal(result.comparison.testCaseCount, 2);
+  assert.equal(result.comparison.testCaseCount, 1);
   assert.equal(result.notComparable.productCount, 2);
   assert.equal(result.notComparable.comparabilityStatus, "not_comparable");
   assert.equal(result.notComparable.protocolBlocked, true);

@@ -2,12 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { z } from "zod";
 import { RepositoryError } from "@/lib/repositories/repository-error";
-import { createProject } from "@/lib/services/projects.service";
+import { createProject, setQuickPreparationStatus } from "@/lib/services/projects.service";
 import { isEvaluationMode } from "@/lib/project-mode";
-import { prepareQuickProject } from "@/lib/services/quick-project-preparation.service";
 
 const optionalHttpUrl = z
   .string()
@@ -76,17 +74,7 @@ export async function createProjectAction(
 
   revalidatePath("/projects");
   if (parsed.data.evaluationMode === "quick") {
-    after(async () => {
-      try {
-        await prepareQuickProject(projectId);
-        revalidatePath(`/projects/${projectId}`, "layout");
-      } catch (error) {
-        console.error("[QuickProjectPreparation] failed", {
-          projectId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
+    await setQuickPreparationStatus(projectId, "idle");
     redirect(`/projects/${projectId}/protocol`);
   }
   redirect(`/projects/${projectId}/research`);
