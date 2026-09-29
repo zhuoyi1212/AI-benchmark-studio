@@ -58,3 +58,19 @@ test('partial failures retain files and explicit retry skips confirmed successes
   assert.deepEqual(retried, ['b', 'c']);
   assert.ok(saved.every(entry => entry.status === 'saved'));
 });
+
+test('quick evaluation is requested only for the last upload after all prior entries succeeded', async () => {
+  const entries = ['a', 'b', 'c'].map(name => queueArtifact(new File([name], name)));
+  const flags = [];
+  const partial = await uploadArtifactQueue(entries, new FormData(), async form => {
+    flags.push(form.get('quickBatchComplete'));
+    return { ok: form.get('artifact').name !== 'b', message: null };
+  }, () => {});
+  assert.deepEqual(flags, ['false', 'false', 'false']);
+  const retry = [];
+  await uploadArtifactQueue(partial, new FormData(), async form => {
+    retry.push([form.get('artifact').name, form.get('quickBatchComplete')]);
+    return { ok: true, message: null };
+  }, () => {});
+  assert.deepEqual(retry, [['b', 'true']]);
+});

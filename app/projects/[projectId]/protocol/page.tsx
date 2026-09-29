@@ -1,6 +1,6 @@
 import { ArrowLeft, FileText, LoaderCircle, LockKeyhole, Settings2, ShieldAlert, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -29,6 +29,7 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
   if (!workflowState) notFound();
 
   const { research, protocol, versionCount } = workspace;
+  if (research.project.evaluationMode === "quick" && !protocol) redirect(`/projects/${projectId}/quick`);
   const completedResearch = research.completedResult;
   const projectMode = getProjectMode(research.project.products);
   const canGenerate = Boolean(completedResearch) && (projectMode === "single" || completedResearch!.comparability.status !== "not_comparable");

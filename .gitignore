@@ -1,6 +1,7 @@
 node_modules
 .next
 .next-e2e
+.next-quick-e2e
 .next-auto-demo
 out
 .DS_Store

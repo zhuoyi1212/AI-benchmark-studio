@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createProject, setQuickPreparationStatus } from "@/lib/services/projects.service";
+import { enqueueQuickPreparation } from "@/lib/services/quick-workflow.service";
+import { wakeQuickWorker } from "@/lib/quick/dispatch";
 import { isEvaluationMode } from "@/lib/project-mode";
 
 const optionalHttpUrl = z
@@ -74,8 +76,15 @@ export async function createProjectAction(
 
   revalidatePath("/projects");
   if (parsed.data.evaluationMode === "quick") {
-    await setQuickPreparationStatus(projectId, "idle");
-    redirect(`/projects/${projectId}/protocol`);
+    try {
+      await setQuickPreparationStatus(projectId, "idle");
+      await enqueueQuickPreparation(projectId);
+      wakeQuickWorker(projectId);
+    } catch {
+      // Project creation succeeded; show its recovery action instead of creating it twice.
+      console.error("[QuickWorker] Project saved; preparation enqueue needs retry.");
+    }
+    redirect(`/projects/${projectId}/quick`);
   }
   redirect(`/projects/${projectId}/research`);
 }

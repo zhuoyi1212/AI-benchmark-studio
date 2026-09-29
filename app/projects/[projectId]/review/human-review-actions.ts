@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { z } from "zod";
 import {
   HumanReviewError,
@@ -12,7 +11,8 @@ import {
   saveHumanOverride,
   getHumanReviewWorkspace,
 } from "@/lib/services/human-review.service";
-import { generateQuickBackgroundOutputs } from "@/lib/services/quick-background-outputs.service";
+import { enqueueQuickFindings } from "@/lib/services/quick-workflow.service";
+import { wakeQuickWorker } from "@/lib/quick/dispatch";
 
 const idSchema = z.string().uuid();
 const scoreSchema = z.coerce.number().min(0).max(10).refine((value) => Number.isInteger(value * 10), "评分最多保留一位小数。");
@@ -99,20 +99,17 @@ export async function completeQuickReviewAction(
     if (!workspace || workspace.reviewSessionId !== input.data.reviewSessionId || workspace.evaluationMode !== "quick") {
       return { message: "当前快速复核会话已变化，请刷新页面。" };
     }
-    await lockHumanReview(input.data.projectId, input.data.reviewSessionId);
-    await revealHumanReview(input.data.projectId, input.data.reviewSessionId);
-    after(async () => {
-      await generateQuickBackgroundOutputs(input.data.projectId);
-      revalidatePath(`/projects/${input.data.projectId}/results`);
-      revalidatePath(`/projects/${input.data.projectId}/report`);
-    });
+    if (workspace.status === "reviewing") await lockHumanReview(input.data.projectId, input.data.reviewSessionId);
+    if (workspace.status !== "revealed") await revealHumanReview(input.data.projectId, input.data.reviewSessionId);
+    await enqueueQuickFindings(input.data.projectId, workspace.protocolId);
+    wakeQuickWorker(input.data.projectId);
   } catch (error) {
     if (error instanceof HumanReviewError) return { message: error.message };
     throw error;
   }
   revalidatePath(`/projects/${input.data.projectId}/review`);
   revalidatePath("/projects");
-  redirect(`/projects/${input.data.projectId}/results`);
+  redirect(`/projects/${input.data.projectId}/quick`);
 }
 
 function refreshReview(projectId: string): never {

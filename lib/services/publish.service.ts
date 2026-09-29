@@ -1,4 +1,5 @@
 import "server-only";
+import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 
 import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -178,7 +179,8 @@ export async function generateCommunityPost(
     packs = await listPacks(source);
   }
   const pack = packs[0];
-  if (!pack || pack.status !== "draft") throw new PublishExecutionError("请先完成社区选题发现。");
+  const resuming = quickExecution.getStore()?.job.kind === "publish" && pack?.status === "generating";
+  if (!pack || (pack.status !== "draft" && !resuming)) throw new PublishExecutionError("请先完成社区选题发现。");
 
   const ideas = parseIdeas(pack.content_ideas);
   const selectedIdea = selectIdea(ideas, input.ideaId, input.customAngle);
@@ -186,6 +188,10 @@ export async function generateCommunityPost(
   const config = withAvailableImageCount(publishConfigSchema.parse(input.config), imageArtifacts.length);
   const postInput = buildPostInput(source, selectedIdea, config);
   const inputSignature = createInputSignature(postInput);
+  if (resuming && JSON.stringify(pack.config) !== JSON.stringify(config)) {
+    // Compare structurally below; DB JSON key ordering is not stable.
+    if (createInputSignature(pack.config) !== createInputSignature(config)) throw new PublishExecutionError('写作配置已变化，请重新生成。');
+  }
   const confirmedFindings = source.kind === "findings" ? source.confirmedFindings.findings : [];
   const checkedExpressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
     const normalized = normalizeFindingCategories(post, confirmedFindings);
@@ -217,7 +223,7 @@ export async function generateCommunityPost(
             source.kind === "findings"
               ? "事实判断以 humanConfirmedFindings 为主；Research 只提供背景。不得引入评分、Judge 或 Report 中不存在于本次快速链路的信息。"
               : "事实判断以真实 Case、Artifact、Judge Evidence 和 Human Review 为主；Final Score 只可作为辅助背景。",
-            "contentBrief 必须先明确 coreViewpoint、opening、supportingPoints、ending、voice 和 avoidPhrases；supportingPoints 要把“观察到什么”和“这对用户意味着什么”分开。",
+            "contentBrief 必须先明确 coreViewpoint、opening、supportingPoints、ending、voice 和 avoidPhrases；supportingPoints 要把“观察到什么”和“这对用户意味着什么”分开。avoidPhrases 最多 12 项，只选最相关的，不要照抄全部禁用词。",
             "如果 config.stylePreset=真实体验：使用第一人称、短句、直接判断，可以写“我这次测试”“我的感受是”，但只能描述本项目真实留存的测试；不能虚构未发生的操作。",
             "如果 config.structure=好用 / 一般 / 难用：正文优先按“先给结论 → 好用的功能 → 体验一般的功能 → 不能用/用着难受的功能 → 个人感受”组织；没有真实发现的类别就省略。",
             "标题朴素直接，不做营销式悬念。每个功能段先说判断，再说具体测试现象和影响。",
@@ -227,14 +233,14 @@ export async function generateCommunityPost(
             "不要为了显得严谨反复写免责声明。范围限制只在必要位置简短说明一次。",
             "不得创造体验、数据、竞品对比或未测试能力。证据不完整时必须收缩说法。",
             "有 imageArtifacts 时 screenshotRecommendations 只能引用其中 artifactId；没有图片时必须返回空数组。",
-            "输出简体中文完整正文，不能只返回提纲。",
+            "返回符合 CommunityPostDraft Schema 的完整 JSON，必须包含 title、body、tags、interactionQuestion、contentBrief、screenshotRecommendations 六个字段。body 使用简体中文完整正文，不能只返回提纲。",
           ].join("\n"),
         },
         { role: "user", content: JSON.stringify(postInput) },
       ],
       maxTokens: 8_000,
       maxAttempts: 2,
-      beforeExecute: (route) => publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
+      beforeExecute: (route) => resuming ? Promise.resolve() : publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
     });
 
     const humanizedResult = await aiTaskService.humanizeCommunityPost({
@@ -334,6 +340,7 @@ export async function generateCommunityPost(
     await publishRepository.complete(pack.id, post, combineUsage(draftResult.usage, humanizedResult.usage, checkedResult.usage));
     return pack.id;
   } catch (error) {
+    if (error instanceof QuickYield) throw error;
     try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
     throw new PublishExecutionError(toUserFacingError(error));
   }

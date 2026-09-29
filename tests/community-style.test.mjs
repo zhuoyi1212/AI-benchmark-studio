@@ -105,6 +105,7 @@ test('Quick Publish reaches ready through draft, language pass, and raw evidence
   const forbidden = () => { throw new Error('Quick flow touched professional source'); };
   const deps = {
     'server-only': {},
+    '@/lib/quick/checkpoints': { quickExecution: { getStore: () => undefined }, QuickYield: class extends Error {} },
     '@/lib/community-experience': expression,
     '@/lib/ai/errors': { AIProviderError: class extends Error {}, AIValidationError: class extends Error {} },
     '@/lib/ai/schemas/publish.schemas': schemas,

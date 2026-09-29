@@ -126,7 +126,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post.v4-content-brief-draft",
+    promptVersion: "community-post.v5-complete-draft-json",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

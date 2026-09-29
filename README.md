@@ -100,3 +100,7 @@ Publish 支持按已确认 Findings 的好用 / 一般 / 难用分类组织文�
 Publish 中点击写法即可同步风格、结构和篇幅，也可展开“文章思路”查看章节。生成分为独立策划、写作、最终核对，章节证据及文章质量不合格会明确失败。深度稿可以没有互动问题。
 
 规划与边界见 [community-editorial-plan](docs/community-editorial-plan.md)。本地可执行 `node --env-file=.env.local scripts/verify-community-editorial.mjs --live` 验证场景稿，加 `--dimensions` 验证多维稿；会调用真实 AI 并产生费用，使用虚构文本测试夹具，只输出本地文件，不写数据库。这些样稿不能作为真实产品测评发布。
+
+## 后台快速模式
+
+快速项目通过统一工作台自动执行准备、匿名分析和文章生成，用户保留方案采用、实测上传和发现确认。常驻 Node 自动运行队列；Serverless 需要受密钥保护的调度器。部署、恢复机制与验证命令见 [后台快速模式](docs/quick-workflow.md)。

@@ -51,6 +51,7 @@ try {
       ...process.env,
       AI_E2E_PROVIDER_BASE_URL: providerMock.baseUrl,
       E2E_TEST_MODE: "1",
+      QUICK_WORKER_DISABLED: "1",
       E2E_TEST_TOKEN: token,
       ZAI_API_KEY: realAiQuickPublish ? liveProviderKeys.zhipu : "e2e-provider-key-not-a-secret",
       DEEPSEEK_API_KEY: realAiQuickPublish ? liveProviderKeys.deepseek : "e2e-provider-key-not-a-secret",

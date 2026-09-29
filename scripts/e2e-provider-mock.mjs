@@ -4,13 +4,14 @@ import { createServer } from "node:http";
 const expectedAuthorization = "Bearer e2e-local-provider-boundary";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 
-export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys = {} } = {}) {
+export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys = {}, failOnceTask } = {}) {
   const requests = [];
   const realAiTaskSet = new Set(realAiTasks);
   const protocolScenario = process.env.E2E_PROTOCOL_RESPONSE_SCENARIO ?? "normal";
   const supportedProtocolScenarios = new Set(["normal", "empty-then-success", "always-empty", "truncated-then-success", "invalid-json-then-success", "schema-invalid-then-success"]);
   if (!supportedProtocolScenarios.has(protocolScenario)) throw new Error(`Unsupported E2E Protocol response scenario: ${protocolScenario}`);
   let protocolAttempt = 0;
+  let injectedFailure = false;
   const server = createServer(async (request, response) => {
     try {
       if (request.method !== "POST" || request.headers.authorization !== expectedAuthorization) {
@@ -45,6 +46,10 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
       const provider = request.url.startsWith("/zhipu/") ? "zhipu" : "deepseek";
       const trackedRequest = { task: schemaName, provider, multimodal };
       requests.push(trackedRequest);
+      if (schemaName === failOnceTask && !injectedFailure) {
+        injectedFailure = true;
+        return send(response, 400, { error: { message: "Injected isolated E2E failure" } });
+      }
       if (realAiTaskSet.has(schemaName)) {
         const apiKey = providerApiKeys[provider];
         if (!apiKey) return send(response, 500, { error: `Missing real AI credential for ${provider}` });

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { checkpoint, quickExecution } from "@/lib/quick/checkpoints";
 import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { resolveAITaskRoute } from "@/lib/ai/config";
@@ -19,6 +20,17 @@ import type {
 } from "@/lib/ai/types";
 
 export async function runStructuredAITask<Schema extends z.ZodType>(
+  task: Exclude<AITaskType, "research_search" | "ocr">,
+  request: StructuredTaskRequest<Schema>,
+): Promise<StructuredTaskResult<z.infer<Schema>>> {
+  const route = resolveAITaskRoute(task);
+  await request.beforeExecute?.(route);
+  const result = await checkpoint(request.schemaName, { route, schema: z.toJSONSchema(request.schema, { target: "draft-7" }), messages: request.messages, maxTokens: request.maxTokens },
+    () => executeStructuredAITask(task, { ...request, beforeExecute: undefined }));
+  return { ...result, data: request.schema.parse(result.data) };
+}
+
+async function executeStructuredAITask<Schema extends z.ZodType>(
   task: Exclude<AITaskType, "research_search" | "ocr">,
   request: StructuredTaskRequest<Schema>,
 ): Promise<StructuredTaskResult<z.infer<Schema>>> {
@@ -111,6 +123,8 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
     }
   }
 
+  const execution = quickExecution.getStore();
+  if (execution) execution.retryable = lastError instanceof AIProviderError && lastError.retryable;
   throw lastError;
 }
 

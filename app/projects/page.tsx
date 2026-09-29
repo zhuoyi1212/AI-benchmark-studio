@@ -72,7 +72,7 @@ function formatDate(value: string) {
 }
 
 function getProjectHref(project: Awaited<ReturnType<typeof listProjectSummaries>>[number]) {
-  if (project.evaluationMode === "quick" && ["idle", "running", "failed"].includes(project.quickPreparation.status) && ["draft", "researching", "research_ready"].includes(project.status)) return `/projects/${project.id}/protocol`;
+  if (project.evaluationMode === "quick") return `/projects/${project.id}/quick`;
   if (["draft", "researching", "research_ready"].includes(project.status)) return `/projects/${project.id}/research`;
   if (["protocol_draft", "protocol_locked"].includes(project.status)) return `/projects/${project.id}/protocol`;
   if (project.status === "testing") return `/projects/${project.id}/test`;

@@ -45,7 +45,9 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "db:reset": "supabase db reset --local",
-    "db:lint": "supabase db lint --local"
+    "db:lint": "supabase db lint --local",
+    "verify:quick-backend": "node scripts/verify-quick-backend.mjs",
+    "worker:quick": "node scripts/quick-worker.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.9",

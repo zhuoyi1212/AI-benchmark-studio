@@ -17,10 +17,12 @@ export function FindingsEditor({
   projectId,
   findingsId,
   initial,
+  quick = false,
 }: {
   projectId: string;
   findingsId: string;
   initial: ExperienceFindingsOutput;
+  quick?: boolean;
 }) {
   const [state, action, pending] = useActionState(confirmFindingsAction, initialState);
   const [summary, setSummary] = useState(initial.summary);
@@ -38,16 +40,17 @@ export function FindingsEditor({
   };
 
   return <form action={action}>
+    <input type="hidden" name="quick" value={String(quick)} />
     <input type="hidden" name="projectId" value={projectId} />
     <input type="hidden" name="findingsId" value={findingsId} />
     <input type="hidden" name="payload" value={payload} />
 
     <Card className="p-5 shadow-none">
-      <div className="eyebrow text-blue-600">人工确认 Findings</div>
+      <div className="eyebrow text-blue-600">{quick ? "确认发现" : "人工确认 Findings"}</div>
       <h2 className="mt-2 text-xl font-semibold">留下真正值得写进内容的发现</h2>
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">这里不是改分数。你可以删除不值得写的发现、调整“好用/一般/问题”分类，并修改结论措辞。</p>
-      <label className="mt-5 block text-xs font-medium">整体感受</label>
-      <Textarea className="mt-2 min-h-24" value={summary} onChange={(event) => setSummary(event.target.value)} />
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{quick ? "勾选要保留的发现，确认后自动生成文章。" : "这里不是改分数。你可以删除发现、调整分类，并修改结论措辞。"}</p>
+      <label htmlFor="findings-summary" className="mt-5 block text-xs font-medium">整体感受</label>
+      <Textarea id="findings-summary" className="mt-2 min-h-24" value={summary} onChange={(event) => setSummary(event.target.value)} />
     </Card>
 
     <div className="mt-4 space-y-3">
@@ -70,23 +73,24 @@ export function FindingsEditor({
             </select>
           </div>
         </div>
-        <div className="mt-4 grid gap-4">
+        {quick && <div className="mt-4"><h3 className="text-sm font-semibold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{item.observation}</p></div>}
+        <details open={quick ? undefined : true} className="mt-4"><summary className={quick ? "cursor-pointer text-xs text-muted-foreground" : "hidden"}>修改这条发现</summary><div className="mt-3 grid gap-4">
           <label className="block"><span className="text-xs font-medium">发现标题</span><Input className="mt-2" value={item.title} disabled={!item.included} onChange={(event) => patch(item.id, { title: event.target.value })} /></label>
           <label className="block"><span className="text-xs font-medium">实际观察</span><Textarea className="mt-2 min-h-24" value={item.observation} disabled={!item.included} onChange={(event) => patch(item.id, { observation: event.target.value })} /></label>
           <label className="block"><span className="text-xs font-medium">对用户的影响</span><Textarea className="mt-2 min-h-20" value={item.impact} disabled={!item.included} onChange={(event) => patch(item.id, { impact: event.target.value })} /></label>
           <div className="text-[11px] text-muted-foreground">真实证据：{item.evidenceArtifactIds.length} 个 Artifact · 置信度 {Math.round(item.confidence * 100)}%</div>
-        </div>
+        </div></details>
       </Card>)}
     </div>
 
     <Card className="mt-4 p-5 shadow-none">
-      <label className="block text-xs font-medium">测试限制（每行一条）</label>
-      <Textarea className="mt-2 min-h-24" value={limitations} onChange={(event) => setLimitations(event.target.value)} />
+      <label htmlFor="findings-limitations" className="block text-xs font-medium">测试限制（每行一条）</label>
+      <Textarea id="findings-limitations" className="mt-2 min-h-24" value={limitations} onChange={(event) => setLimitations(event.target.value)} />
       <div className="mt-4 flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">已保留 {selectedCount} 条发现。至少保留 1 条，确认后即可直接生成社区内容。</p>
         <Button type="submit" size="lg" disabled={pending || selectedCount < 1}>
           {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          确认 Findings
+          {quick ? "确认发现并生成文章" : "确认 Findings"}
         </Button>
       </div>
       {state.message && <p role="alert" className="mt-3 text-xs text-red-600">{state.message}</p>}

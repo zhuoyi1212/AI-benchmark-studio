@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { z } from "zod";
 import { BlindReviewError, startProfessionalReview } from "@/lib/services/blind-review.service";
 import {
@@ -10,8 +9,10 @@ import {
   TestExecutionError,
   uploadTestArtifact,
 } from "@/lib/services/test-execution.service";
-import { advanceQuickEvaluation, QuickEvaluationError } from "@/lib/services/quick-evaluation.service";
-import { generateQuickBackgroundOutputs } from "@/lib/services/quick-background-outputs.service";
+import { QuickEvaluationError } from "@/lib/services/quick-evaluation.service";
+import { enqueueQuickEvaluation } from "@/lib/services/quick-workflow.service";
+import { wakeQuickWorker } from "@/lib/quick/dispatch";
+import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
 
 const idSchema = z.string().uuid();
 
@@ -56,6 +57,19 @@ export async function uploadTestArtifactAction(
     throw error;
   }
 
+  if (formData.get('quickBatchComplete') === 'true') {
+    try {
+      const test = await getTestExecutionWorkspace(projectId.data);
+      if (test?.project.evaluationMode === 'quick') {
+        await enqueueQuickEvaluation(projectId.data, test.protocol.id);
+        wakeQuickWorker(projectId.data);
+      }
+    } catch {
+      // The file is already saved. Keep upload success and expose the workbench recovery action.
+      console.error('[QuickWorker] Artifact saved; evaluation enqueue needs retry.');
+    }
+  }
+  revalidatePath(`/projects/${projectId.data}/quick`);
   revalidatePath(`/projects/${projectId.data}/test`);
   revalidatePath("/projects");
   return { ok: true, message: "原始测试结果已保存。" };
@@ -109,17 +123,10 @@ export async function advanceQuickEvaluationAction(
   if (!projectId.success || !protocolId.success) return { ok: false, message: "项目或 Protocol 标识无效。" };
 
   try {
-    const result = await advanceQuickEvaluation(projectId.data, protocolId.data);
-    revalidatePath(`/projects/${projectId.data}/test`);
-    revalidatePath(`/projects/${projectId.data}/review`);
-    revalidatePath("/projects");
-    if (result.next === "review") redirect(`/projects/${projectId.data}/review`);
-    after(async () => {
-      await generateQuickBackgroundOutputs(projectId.data);
-      revalidatePath(`/projects/${projectId.data}/results`);
-      revalidatePath(`/projects/${projectId.data}/report`);
-    });
-    redirect(`/projects/${projectId.data}/results`);
+    await enqueueQuickEvaluation(projectId.data, protocolId.data);
+    wakeQuickWorker(projectId.data);
+    revalidatePath(`/projects/${projectId.data}/quick`);
+    redirect(`/projects/${projectId.data}/quick`);
   } catch (error) {
     if (error instanceof QuickEvaluationError || error instanceof TestExecutionError || error instanceof BlindReviewError) {
       return { ok: false, message: error.message };

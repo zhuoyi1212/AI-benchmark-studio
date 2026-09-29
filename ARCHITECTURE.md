@@ -347,3 +347,11 @@ publish_packs.community_post JSON 新增可选 articleReview、generationTrace�
 每次混合分析最多 32 页 PDF、页面图片编码总量 20 MiB；超限、损坏或加密明确失败，不截页或用 OCR 摘要替代。输入快照标记 mixed-pdf-pages.v1，Findings promptVersion 更新。Next 服务端依赖保留 native Canvas、worker、字体、CMap 与 WASM 追踪。Provider 错误仅保留数字业务码和已知混合输入错误分类，不记录供应商原始报错中可能回显的证据、签名 URL 或密钥；Findings 持久化可操作的中文错误。无数据库迁移。
 
 同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。
+
+## Durable Quick Workflow
+
+`Server Action → Quick Workflow Service → quick_jobs → Worker → existing Application Service → AI Task Service → Router → Provider`。原业务表仍是结果唯一来源，任务表只记录执行调度。`after()` 仅加速首次唤醒；常驻 Node 由 instrumentation 注册 worker，Serverless 使用受 CRON_SECRET 保护的调度入口。页面读取状态并刷新，不触发下一阶段。
+
+领取任务通过行锁、SKIP LOCKED、项目级 advisory lock 和 lease token 实现项目串行、项目间可并行；完成与入队后继在同一事务内。每 60 秒续租，进程死亡后最多 15 分钟可回收；连续 3 次执行中断进入 failed。相同项目/种类/scope 入队去重。AI 成功结果按 route/schema/input 签名保存在服务端检查点；写作每轮最多一个未完成 AI 阶段，避免三次模型调用绑定同一个函数请求。外部供应商响应到检查点写入之间仍是 at-least-once，不能保证计费 exactly-once。
+
+部署与验证见 `docs/quick-workflow.md`。

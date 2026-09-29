@@ -36,9 +36,10 @@ export async function advanceQuickEvaluation(
 
   const review = await getHumanReviewWorkspace(projectId);
   if (!review) throw new QuickEvaluationError("AI Judge 已结束，但复核会话尚未建立，请重试。");
-  if (review.summary.anomalies > 0) return { next: "review", reviewSessionId: review.reviewSessionId };
+  if (review.status === "revealed") return { next: "findings", reviewSessionId: review.reviewSessionId };
+  if (review.status === "reviewing" && review.summary.anomalies > 0) return { next: "review", reviewSessionId: review.reviewSessionId };
 
-  await lockHumanReview(projectId, review.reviewSessionId);
+  if (review.status === "reviewing") await lockHumanReview(projectId, review.reviewSessionId);
   await revealHumanReview(projectId, review.reviewSessionId);
   return { next: "findings", reviewSessionId: review.reviewSessionId };
 }

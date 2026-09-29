@@ -39,6 +39,97 @@ export type Database = {
   }
   public: {
     Tables: {
+      quick_job_steps: {
+        Row: {
+          created_at: string
+          job_id: string
+          output: Json
+          step_key: string
+        }
+        Insert: {
+          created_at?: string
+          job_id: string
+          output: Json
+          step_key: string
+        }
+        Update: {
+          created_at?: string
+          job_id?: string
+          output?: Json
+          step_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_job_steps_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "quick_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_jobs: {
+        Row: {
+          attempts: number
+          available_at: string
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: string
+          lease_token: string | null
+          lease_until: string | null
+          payload: Json
+          project_id: string
+          result: Json | null
+          scope: string
+          stage: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind: string
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: Json
+          project_id: string
+          result?: Json | null
+          scope: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: Json
+          project_id?: string
+          result?: Json | null
+          scope?: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blind_mappings: {
         Row: {
           blind_sample_id: string
@@ -1713,6 +1804,56 @@ export type Database = {
       }
     }
     Functions: {
+      save_quick_step: {
+        Args: { p_id: string; p_key: string; p_output: Json; p_token: string }
+        Returns: undefined
+      }
+      finish_quick_job: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_next?: Json
+          p_result?: Json
+          p_status: string
+          p_token: string
+        }
+        Returns: undefined
+      }
+      enqueue_quick_job: {
+        Args: {
+          p_kind: string
+          p_payload?: Json
+          p_project_id: string
+          p_scope: string
+        }
+        Returns: string
+      }
+      claim_quick_job: {
+        Args: { p_project_id?: string }
+        Returns: {
+          attempts: number
+          available_at: string
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: string
+          lease_token: string | null
+          lease_until: string | null
+          payload: Json
+          project_id: string
+          result: Json | null
+          scope: string
+          stage: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "quick_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       append_human_override: {
         Args: {
           p_judge_score_id: string

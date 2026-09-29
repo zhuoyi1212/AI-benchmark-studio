@@ -1,3 +1,4 @@
+import type { QuickJob } from '@/lib/quick/types';
 import type { Database as GeneratedDatabase } from "@/lib/types/database.generated";
 import type { AIProviderName } from "@/lib/ai/types";
 import type { EvaluationMode } from "@/lib/project-mode";
@@ -465,6 +466,8 @@ export type ReviewFinalScoreRow = {
 };
 
 export type DatabaseTableRows = {
+  quick_jobs: QuickJob;
+  quick_job_steps: { job_id: string; step_key: string; output: Json; created_at: string };
   projects: ProjectRow;
   products: ProductRow;
   project_products: ProjectProductRow;

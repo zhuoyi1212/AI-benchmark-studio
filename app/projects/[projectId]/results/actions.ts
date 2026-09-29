@@ -6,6 +6,9 @@ import { z } from "zod";
 import { confirmExperienceFindings, FindingsExecutionError, generateExperienceFindings } from "@/lib/services/findings.service";
 import { generateFinalResultAnalysis, ResultAnalysisError } from "@/lib/services/result-analysis.service";
 
+import { enqueueQuickWriting } from "@/lib/services/quick-workflow.service";
+import { wakeQuickWorker } from "@/lib/quick/dispatch";
+
 const projectIdSchema = z.string().uuid();
 export type ResultAnalysisActionState = { message: string | null };
 
@@ -74,6 +77,17 @@ export async function confirmFindingsAction(
       return { message: error instanceof z.ZodError ? "请检查每条发现的标题、内容与证据引用。" : error.message };
     }
     throw error;
+  }
+  if (formData.get("quick") === "true") {
+    try {
+      await enqueueQuickWriting(projectId.data, findingsId.data);
+      wakeQuickWorker(projectId.data);
+    } catch {
+      // Confirmation is already durable; the workbench offers a writing recovery action.
+      console.error("[QuickWorker] Findings confirmed; writing enqueue needs retry.");
+    }
+    revalidatePath(`/projects/${projectId.data}/quick`);
+    redirect(`/projects/${projectId.data}/quick`);
   }
   revalidatePath(path);
   redirect(path);

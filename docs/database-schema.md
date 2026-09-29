@@ -252,3 +252,13 @@ M1 初始化 migration 已在空的远端项目执行并通过 Schema lint；每
 ### Publish 内容机制调整（2026-09-09）
 
 Publish 不新增表或 migration。publish_packs.community_post.attemptAudit 保存当前版本追加的任务事件（started / response / completed / failed）；ready 写入时保留该字段，failed 保留现有 JSON。写入采用状态与 updated_at 比较，拒绝并发覆盖及已结束版本修改。对浏览器仍投影旧的公开文章字段，不发送完整审计输入。
+
+## 后台快速模式（2026-09-30）
+
+新增非破坏性 migrations `20260928180649_quick_backend_workflow.sql`、`20260928181719_quick_workflow_continuations.sql`。
+
+- `quick_jobs`：Project 外键 RESTRICT；kind/scope/payload、queued/running/completed/failed/cancelled、attempts、lease_token/lease_until、available_at、stage/error/result。`(project_id,kind,scope)` 唯一，运行态必须同时具有 lease；索引覆盖可调度任务与项目历史。
+- `quick_job_steps`：`(job_id,step_key)` 主键，FK RESTRICT；保存验证成功的结构化结果和 route/usage，无 chain-of-thought。只允许新增与读取，重复检查点不覆盖。
+- 两表开启 RLS，撤销 anon/authenticated/public 权限，只由 Service Role 服务端访问。四个 invoker RPC 的 search_path 为空，普通角色没有 EXECUTE。
+- `enqueue_quick_job` 检查未归档 quick Project；`claim_quick_job` 领取/回收、同项目互斥；`save_quick_step` 校验有效 lease；`finish_quick_job` 原子完成并创建后继任务。正常 continuation 不增加失败次数。
+- Project 软删除后不再领取任务；不清除已有历史记录。原有 Protocol/Artifact/Judge/Human Review/Final Score 表与删除策略保持不变。

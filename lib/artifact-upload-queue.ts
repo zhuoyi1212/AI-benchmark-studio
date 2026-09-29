@@ -45,6 +45,8 @@ export async function uploadArtifactQueue(
       if (key !== "artifact" && key !== "rawText") form.append(key, value);
     }
     form.set("artifact", entry.file);
+    const remaining = entries.slice(entries.indexOf(entry) + 1).some(item => item.status !== "saved");
+    form.set("quickBatchComplete", String(!remaining && result.every(item => item.status === "saved")));
     let outcome: { ok: boolean; message: string | null };
     try { outcome = await upload(form); }
     catch { outcome = { ok: false, message: "连接中断，未确认保存结果；请先核对已上传文件再重试。" }; }

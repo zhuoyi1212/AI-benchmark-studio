@@ -59,15 +59,16 @@ test("quick upload advances through Blind Judge and only pauses anomalies", () =
   assert.match(humanReview, /evidence_risk/);
   assert.match(humanReview, /parse_risk/);
   assert.match(humanReview, /fact_risk/);
-  assert.match(upload, /撤销自动开始/);
-  assert.match(upload, /const \[cancelled, setCancelled\] = useState\(false\)/);
-  assert.match(upload, /attemptedRef\.current/);
+  assert.match(upload, /operation="evaluate"/);
+  assert.doesNotMatch(upload, /requestSubmit|setTimeout|useEffect/);
 });
 
-test("quick mode resumes every non-human workflow gate from the current page", () => {
+test("quick mode persists work before navigation and retains legacy recovery surfaces", () => {
   assert.doesNotMatch(projectAction, /after\(/);
   assert.match(projectAction, /setQuickPreparationStatus\(projectId, "idle"\)/);
-  assert.match(projectAction, /redirect\(`\/projects\/\$\{projectId\}\/protocol`\)/);
+  assert.match(projectAction, /enqueueQuickPreparation\(projectId\)/);
+  assert.match(projectAction, /wakeQuickWorker\(projectId\)/);
+  assert.match(projectAction, /redirect\(`\/projects\/\$\{projectId\}\/quick`\)/);
   assert.match(protocolPage, /shouldAutoStart/);
   assert.match(protocolPage, /quickPreparation\.status === "running" && !research\.latestRun/);
   assert.match(protocolPage, /AutoPrepareQuickProtocol/);

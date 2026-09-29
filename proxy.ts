@@ -6,6 +6,8 @@ const ACCESS_REALM = "AI Benchmark Studio";
 const DEFAULT_USERNAME = "studio";
 
 export function proxy(request: NextRequest) {
+  // This exact endpoint verifies CRON_SECRET itself. All user routes retain Basic Auth.
+  if (request.nextUrl.pathname === '/api/cron/quick-workflow') return NextResponse.next();
   const configuredPassword = process.env.APP_ACCESS_PASSWORD;
 
   if (!configuredPassword) {
