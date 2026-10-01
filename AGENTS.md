@@ -26,6 +26,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## 2. Git 与 Milestone
 
+以下要求适用于每次任务和改动，不限于 Milestone：
+
+- 每次任务完成后，都必须创建一个对应的 Git commit，以便后续追踪和回滚。
+- 每次改动后，都必须编写或更新相关测试，并在交付给用户前，确保所有测试和验证全部通过。
+
 开始前检查：
 
 ```bash
