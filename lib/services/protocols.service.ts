@@ -80,11 +80,15 @@ export class ProtocolExecutionError extends Error {
 }
 
 export async function getProtocolWorkspace(projectId: string): Promise<ProtocolWorkspace | null> {
-  const research = await getResearchWorkspace(projectId);
+  const [research, current] = await Promise.all([
+    getResearchWorkspace(projectId),
+    protocolsRepository.listByProject(projectId).then(async (protocols) => ({
+      protocol: protocols[0] ? await readProtocol(protocols[0]) : null,
+      versionCount: protocols.length,
+    })),
+  ]);
   if (!research) return null;
-  const protocols = await protocolsRepository.listByProject(projectId);
-  const current = protocols[0] ?? null;
-  return { research, protocol: current ? await readProtocol(current) : null, versionCount: protocols.length };
+  return { research, ...current };
 }
 
 export async function generateProtocol(projectId: string): Promise<string> {

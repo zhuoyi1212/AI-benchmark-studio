@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { connection } from "next/server";
 import { listProjectSummaries, type ProjectSummary } from "@/lib/services/projects.service";
 import type { ProjectStatus } from "@/lib/types/database";
@@ -13,7 +13,7 @@ export async function RecentProjectNav() {
   }
   if (!project) return <SidebarLink href="/projects/new" label="创建第一个测评" />;
   return (
-    <Link href={getProjectHref(project.id, project.status)} className="group mt-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-950">
+    <Link href={project.evaluationMode === "quick" ? `/projects/${project.id}/quick` : getProjectHref(project.id, project.status)} className="group mt-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-950">
       <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
       <span className="truncate">{project.name}</span>
       <span className="ml-auto text-[10px] text-muted-foreground group-hover:text-slate-600">{project.progress.percent}%</span>

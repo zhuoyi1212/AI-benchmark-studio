@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fetchPageRead } from "@/lib/supabase/read-scope";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getServerEnvironment } from "@/lib/env/server";
@@ -60,6 +61,12 @@ export function getSupabaseServerClient(): SupabaseClient<Database> {
 }
 
 async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // Explicit operation deadlines must retain their own cancellation lifetime.
+  if (requestTimeoutScope.getStore()) return executeFetchWithTimeout(input, init);
+  return fetchPageRead(input, init, () => executeFetchWithTimeout(input, init));
+}
+
+async function executeFetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const scope = requestTimeoutScope.getStore();
   const requestTimeout = AbortSignal.timeout(scope?.timeoutMs ?? defaultRequestTimeoutMs);
   const signals = [init?.signal, scope?.signal, requestTimeout].filter((signal): signal is AbortSignal => Boolean(signal));

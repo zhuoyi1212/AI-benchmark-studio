@@ -1,3 +1,4 @@
+import { withPageReads } from "@/lib/supabase/read-scope";
 import { AlertTriangle, ArrowLeft, CheckCircle2, EyeOff, FileCheck2, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -17,7 +18,7 @@ export const maxDuration = 300;
 
 type ReviewPageProps = { params: Promise<{ projectId: string }> };
 
-export default async function BlindReviewPage({ params }: ReviewPageProps) {
+async function BlindReviewPage({ params }: ReviewPageProps) {
   await connection();
   const { projectId } = await params;
   const workflowStatePromise = getProjectWorkflowState(projectId);
@@ -68,3 +69,5 @@ function JudgeStatus({ workspace, progress }: { workspace: JudgeReviewWorkspace;
   if (run.status === "completed") return <aside className="h-fit rounded-lg border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-center gap-2 text-emerald-800"><CheckCircle2 className="h-4 w-4" /><h2 className="text-sm font-semibold">AI Judge 已完成</h2></div><p className="mt-3 text-sm leading-6 text-emerald-900/80">{workspace.testCases.length} 个 Test Cases、{workspace.samples.length} 个 Sample 与 {workspace.rubric.length} 个 Rubric 维度已形成完整评分矩阵。</p><div className="mt-4 flex items-center justify-between border-t border-emerald-200 pt-4 text-xs"><span>评分项</span><strong className="tabular-nums">{run.scores.length}</strong></div></aside>;
   return <aside className="h-fit rounded-lg border bg-slate-50 p-5"><div className="flex items-center gap-2"><Scale className="h-4 w-4 animate-pulse text-blue-700" /><h2 className="text-sm font-semibold">AI Judge 进行中</h2></div><div className="mt-4 flex justify-between text-xs"><span className="text-muted-foreground">Case 进度</span><span className="font-medium tabular-nums">{run.caseRuns.filter((item) => item.status === "completed").length} / {workspace.testCases.length}</span></div><Progress className="mt-2" value={progress} /><p className="mt-4 text-xs leading-5 text-muted-foreground">请保持页面打开；评分结果会在本次运行完成后统一保存。</p></aside>;
 }
+
+export default withPageReads(BlindReviewPage);

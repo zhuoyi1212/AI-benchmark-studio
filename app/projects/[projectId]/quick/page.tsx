@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { withPageReads } from "@/lib/supabase/read-scope";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { connection } from 'next/server';
 import { notFound, redirect } from 'next/navigation';
 import { Check, LoaderCircle } from 'lucide-react';
@@ -19,7 +20,7 @@ import { HumanReviewPanel } from '../review/human-review-panel';
 import TestPage from '../test/page';
 
 export const maxDuration = 300;
-export default async function QuickPage({ params }: { params: Promise<{ projectId: string }> }) {
+async function QuickPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
   const [project, jobs] = await Promise.all([getProjectSummary(projectId), getQuickWorkflowJobs(projectId)]);
@@ -89,3 +90,5 @@ export default async function QuickPage({ params }: { params: Promise<{ projectI
     <style>{'.quick-workspace .page-shell{padding:0;max-width:none}.quick-workspace nav[aria-label="测评工作流"]{display:none}'}</style>
   </div>;
 }
+
+export default withPageReads(QuickPage);

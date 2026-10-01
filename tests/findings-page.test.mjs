@@ -16,6 +16,7 @@ function loadPage({ findings = workspace, revealed = false, professional = async
     'next/navigation': { redirect: path => { throw new Error(`redirect:${path}`); } },
     'next/server': { connection: async () => {} },
     'lucide-react': ui,
+    '@/lib/supabase/read-scope': { withPageReads: render => render },
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => findings },
     '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => workflow ? { stages: { review: { completed: revealed } } } : null },
     '@/lib/services/result-analysis.service': { getResultsWorkspace: async () => { professionalReads++; return professional(); } },

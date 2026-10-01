@@ -1,3 +1,4 @@
+import { withPageReads } from "@/lib/supabase/read-scope";
 import { ArrowLeft, FileText, LoaderCircle, LockKeyhole, Settings2, ShieldAlert, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -18,7 +19,7 @@ export const maxDuration = 300;
 
 type ProtocolPageProps = { params: Promise<{ projectId: string }> };
 
-export default async function ProtocolPage({ params }: ProtocolPageProps) {
+async function ProtocolPage({ params }: ProtocolPageProps) {
   await connection();
   const { projectId } = await params;
   const [workspace, workflowState] = await Promise.all([
@@ -79,3 +80,5 @@ export default async function ProtocolPage({ params }: ProtocolPageProps) {
     </div>
   );
 }
+
+export default withPageReads(ProtocolPage);

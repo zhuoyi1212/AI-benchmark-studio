@@ -1,3 +1,4 @@
+import { withPageReads } from "@/lib/supabase/read-scope";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, CircleDollarSign, ExternalLink, FileText, FlaskConical, LoaderCircle, Sparkles, Target, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,7 +34,7 @@ const sourceTypeLabels: Record<ResearchSource["sourceType"], string> = {
   other: "来源",
 };
 
-export default async function ResearchPage({ params }: ResearchPageProps) {
+async function ResearchPage({ params }: ResearchPageProps) {
   await connection();
   const { projectId } = await params;
   const [workspace, workflowState] = await Promise.all([
@@ -113,3 +114,5 @@ function Info({ icon: Icon, label, children }: { icon: typeof Sparkles; label: s
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
+
+export default withPageReads(ResearchPage);

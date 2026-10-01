@@ -1,3 +1,4 @@
+import { withPageReads } from "@/lib/supabase/read-scope";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -24,7 +25,7 @@ const categoryMeta = {
   problem: { label: "问题 / 难用", className: "border-red-200 bg-red-50 text-red-700" },
 } as const;
 
-export default async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
+async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
   const [workspace, workflowState] = await Promise.all([
@@ -188,3 +189,5 @@ function ProfessionalMode({ projectId, professional, unavailable }: { projectId:
     </div>
   </section>;
 }
+
+export default withPageReads(ResultsPage);

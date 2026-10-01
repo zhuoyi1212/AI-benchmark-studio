@@ -12,7 +12,6 @@ import {
 import { QuickEvaluationError } from "@/lib/services/quick-evaluation.service";
 import { enqueueQuickEvaluation } from "@/lib/services/quick-workflow.service";
 import { wakeQuickWorker } from "@/lib/quick/dispatch";
-import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
 
 const idSchema = z.string().uuid();
 
@@ -59,11 +58,8 @@ export async function uploadTestArtifactAction(
 
   if (formData.get('quickBatchComplete') === 'true') {
     try {
-      const test = await getTestExecutionWorkspace(projectId.data);
-      if (test?.project.evaluationMode === 'quick') {
-        await enqueueQuickEvaluation(projectId.data, test.protocol.id);
-        wakeQuickWorker(projectId.data);
-      }
+      await enqueueQuickEvaluation(projectId.data);
+      wakeQuickWorker(projectId.data);
     } catch {
       // The file is already saved. Keep upload success and expose the workbench recovery action.
       console.error('[QuickWorker] Artifact saved; evaluation enqueue needs retry.');

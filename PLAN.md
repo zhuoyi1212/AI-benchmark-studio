@@ -357,3 +357,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 验证：226/226 测试、typecheck、build、git diff --check；事务回滚 DB contract 覆盖重复投递、并发领取、过期回收、旧 lease 拒绝写入、检查点不可覆盖、原子后继、RLS 和归档停止领取。完整 DB/Storage E2E（含图片 Judge、比较/不可比回归）通过；后台无页面闭环及注入润色失败→服务重启→重试通过，初稿调用保持一次、最终 Publish v2。真实 AI 合成证据 E2E 最终通过：Findings/Discovery/Draft/Humanize/Evidence Check 各调用一次。浏览器核对精简文章页、刷新与复制正常，无控制台错误。测试项目均已归档。安全 Advisor 仅有预期的 RLS 无客户端 policy 信息项。
 
 提交主题：feat: run quick evaluation and publishing in durable backend jobs。分支 codex/quick-backend-workflow。本次不重做既有 M0–M15；完成本增量本地/Node 验收。未发布线上，Serverless 外部调度及线上闭环待部署后验收，不能宣称全部产品 Acceptance Criteria 已重新全量认证。详情见 docs/quick-workflow-review.md。
+
+2026-10-01 页面响应与报告排版：动态页面补齐 loading/error 边界，导航即时反馈，快速提交提示；Research/Protocol 独立查询并行，同次页面 GET 去重且不跨访客/刷新/写操作；上传完成检查改为轻量当前协议与证据读取，取消两次完整工作区构建。快速最近项目回到统一工作台。真实/demo 报告标题桌面 28px、手机 24px，目录与测试快照合为 208px 左栏，正文自动扩展；单产品复盘不再空出两个卡片列。真实报告两次热请求由 5.87s/4.38s 降至 2.92s/2.76s；同时观察到独立的间歇性数据库 DNS 故障，已恢复。详见 docs/report-response-review.md。
+
+验证：235/235 测试、typecheck、build、diff check 通过；真实报告桌面/手机排版与导航 pending 已核对，无控制台异常。真实 DB/Storage 完整 E2E 重试通过，包含多模态 Judge 和比较/不可比回归，3/3 测试项目已归档。没有数据库结构、AI Prompt、历史报告或评分审计变更。当前分支 codex/quick-backend-workflow，未部署线上。

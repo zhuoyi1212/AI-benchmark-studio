@@ -3,6 +3,8 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { RepositoryError } from "@/lib/repositories/repository-error";
+import { projectsRepository } from "@/lib/repositories/projects.repository";
+import { protocolsRepository } from "@/lib/repositories/protocols.repository";
 import {
   testExecutionRepository,
   type RunExecutionMetadata,
@@ -71,6 +73,25 @@ export class TestExecutionError extends Error {
     super(message);
     this.name = "TestExecutionError";
   }
+}
+
+// Submission only needs the current protocol and persisted evidence. Avoid rebuilding
+// the research workspace and signing every download URL just to enqueue evaluation.
+export async function getTestExecutionReadiness(projectId: string) {
+  const [project, protocols] = await Promise.all([
+    projectsRepository.findActiveById(projectId),
+    protocolsRepository.listByProject(projectId),
+  ]);
+  const protocol = protocols[0];
+  if (!project || !protocol || protocol.status !== "locked") return null;
+  const runs = await testExecutionRepository.listRuns(protocol.id);
+  const artifacts = runs.length ? await testExecutionRepository.listArtifacts(runs.map(run => run.id)) : [];
+  const uploadedRunIds = new Set(artifacts.map(artifact => artifact.test_run_id));
+  return {
+    evaluationMode: project.evaluation_mode,
+    protocolId: protocol.id,
+    complete: runs.length > 0 && runs.every(run => uploadedRunIds.has(run.id)),
+  };
 }
 
 export async function getTestExecutionWorkspace(projectId: string): Promise<TestExecutionWorkspace | null> {

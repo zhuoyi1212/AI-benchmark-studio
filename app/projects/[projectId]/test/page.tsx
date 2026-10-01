@@ -1,3 +1,4 @@
+import { withPageReads } from "@/lib/supabase/read-scope";
 import { ArrowLeft, CheckCircle2, Clock3, Download, ExternalLink, FileText, FileUp, ImageIcon, LockKeyhole, RotateCcw, Video } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +20,7 @@ export const maxDuration = 300;
 
 type TestPageProps = { params: Promise<{ projectId: string }> };
 
-export default async function TestPage({ params }: TestPageProps) {
+async function TestPage({ params }: TestPageProps) {
   await connection();
   const { projectId } = await params;
   const [workspace, workflowState] = await Promise.all([
@@ -65,3 +66,5 @@ function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+
+export default withPageReads(TestPage);

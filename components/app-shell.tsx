@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { usePathname } from "next/navigation";
 import { Boxes, ChevronDown, Database, FlaskConical, LayoutDashboard, Menu, Settings, X } from "lucide-react";
 import { useState } from "react";

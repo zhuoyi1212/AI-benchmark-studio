@@ -56,9 +56,8 @@ export class ResearchExecutionError extends Error {
 }
 
 export async function getResearchWorkspace(projectId: string): Promise<ResearchWorkspace | null> {
-  const project = await getProjectSummary(projectId);
+  const [project, runs] = await Promise.all([getProjectSummary(projectId), researchRepository.listRuns(projectId)]);
   if (!project) return null;
-  const runs = await researchRepository.listRuns(projectId);
   const completedRun = runs.find((run) => run.status === "completed") ?? null;
   return {
     project,

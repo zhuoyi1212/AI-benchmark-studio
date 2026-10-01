@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { connection } from "next/server";
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FolderPlus, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";

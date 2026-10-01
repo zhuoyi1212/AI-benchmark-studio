@@ -5,7 +5,7 @@ import { protocolsRepository } from '@/lib/repositories/protocols.repository';
 import { getHumanReviewWorkspace } from '@/lib/services/human-review.service';
 import { getProjectSummary } from '@/lib/services/projects.service';
 import { getResearchWorkspace } from '@/lib/services/research.service';
-import { getTestExecutionWorkspace } from '@/lib/services/test-execution.service';
+import { getTestExecutionReadiness } from '@/lib/services/test-execution.service';
 import { getExperienceFindingsWorkspace } from '@/lib/services/findings.service';
 import { createInputSignature } from '@/lib/signatures';
 import { defaultPublishConfig } from '@/lib/publish-config';
@@ -24,10 +24,11 @@ export async function enqueueQuickPreparation(projectId: string) {
     : { kind: 'research', scope: projectId });
 }
 
-export async function enqueueQuickEvaluation(projectId: string, protocolId: string) {
-  const test = await getTestExecutionWorkspace(projectId);
-  if (!test || test.project.evaluationMode !== 'quick' || test.protocol.id !== protocolId) throw new Error('当前测试方案已变化。');
-  if (!test.testRuns.length || test.testRuns.some(run => !run.artifacts.length)) return false;
+export async function enqueueQuickEvaluation(projectId: string, expectedProtocolId?: string) {
+  const test = await getTestExecutionReadiness(projectId);
+  if (!test || test.evaluationMode !== 'quick' || (expectedProtocolId && test.protocolId !== expectedProtocolId)) throw new Error('当前测试方案已变化。');
+  if (!test.complete) return false;
+  const protocolId = test.protocolId;
   const jobs = await quickJobsRepository.list(projectId);
   const evaluated = jobs.find(job => job.kind === 'evaluate' && job.scope === protocolId && job.status === 'completed');
   const findingsReady = evaluated && (await getHumanReviewWorkspace(projectId))?.status === 'revealed';
