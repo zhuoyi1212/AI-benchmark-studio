@@ -20,6 +20,7 @@ const projectSchema = z
     name: z.string().trim().min(1, "请输入测评名称").max(120, "测评名称不能超过 120 个字符"),
     intent: z.string().trim().min(1, "请输入测评目标").max(4000, "测评目标不能超过 4000 个字符"),
     products: z.array(z.object({
+      productId: z.union([z.string().uuid(), z.literal("")]).optional(),
       name: z.string().trim().min(1, "请输入产品名称").max(120, "产品名称不能超过 120 个字符"),
       officialUrl: optionalHttpUrl,
     })).min(1, "至少添加 1 个产品").max(3, "最多添加 3 个产品"),
@@ -27,7 +28,8 @@ const projectSchema = z
   })
   .superRefine(({ products }, context) => {
     const normalizedNames = products.map((product) => product.name.toLocaleLowerCase().replace(/\s+/g, " "));
-    if (new Set(normalizedNames).size !== normalizedNames.length) {
+    const selectedIds = products.flatMap(product => product.productId ? [product.productId] : []);
+    if (new Set(normalizedNames).size !== normalizedNames.length || new Set(selectedIds).size !== selectedIds.length) {
       context.addIssue({ code: "custom", path: ["products"], message: "同一项目中不能添加重复产品" });
     }
   });
@@ -42,11 +44,13 @@ export async function createProjectAction(
 ): Promise<CreateProjectActionState> {
   const productNames = formData.getAll("productName");
   const productWebsites = formData.getAll("productWebsite");
+  const productIds = formData.getAll("productId");
   const parsed = projectSchema.safeParse({
     name: formData.get("name"),
     intent: formData.get("intent"),
     products: productNames.map((name, index) => ({
       name,
+      productId: productIds[index] ?? "",
       officialUrl: productWebsites[index] ?? "",
     })),
     evaluationMode: formData.get("evaluationMode"),
@@ -62,6 +66,7 @@ export async function createProjectAction(
       name: parsed.data.name,
       intent: parsed.data.intent,
       products: parsed.data.products.map((product) => ({
+        ...(product.productId ? { productId: product.productId } : {}),
         name: product.name,
         officialUrl: product.officialUrl || null,
       })),
@@ -69,12 +74,16 @@ export async function createProjectAction(
     });
   } catch (error) {
     if (error instanceof RepositoryError) {
+      if (error.code === "P1001") return { message: "已有同名产品，但官网不同。请确认并选择已有产品；若确为不同产品，请在名称中注明厂商或产品线。" };
+      if (error.code === "P1002") return { message: "所选产品已不可用，请刷新后重新选择。" };
+      if (error.code === "P1003") return { message: "同一项目中不能添加重复产品。" };
       return { message: "项目保存失败，请稍后重试。" };
     }
     throw error;
   }
 
   revalidatePath("/projects");
+  revalidatePath("/products");
   if (parsed.data.evaluationMode === "quick") {
     try {
       await setQuickPreparationStatus(projectId, "idle");

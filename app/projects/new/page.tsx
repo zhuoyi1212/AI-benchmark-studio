@@ -3,14 +3,21 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { ProjectForm } from "@/app/projects/new/project-form";
+import { connection } from "next/server";
+import { notFound } from "next/navigation";
+import { listProductOptions } from "@/lib/services/product-library.service";
 
-export default function NewProjectPage() {
+export default async function NewProjectPage({ searchParams }: { searchParams: Promise<{ productId?: string }> }) {
+  await connection();
+  const [options, query] = await Promise.all([listProductOptions(), searchParams]);
+  const initialProduct = query.productId ? options.find(product => product.id === query.productId) : undefined;
+  if (query.productId && !initialProduct) notFound();
   return (
     <div className="page-shell max-w-[980px]">
       <Link href="/projects" className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />返回我的测评</Link>
       <PageHeader title="新建测评" description="可以深入体验一款产品，也可以使用统一任务横向比较多款产品。项目保存后将进入产品调研。" />
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <Card className="p-6 shadow-none"><ProjectForm /></Card>
+        <Card className="p-6 shadow-none"><ProjectForm productOptions={options} initialProduct={initialProduct} /></Card>
         <aside className="h-fit rounded-lg border bg-slate-50 p-5">
           <div className="eyebrow">两种模式</div>
           <div className="mt-4 space-y-4 text-xs leading-5 text-slate-600">

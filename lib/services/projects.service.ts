@@ -80,6 +80,7 @@ export async function createProject(record: CreateProjectRecord): Promise<string
     name: record.name.trim(),
     intent: record.intent.trim(),
     products: record.products.map((product) => ({
+      ...(product.productId ? { productId: product.productId } : {}),
       name: product.name.trim(),
       officialUrl: product.officialUrl?.trim() || null,
     })),

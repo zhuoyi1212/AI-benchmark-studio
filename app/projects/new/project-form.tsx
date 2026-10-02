@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createProjectAction, type CreateProjectActionState } from "@/app/projects/new/actions";
 import type { EvaluationMode } from "@/lib/project-mode";
+import type { ProductOption } from "@/lib/services/product-library.service";
+import { findProductCandidates } from "@/lib/product-selection";
 
-type DraftProduct = { key: number; name: string; website: string };
+type DraftProduct = { key: number; name: string; website: string; productId?: string };
 
 const initialState: CreateProjectActionState = { message: null };
 
-export function ProjectForm() {
+export function ProjectForm({ productOptions = [], initialProduct }: { productOptions?: ProductOption[]; initialProduct?: ProductOption }) {
   const [state, formAction, pending] = useActionState(createProjectAction, initialState);
-  const [products, setProducts] = useState<DraftProduct[]>([{ key: 1, name: "", website: "" }]);
+  const [products, setProducts] = useState<DraftProduct[]>([{ key: 1, name: initialProduct?.name ?? "", website: initialProduct?.officialUrl ?? "", productId: initialProduct?.id }]);
   const [nextKey, setNextKey] = useState(2);
   const [intent, setIntent] = useState("");
   const [evaluationMode, setEvaluationMode] = useState<EvaluationMode>("quick");
@@ -62,13 +64,16 @@ export function ProjectForm() {
           </div>
           <div className="space-y-2.5">
             {products.map((product, index) => (
-              <div key={product.key} className="grid gap-2 sm:grid-cols-[1fr_1.4fr_36px]">
+              <div key={product.key} className="rounded-lg border p-3">
+              <input type="hidden" name="productId" value={product.productId ?? ""} />
+              <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr_36px]">
                 <Input
                   aria-label={`产品 ${index + 1} 名称`}
                   name="productName"
                   value={product.name}
                   maxLength={120}
                   required
+                  readOnly={Boolean(product.productId)}
                   onChange={(event) => updateProduct(product.key, "name", event.target.value)}
                   placeholder="产品名称"
                 />
@@ -80,6 +85,7 @@ export function ProjectForm() {
                     name="productWebsite"
                     type="url"
                     value={product.website}
+                    readOnly={Boolean(product.productId)}
                     onChange={(event) => updateProduct(product.key, "website", event.target.value)}
                     placeholder="官网（可选）"
                   />
@@ -94,6 +100,12 @@ export function ProjectForm() {
                 >
                   <X className="h-4 w-4" />
                 </Button>
+              </div>
+              {product.productId ? <div className="mt-2 flex items-center justify-between text-xs"><span className="text-emerald-700">已关联产品库 · 优先复用已有调研</span><button type="button" disabled={pending} className="text-blue-700 hover:underline" onClick={() => setProducts(current => current.map(item => item.key === product.key ? { key: item.key, name: "", website: "" } : item))}>更换产品</button></div>
+                : <div className="mt-2 flex flex-wrap gap-2">{findProductCandidates(productOptions, product.name, product.website).map(option => {
+                  const selected = products.some(item => item.productId === option.id);
+                  return <button key={option.id} type="button" disabled={pending || selected} className="rounded-md bg-slate-50 px-2.5 py-2 text-left text-xs hover:bg-blue-50 disabled:opacity-50" onClick={() => setProducts(current => current.map(item => item.key === product.key ? { ...item, productId: option.id, name: option.name, website: option.officialUrl ?? "" } : item))}><span className="font-medium">{option.name}</span><span className="ml-2 text-muted-foreground">{selected ? "已添加" : "使用已有产品"}</span>{option.officialUrl && <span className="mt-1 block max-w-xs truncate text-muted-foreground">{option.officialUrl}</span>}</button>;
+                })}</div>}
               </div>
             ))}
           </div>

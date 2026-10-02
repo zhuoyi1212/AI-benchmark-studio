@@ -10,8 +10,21 @@ const projectProductColumns = "project_id, product_id, display_order, submitted_
 const projectColumns = "id, owner_id, name, intent, status, evaluation_mode, quick_preparation_status, quick_preparation_error, created_at, updated_at, deleted_at";
 
 export const productLibraryRepository = {
-  async listProducts(): Promise<ProductRow[]> {
-    const { data, error } = await getSupabaseServerClient().from("products").select(productColumns).is("archived_at", null).order("updated_at", { ascending: false });
+  async listOutputs(projectIds: string[]) {
+    if (projectIds.length === 0) return { reports: [], articles: [] };
+    const client = getSupabaseServerClient();
+    const [reports, articles] = await Promise.all([
+      client.from("reports").select("id,project_id,version,created_at").in("project_id", projectIds).eq("status", "completed").order("created_at", { ascending: false }),
+      client.from("publish_packs").select("id,project_id,version,created_at").in("project_id", projectIds).eq("status", "ready").order("created_at", { ascending: false }),
+    ]);
+    if (reports.error) throwRepositoryError("productLibrary.reports", reports.error);
+    if (articles.error) throwRepositoryError("productLibrary.articles", articles.error);
+    return { reports: reports.data, articles: articles.data };
+  },
+  async listProducts(productId?: string): Promise<ProductRow[]> {
+    let query = getSupabaseServerClient().from("products").select(productColumns).is("archived_at", null);
+    if (productId) query = query.eq("id", productId);
+    const { data, error } = await query.order("updated_at", { ascending: false });
     if (error) throwRepositoryError("productLibrary.listProducts", error);
     return data;
   },
@@ -32,7 +45,7 @@ export const productLibraryRepository = {
 
   async listProjects(projectIds: string[]): Promise<ProjectRow[]> {
     if (projectIds.length === 0) return [];
-    const { data, error } = await getSupabaseServerClient().from("projects").select(projectColumns).in("id", projectIds);
+    const { data, error } = await getSupabaseServerClient().from("projects").select(projectColumns).in("id", projectIds).is("deleted_at", null).order("created_at", { ascending: false });
     if (error) throwRepositoryError("productLibrary.listProjects", error);
     return data;
   },

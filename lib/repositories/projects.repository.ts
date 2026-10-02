@@ -18,7 +18,7 @@ export type ProjectProductListRow = Pick<
 export type CreateProjectRecord = {
   name: string;
   intent: string;
-  products: Array<{ name: string; officialUrl: string | null }>;
+  products: Array<{ productId?: string; name: string; officialUrl: string | null }>;
   evaluationMode?: EvaluationMode;
   ownerId?: string | null;
 };

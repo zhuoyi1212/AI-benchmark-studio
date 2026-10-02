@@ -266,3 +266,9 @@ Publish 不新增表或 migration。publish_packs.community_post.attemptAudit �
 ## Production quick-worker scheduler
 
 `quick_worker_scheduler` migration 启用 `pg_cron`、`pg_net`，新增仅数据库调度角色可执行的 `private.dispatch_quick_worker()`（SECURITY INVOKER，空 search_path；PUBLIC/anon/authenticated/service_role 无 EXECUTE）。任务 `benchmark-quick-worker` 每 30 秒检查未归档快速项目的到期任务，遵守同项目 lease；满足条件且 Vault 配置齐全才调用正式站点。Vault 的 origin/secret 在部署时单独配置，不进入 migration。HTTP 仅发送调度认证头，不发送实验资料；不更改现有业务表、评分或审计。
+
+## 显式产品身份（2026-10-03）
+
+Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchmark_project` 的两个重载，不改表结构、不迁移或重写历史实验。`p_products` 的每项可携带 `productId`；指定时锁定并校验 active 产品，用数据库名称/官网创建项目关联。未指定时按现有 normalized_name 唯一约束复用，禁止官网冲突及同一项目重复产品 ID，且不再 upsert 覆盖已有产品字段。
+
+错误码：P1001 同名官网冲突、P1002 产品不存在/已归档、P1003 同项目重复产品。项目与关联仍在同一事务内创建。五参数重载保留显式模式，四参数兼容入口保留 quick + idle 状态。均 SECURITY INVOKER、空 search_path，仅 service_role 可执行。没有新增客户端查询权限。`tests/product-identity.contract.sql` 使用 service_role 角色在回滚事务内验证身份、不可变字段、失败原子性及权限。

@@ -367,3 +367,9 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-02 Production deployed ✅ GitHub main 已快进至 6a9b24e（包含 c10c4f2 后台快速模式、8bfb933 响应/报告布局、288a238 工程规范）。Vercel production dpl_DH7d6pfWkPzdhrJH4DQyXkKVpSkK 为 READY，正式域名 https://ai-benchmark-studio-sand.vercel.app 已绑定。Supabase 每 30 秒按需调度已启用，独立密钥已配置到 Vercel Production 与 Vault，未进入 Git。线上页面未认证 401、调度未认证 401、调度正确认证 200；没有本机 Worker 和浏览器触发，隔离测试任务在约 28 秒内由线上 Worker 领取并按预设无效协议条件记录 failed（attempts=1），pg_net HTTP 200/无超时，未调用 AI。测试项目已软归档并保留审计，部署后 error/fatal 日志查询无结果。236 项测试、typecheck、build 与 SQL contract 在发布前通过；此次验证线上调度和访问保护，未重复完整真实供应商 E2E。浏览器工具无法打开受保护页面，线上视觉效果需用原有网站账号登录核对；本地桌面/手机视觉验收已在前次完成。模型延迟、300 秒函数上限和人工实测/确认边界仍适用。
 
 2026-10-02 Quick workflow navigation regression：统一工作台此前只显示不可点击的进度文字，且隐藏嵌入页导航，导致已生成结果缺少回看入口。现复用持久化 WorkflowSteps，在后台运行/失败/文章完成时均可打开已解锁的调研、方案、实测和发现；详情页增加“返回快速工作台”，专业模式不显示该入口。修复发现详情页打开即自动重试生成的旧行为，恢复必须明确点击的重试。未改变后台任务、Blind 门槛、历史实验或评分。新增真实页面函数/导航组件回归覆盖运行、失败、未揭盲禁入、详情返回及打开失败发现不触发生成；241/241 测试、typecheck、build、diff check 通过。本地真实“懂你AI”项目已验证工作台 → 已锁定方案 → 返回工作台链接与即时导航反馈；不执行 AI 或写入实验数据。此次为导航增量验收，不重新认证全部产品 Acceptance Criteria。
+
+2026-10-03 同产品多次测评第一阶段：新增产品详情和已有产品选择，统一归集调研版本、独立测评及报告/文章入口。产品 ID 明确关联，名称/官网冲突与同项目重复身份由服务端和数据库防护；创建项目不覆盖既有产品字段。产品库包含未调研产品，隐藏内部验证项目及旧基础设施夹具。后续方案复测、跨测评写作、历史重复产品合并未实施。
+
+验证：新增 Service/Server Action/候选匹配/可见性回归；数据库 migration 已应用，service_role 下回滚事务验证通过（三次测评关联同一产品、原产品不变、冲突/无效/归档/重复拒绝、失败无半成品、执行权限），测试写入全部回滚。真实浏览器确认产品详情、调研历史、测评与内容入口、新建预选、更换产品、名称候选和重复选择禁用。未运行新一轮真实 AI/Storage 生成，也不宣称全产品 Acceptance Criteria 全部完成。
+
+本阶段最终本地验证：249/249 tests、npm run build、npm run typecheck、git diff --check 全部通过；Supabase 安全检查无 WARNING/ERROR，现有 10 条 server-only 表 RLS 无客户端策略 INFO 保持不变。

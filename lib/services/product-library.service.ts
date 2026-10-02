@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { isVisibleProductLibraryEntry } from "@/lib/product-library-visibility";
+import { isInternalValidationProject } from "@/lib/project-visibility";
 import { productLibraryRepository } from "@/lib/repositories/product-library.repository";
 import type { ProductResearchSnapshotRow } from "@/lib/types/database";
 import type { ResearchSource } from "@/lib/types/research";
@@ -24,17 +25,25 @@ export type ProductLibraryItem = {
     researchedAt: string; validUntil: string; needsUpdate: boolean;
   };
   snapshotCount: number;
-  projects: Array<{ id: string; name: string; status: string; createdAt: string }>;
+  projects: Array<{ id: string; name: string; status: string; createdAt: string; evaluationMode: "quick" | "professional" }>;
 };
 
-export async function listProductLibrary(): Promise<ProductLibraryItem[]> {
-  const products = (await productLibraryRepository.listProducts()).filter(isVisibleProductLibraryEntry);
+export type ProductOption = Pick<ProductLibraryItem, "id" | "name" | "officialUrl">;
+
+export async function listProductOptions(): Promise<ProductOption[]> {
+  return (await productLibraryRepository.listProducts()).filter(isVisibleProductLibraryEntry)
+    .map(product => ({ id: product.id, name: product.name, officialUrl: product.official_url }));
+}
+
+export async function listProductLibrary(productId?: string): Promise<ProductLibraryItem[]> {
+  const products = (await productLibraryRepository.listProducts(productId)).filter(isVisibleProductLibraryEntry);
   const productIds = products.map((product) => product.id);
   const [snapshots, links] = await Promise.all([
     productLibraryRepository.listSnapshots(productIds),
     productLibraryRepository.listProjectProducts(productIds),
   ]);
-  const projects = await productLibraryRepository.listProjects([...new Set(links.map((link) => link.project_id))]);
+  const projects = (await productLibraryRepository.listProjects([...new Set(links.map((link) => link.project_id))]))
+    .filter(project => !project.deleted_at && !isInternalValidationProject(project));
   const projectById = new Map(projects.map((project) => [project.id, project]));
   const snapshotsByProduct = Map.groupBy(snapshots, (snapshot) => snapshot.product_id);
   const linksByProduct = Map.groupBy(links, (link) => link.product_id);
@@ -51,10 +60,21 @@ export async function listProductLibrary(): Promise<ProductLibraryItem[]> {
       snapshotCount: productSnapshots.length,
       projects: (linksByProduct.get(product.id) ?? []).flatMap((link) => {
         const project = projectById.get(link.project_id);
-        return project ? [{ id: project.id, name: project.name, status: project.status, createdAt: project.created_at }] : [];
+        return project ? [{ id: project.id, name: project.name, status: project.status, createdAt: project.created_at, evaluationMode: project.evaluation_mode }] : [];
       }),
     };
-  }).filter((item) => item.latestSnapshot !== null);
+  });
+}
+
+export async function getProductLibraryDetail(productId: string) {
+  if (!z.string().uuid().safeParse(productId).success) return null;
+  const [product] = await listProductLibrary(productId);
+  if (!product) return null;
+  const [snapshots, outputs] = await Promise.all([
+    productLibraryRepository.listSnapshots([productId]),
+    productLibraryRepository.listOutputs(product.projects.map(project => project.id)),
+  ]);
+  return { product, snapshots: snapshots.map(mapSnapshot), outputs };
 }
 
 function mapSnapshot(snapshot: ProductResearchSnapshotRow): NonNullable<ProductLibraryItem["latestSnapshot"]> {
