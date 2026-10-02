@@ -74,3 +74,13 @@ test('completed Quick Findings opens the human confirmation editor after reveal'
   assert.ok(content.some(node => node.type === 'FindingsEditor'));
   assert.equal(page.reads(), 1);
 });
+
+test('revisiting quick findings never automatically starts or retries generation', async () => {
+  for (const latest of [null, { id: 'finding', status: 'failed', errorMessage: 'fixture failure' }]) {
+    const page = loadPage({ revealed: true, findings: { ...workspace, evaluationMode: 'quick', latest } });
+    const content = nodes(await page.render());
+    const action = content.find(node => node.type === 'FindingsGenerationAction');
+    assert.ok(action, 'Explicit recovery action remains available');
+    assert.ok(!action.props.autoStart, 'Opening a result page must not submit a generation form');
+  }
+});

@@ -18,5 +18,6 @@ export type WorkflowStageAccess = {
 
 export type ProjectWorkflowState = {
   projectId: string;
+  evaluationMode?: "quick" | "professional";
   stages: Record<WorkflowStageId, WorkflowStageAccess>;
 };

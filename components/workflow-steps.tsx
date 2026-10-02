@@ -15,9 +15,9 @@ const workflowSteps = [
   ["publish", "社区内容"],
 ] as const;
 
-export function WorkflowSteps({ projectId, workflowState }: { projectId: string; workflowState: ProjectWorkflowState }) {
+export function WorkflowSteps({ projectId, workflowState, activeStage }: { projectId: string; workflowState: ProjectWorkflowState; activeStage?: WorkflowStageId }) {
   const pathname = usePathname();
-  const activeStep = pathname.match(/^\/projects\/[^/]+\/([^/?#]+)/)?.[1] as WorkflowStageId | undefined;
+  const activeStep = activeStage ?? pathname.match(/^\/projects\/[^/]+\/([^/?#]+)/)?.[1] as WorkflowStageId | undefined;
   const workflow = workflowSteps.map(([segment, label]) => ({
     id: segment,
     label,
@@ -27,6 +27,9 @@ export function WorkflowSteps({ projectId, workflowState }: { projectId: string;
   return (
     <TooltipProvider delayDuration={250}>
       <nav aria-label="测评工作流" className="mb-8 overflow-x-auto border-b">
+        {workflowState.evaluationMode === "quick" && pathname !== `/projects/${projectId}/quick` && (
+          <Link href={`/projects/${projectId}/quick`} className="mb-4 inline-flex items-center gap-1 text-xs text-blue-700 hover:underline">返回快速工作台</Link>
+        )}
         <div className="flex min-w-[620px] items-center">
           {workflow.map((step, index) => {
             const active = step.id === activeStep;

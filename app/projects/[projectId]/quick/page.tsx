@@ -2,7 +2,8 @@ import { withPageReads } from "@/lib/supabase/read-scope";
 import { NavigationLink as Link } from "@/components/navigation-link";
 import { connection } from 'next/server';
 import { notFound, redirect } from 'next/navigation';
-import { Check, LoaderCircle } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
+import { WorkflowSteps } from '@/components/workflow-steps';
 import { getProjectSummary } from '@/lib/services/projects.service';
 import { getProtocolWorkspace } from '@/lib/services/protocols.service';
 import { getExperienceFindingsWorkspace } from '@/lib/services/findings.service';
@@ -84,7 +85,7 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
   return <div className="page-shell max-w-5xl">
     {active && <AutoRefresh intervalMs={3000} />}
     <div className="mb-7 flex items-center justify-between"><div><p className="text-xs text-blue-600">快速模式</p><h1 className="mt-2 text-2xl font-semibold">{step === 2 ? '测评工作台' : project.name}</h1></div><Link href="/projects" className="text-xs text-muted-foreground">全部项目</Link></div>
-    <ol className="mb-7 flex flex-wrap gap-5 text-xs">{['准备方案','等待实测','分析结果','确认发现','生成文章'].map((label,index) => <li key={label} className={index === step ? 'font-semibold text-blue-700' : 'text-muted-foreground'}>{index < step ? <Check className="mr-1 inline h-3 w-3" /> : `${index + 1}. `}{label}</li>)}</ol>
+    <WorkflowSteps projectId={projectId} workflowState={workflowState} activeStage={(['protocol', 'test', 'test', 'results', 'publish'] as const)[step]} />
     <div className="quick-workspace">{content}</div>
     {step === 4 && !active && jobs.filter(job => ['analysis','report'].includes(job.kind) && job.status === 'failed').map(job => <div key={job.id} className="mt-5 rounded-lg border p-4 text-sm"><p className="mb-3">专业报告暂未完成，文章可正常使用。</p><QuickActionButton projectId={projectId} operation="retry" id={job.id}>重试专业报告</QuickActionButton></div>)}
     <style>{'.quick-workspace .page-shell{padding:0;max-width:none}.quick-workspace nav[aria-label="测评工作流"]{display:none}'}</style>

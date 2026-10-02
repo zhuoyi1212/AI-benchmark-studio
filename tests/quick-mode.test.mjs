@@ -73,7 +73,8 @@ test("quick mode persists work before navigation and retains legacy recovery sur
   assert.match(protocolPage, /quickPreparation\.status === "running" && !research\.latestRun/);
   assert.match(protocolPage, /AutoPrepareQuickProtocol/);
   assert.match(protocolActions, /formRef\.current\?\.requestSubmit\(\)/);
-  assert.match(findingsPage, /autoStart=\{workspace\.evaluationMode === "quick"\}/);
+  assert.doesNotMatch(findingsPage, /autoStart=/);
+  assert.match(findingsPage, /FindingsGenerationAction projectId=\{workspace\.projectId\} retry=\{failed\}/);
   assert.match(findingsAction, /if \(!autoStart \|\| attemptedRef\.current\) return/);
   assert.match(findingsAction, /formRef\.current\?\.requestSubmit\(\)/);
   assert.match(backgroundAnalysisMigration, /status in \('completed', 'reported', 'published'\)/);

@@ -52,6 +52,7 @@ export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): Proje
 
   return {
     projectId: snapshot.projectId,
+    evaluationMode: snapshot.evaluationMode,
     stages: {
       research: stage(researchCompleted, true, null),
       protocol: stage(protocolCompleted, snapshot.protocols.length > 0 || protocolAllowedByResearch,

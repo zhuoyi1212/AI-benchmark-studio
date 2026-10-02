@@ -60,7 +60,7 @@ async function ResultsPage({ params }: { params: Promise<{ projectId: string }> 
         : <Badge variant="neutral"><Sparkles className="h-3 w-3" />快速测评模式</Badge>}
     />
 
-    {!run || run.status !== "completed" ? <GenerationState workspace={workspace} autoStart={workspace.evaluationMode === "quick"} /> : !run.humanConfirmedAt && run.effectiveOutput
+    {!run || run.status !== "completed" ? <GenerationState workspace={workspace} /> : !run.humanConfirmedAt && run.effectiveOutput
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
@@ -84,7 +84,7 @@ async function readOptionalProfessionalResults(projectId: string): Promise<{
   }
 }
 
-function GenerationState({ workspace, autoStart }: { workspace: ExperienceFindingsWorkspace; autoStart: boolean }) {
+function GenerationState({ workspace }: { workspace: ExperienceFindingsWorkspace }) {
   const run = workspace.latest;
   const failed = run?.status === "failed";
   const running = run?.status === "pending" || run?.status === "running";
@@ -96,7 +96,7 @@ function GenerationState({ workspace, autoStart }: { workspace: ExperienceFindin
     </p>
     <div className="mt-6">
       {running ? <div className="text-sm text-blue-700">Findings 正在生成，刷新后查看结果。</div>
-        : <FindingsGenerationAction projectId={workspace.projectId} retry={failed} autoStart={autoStart} />}
+        : <FindingsGenerationAction projectId={workspace.projectId} retry={failed} />}
     </div>
     {failed && run?.errorMessage && <p className="mt-3 text-xs text-red-600">{run.errorMessage}</p>}
   </Card>;
