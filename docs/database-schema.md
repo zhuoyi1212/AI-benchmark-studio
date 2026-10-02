@@ -262,3 +262,7 @@ Publish 不新增表或 migration。publish_packs.community_post.attemptAudit �
 - 两表开启 RLS，撤销 anon/authenticated/public 权限，只由 Service Role 服务端访问。四个 invoker RPC 的 search_path 为空，普通角色没有 EXECUTE。
 - `enqueue_quick_job` 检查未归档 quick Project；`claim_quick_job` 领取/回收、同项目互斥；`save_quick_step` 校验有效 lease；`finish_quick_job` 原子完成并创建后继任务。正常 continuation 不增加失败次数。
 - Project 软删除后不再领取任务；不清除已有历史记录。原有 Protocol/Artifact/Judge/Human Review/Final Score 表与删除策略保持不变。
+
+## Production quick-worker scheduler
+
+`quick_worker_scheduler` migration 启用 `pg_cron`、`pg_net`，新增仅数据库调度角色可执行的 `private.dispatch_quick_worker()`（SECURITY INVOKER，空 search_path；PUBLIC/anon/authenticated/service_role 无 EXECUTE）。任务 `benchmark-quick-worker` 每 30 秒检查未归档快速项目的到期任务，遵守同项目 lease；满足条件且 Vault 配置齐全才调用正式站点。Vault 的 origin/secret 在部署时单独配置，不进入 migration。HTTP 仅发送调度认证头，不发送实验资料；不更改现有业务表、评分或审计。

@@ -361,3 +361,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-01 页面响应与报告排版：动态页面补齐 loading/error 边界，导航即时反馈，快速提交提示；Research/Protocol 独立查询并行，同次页面 GET 去重且不跨访客/刷新/写操作；上传完成检查改为轻量当前协议与证据读取，取消两次完整工作区构建。快速最近项目回到统一工作台。真实/demo 报告标题桌面 28px、手机 24px，目录与测试快照合为 208px 左栏，正文自动扩展；单产品复盘不再空出两个卡片列。真实报告两次热请求由 5.87s/4.38s 降至 2.92s/2.76s；同时观察到独立的间歇性数据库 DNS 故障，已恢复。详见 docs/report-response-review.md。
 
 验证：235/235 测试、typecheck、build、diff check 通过；真实报告桌面/手机排版与导航 pending 已核对，无控制台异常。真实 DB/Storage 完整 E2E 重试通过，包含多模态 Judge 和比较/不可比回归，3/3 测试项目已归档。没有数据库结构、AI Prompt、历史报告或评分审计变更。当前分支 codex/quick-backend-workflow，未部署线上。
+
+2026-10-02 Production deployment preparation：核对线上 aa7ab09 与本地已验证改动；新增 Supabase 私有调度器，在 Vercel Hobby 上每 30 秒按需唤醒后台队列，Vault/Production 环境保存独立密钥。新增 cron 身份验证测试和事务回滚 SQL contract，禁止匿名/用户/服务 API 调用调度函数，缺少配置 fail closed；HTTP 请求随测试事务回滚，无外发。236 项测试、build、typecheck 与 SQL contract 通过，Security Advisor 仅有既有的无客户端 policy 信息项。正式发布结果另见部署记录。

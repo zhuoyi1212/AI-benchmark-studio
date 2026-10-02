@@ -12,7 +12,9 @@
 
 仓库提供 `npm run worker:quick`，可在常驻主机执行；通过环境变量提供 `QUICK_WORKER_ORIGIN`（应用 HTTPS 地址）与相同的 `CRON_SECRET`。脚本串行等待每次调度完成，间隔 5 秒继续，网络失败后重试。也可使用平台支持的每分钟调度。平台的函数时限仍适用，单轮设为 300 秒；使用慢速供应商或长文档时优先选择常驻 Node。没有配置调度器的 Serverless 部署不能保证关闭页面后自动接力。
 
-本次未发布线上部署或安装远程调度器。`after()` 仅唤醒一次已持久化任务，不承担持续运行保证。
+线上部署使用 Supabase `pg_cron` + `pg_net` 每 30 秒调用私有函数 `private.dispatch_quick_worker()`。只有未归档快速项目存在可领取任务时才发 HTTP 请求；空队列或同项目尚有有效 lease 时不调用 Vercel。Vault 中的 `benchmark_quick_worker_origin` 保存正式 HTTPS origin，`benchmark_quick_worker_secret` 必须与 Vercel Production 的 `CRON_SECRET` 相同。缺少配置时不发请求，密钥不写入 migration、浏览器或 Git。此方式可在 Vercel Hobby 运行，无需每日一次的 Vercel Cron。
+
+启用步骤：应用 `quick_worker_scheduler` migration → 为 Vercel Production 设置独立随机 `CRON_SECRET` → 发布新版 → 在 Vault 配置上述两项。停用可执行 `select cron.alter_job(jobid, active := false) from cron.job where jobname = 'benchmark-quick-worker';`。观察 `cron.job_run_details` 与 `net._http_response` 区分调度失败和 HTTP 失败；cron 历史不会自动清理，应按运维保留要求管理。`after()` 仍仅承担一次低延迟唤醒。
 
 ## 执行与恢复
 
