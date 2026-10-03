@@ -276,3 +276,9 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 ## 产品库可恢复删除与收录
 
 复用既有 products.archived_at，无新增 migration。服务端删除/恢复只更新目标产品的 archived_at（既有 updated_at trigger 仍运行），以当前归档状态做条件更新并检查返回行，失败不假报成功。收录读取 test_runs 与 test_artifacts 的内连接，排除 invalid run 和零字节 Artifact，再与未归档、非内部验证的 project_products/project 关联匹配；仅返回产品/项目 ID，不向客户端投影证据或 Blind Mapping。空档案不做物理清理，产品归档不改变 FK、Storage 或历史实验。
+
+## 测评名称唯一约束
+
+`20261003102310_unique_project_names.sql` 新增部分唯一表达式索引 `projects_active_name_unique`：`lower(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g')))`，条件 `deleted_at is null`。适用于当前单工作区模型；创建、修改名称及恢复均由同一索引原子防重。上线前确认没有存量冲突，不重命名或删除历史行。无新表/字段、RPC 或权限变更，生成的 TypeScript Row 类型无需变动。
+
+重命名仍按 Page → Action → Service → Repository → DB；仅更新指定 active Project 的 name，updated_at 由既有 trigger 更新。`tests/project-name.contract.sql` 在 service_role 下回滚验证重复 INSERT/UPDATE、大小写/空白、保存原名、已删除名称复用、恢复冲突和其他字段不变。

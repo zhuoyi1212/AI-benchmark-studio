@@ -24,6 +24,12 @@ export type CreateProjectRecord = {
 };
 
 export const projectsRepository = {
+  async rename(projectId: string, name: string): Promise<boolean> {
+    const { data, error } = await getSupabaseServerClient().from("projects")
+      .update({ name }).eq("id", projectId).is("deleted_at", null).select("id").maybeSingle();
+    if (error) throwRepositoryError("projects.rename", error);
+    return Boolean(data);
+  },
   async listActive(): Promise<ProjectRow[]> {
     const { data, error } = await getSupabaseServerClient()
       .from("projects")

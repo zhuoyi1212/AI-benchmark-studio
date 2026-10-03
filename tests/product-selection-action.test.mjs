@@ -37,3 +37,7 @@ test('website conflicts receive actionable feedback without exposing database er
   const result=await action('P1001').submit(form([{name:'Product',url:'https://another.invalid'}]));
   assert.match(result.message,/官网不同/);assert.match(result.message,/选择已有产品/);
 });
+test('new evaluation rejects a duplicate record name with clear feedback',async()=>{
+  const result=await action('23505').submit(form([{name:'Product'}]));
+  assert.match(result.message,/同名测评/);
+});

@@ -74,6 +74,7 @@ export async function createProjectAction(
     });
   } catch (error) {
     if (error instanceof RepositoryError) {
+      if (error.code === "23505") return { message: "已有同名测评，请换一个名称。" };
       if (error.code === "P1001") return { message: "已有同名产品，但官网不同。请确认并选择已有产品；若确为不同产品，请在名称中注明厂商或产品线。" };
       if (error.code === "P1002") return { message: "产品已删除或不可用。可到产品库的“已删除”中恢复，再重新选择。" };
       if (error.code === "P1003") return { message: "同一项目中不能添加重复产品。" };

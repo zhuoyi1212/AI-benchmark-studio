@@ -9,6 +9,7 @@ import {
 import { isInternalValidationProject } from "@/lib/project-visibility";
 import type { ProjectRow } from "@/lib/types/database";
 import type { EvaluationMode } from "@/lib/project-mode";
+import { projectNameSchema } from "@/lib/project-name";
 
 export type ProjectProductSummary = {
   id: string;
@@ -97,6 +98,10 @@ export async function setQuickPreparationStatus(projectId: string, status: Proje
 
 export async function softDeleteProject(projectId: string): Promise<boolean> {
   return projectsRepository.softDelete(projectId);
+}
+
+export async function renameProject(projectId: string, name: string): Promise<boolean> {
+  return projectsRepository.rename(projectId, projectNameSchema.parse(name));
 }
 
 function calculateProgress(runs: ProjectProgressRow[]) {
