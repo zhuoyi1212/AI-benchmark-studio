@@ -31,20 +31,34 @@ export type ProductLibraryItem = {
 export type ProductOption = Pick<ProductLibraryItem, "id" | "name" | "officialUrl">;
 
 export async function listProductOptions(): Promise<ProductOption[]> {
-  return (await productLibraryRepository.listProducts()).filter(isVisibleProductLibraryEntry)
-    .map(product => ({ id: product.id, name: product.name, officialUrl: product.official_url }));
+  const { products } = await loadLibraryProducts();
+  return products.map(product => ({ id: product.id, name: product.name, officialUrl: product.official_url }));
 }
 
-export async function listProductLibrary(productId?: string): Promise<ProductLibraryItem[]> {
-  const products = (await productLibraryRepository.listProducts(productId)).filter(isVisibleProductLibraryEntry);
+export async function setProductArchived(productId: string, archived: boolean): Promise<boolean> {
+  if (!z.string().uuid().safeParse(productId).success || typeof archived !== "boolean") return false;
+  return productLibraryRepository.setArchived(productId, archived);
+}
+
+async function loadLibraryProducts(productId?: string, archived = false) {
+  const products = (await productLibraryRepository.listProducts(productId, archived)).filter(isVisibleProductLibraryEntry);
   const productIds = products.map((product) => product.id);
-  const [snapshots, links] = await Promise.all([
-    productLibraryRepository.listSnapshots(productIds),
+  const [tested, links] = await Promise.all([
+    productLibraryRepository.listTestedProducts(productIds),
     productLibraryRepository.listProjectProducts(productIds),
   ]);
   const projects = (await productLibraryRepository.listProjects([...new Set(links.map((link) => link.project_id))]))
     .filter(project => !project.deleted_at && !isInternalValidationProject(project));
   const projectById = new Map(projects.map((project) => [project.id, project]));
+  const testedPairs = new Set(tested.filter(run => projectById.has(run.projectId)).map(run => `${run.productId}:${run.projectId}`));
+  const testedLinks = links.filter(link => testedPairs.has(`${link.product_id}:${link.project_id}`));
+  const testedIds = new Set(testedLinks.map(link => link.product_id));
+  return { products: archived ? products : products.filter(product => testedIds.has(product.id)), links: testedLinks, projectById };
+}
+
+export async function listProductLibrary(productId?: string, archived = false): Promise<ProductLibraryItem[]> {
+  const { products, links, projectById } = await loadLibraryProducts(productId, archived);
+  const snapshots = await productLibraryRepository.listSnapshots(products.map(product => product.id));
   const snapshotsByProduct = Map.groupBy(snapshots, (snapshot) => snapshot.product_id);
   const linksByProduct = Map.groupBy(links, (link) => link.product_id);
 

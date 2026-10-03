@@ -15,6 +15,7 @@ function service(overrides={}) {
   const repository={
     listProducts:async id=>{calls.push(id);return id?products.filter(p=>p.id===id):products;},
     listSnapshots:async()=>[],
+    listTestedProducts:async()=>[{productId,projectId:'live'}],
     listProjectProducts:async()=>['live','archive','internal'].map(project_id=>({project_id,product_id:productId})),
     listProjects:async()=>[
       {id:'live',name:'Real test',deleted_at:null,evaluation_mode:'quick',created_at:'2026-10-03'},
@@ -29,13 +30,40 @@ function service(overrides={}) {
   new Function('require','module','exports',code)(name=>{assert.ok(name in deps,name);return deps[name];},module,module.exports);
   return {...module.exports,calls};
 }
-test('new products are selectable and visible before research, with archived/internal projects excluded',async()=>{
+test('tested products are visible without research, with archived/internal projects excluded',async()=>{
   const api=service();
   assert.deepEqual(await api.listProductOptions(),[{id:productId,name:'Product One',officialUrl:'https://one.invalid'}]);
   const entries=await api.listProductLibrary();
   assert.equal(entries.length,1);
   assert.equal(entries[0].latestSnapshot,null);
   assert.deepEqual(entries[0].projects.map(p=>p.id),['live']);
+});
+test('empty products and research-only products are excluded from library, detail and suggestions',async()=>{
+  const api=service({listTestedProducts:async()=>[],listSnapshots:async()=>{throw new Error('empty products must not load research');}});
+  assert.deepEqual(await api.listProductOptions(),[]);
+  // Empty snapshot reads are allowed by the repository, but cannot create a library entry.
+  const noEvidence=service({listTestedProducts:async()=>[]});
+  assert.deepEqual(await noEvidence.listProductLibrary(),[]);
+  assert.equal(await noEvidence.getProductLibraryDetail(productId),null);
+});
+test('evidence must belong to this product and a visible project, not a comparison peer or internal run',async()=>{
+  for (const runs of [[{productId,projectId:'archive'}],[{productId,projectId:'internal'}],[{productId:'other',projectId:'live'}]]) {
+    assert.deepEqual(await service({listTestedProducts:async()=>runs}).listProductLibrary(),[]);
+  }
+});
+test('deleted products remain recoverable even when their last project was archived',async()=>{
+  const api=service({listProducts:async(id,archived)=>archived?[products[0]]:[],listTestedProducts:async()=>[]});
+  assert.equal((await api.listProductLibrary(undefined,true))[0].id,productId);
+  assert.deepEqual(await api.listProductLibrary(),[]);
+});
+test('archive and restore validate identity and delegate only product visibility',async()=>{
+  const writes=[];
+  const api=service({setArchived:async(...args)=>{writes.push(args);return true;}});
+  assert.equal(await api.setProductArchived('invalid',true),false);
+  assert.equal(await api.setProductArchived(productId,'true'),false);
+  assert.equal(await api.setProductArchived(productId,true),true);
+  assert.equal(await api.setProductArchived(productId,false),true);
+  assert.deepEqual(writes,[[productId,true],[productId,false]]);
 });
 test('product detail validates ids and scopes outputs to visible linked projects',async()=>{
   const api=service();

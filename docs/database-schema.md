@@ -272,3 +272,7 @@ Publish 不新增表或 migration。publish_packs.community_post.attemptAudit �
 Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchmark_project` 的两个重载，不改表结构、不迁移或重写历史实验。`p_products` 的每项可携带 `productId`；指定时锁定并校验 active 产品，用数据库名称/官网创建项目关联。未指定时按现有 normalized_name 唯一约束复用，禁止官网冲突及同一项目重复产品 ID，且不再 upsert 覆盖已有产品字段。
 
 错误码：P1001 同名官网冲突、P1002 产品不存在/已归档、P1003 同项目重复产品。项目与关联仍在同一事务内创建。五参数重载保留显式模式，四参数兼容入口保留 quick + idle 状态。均 SECURITY INVOKER、空 search_path，仅 service_role 可执行。没有新增客户端查询权限。`tests/product-identity.contract.sql` 使用 service_role 角色在回滚事务内验证身份、不可变字段、失败原子性及权限。
+
+## 产品库可恢复删除与收录
+
+复用既有 products.archived_at，无新增 migration。服务端删除/恢复只更新目标产品的 archived_at（既有 updated_at trigger 仍运行），以当前归档状态做条件更新并检查返回行，失败不假报成功。收录读取 test_runs 与 test_artifacts 的内连接，排除 invalid run 和零字节 Artifact，再与未归档、非内部验证的 project_products/project 关联匹配；仅返回产品/项目 ID，不向客户端投影证据或 Blind Mapping。空档案不做物理清理，产品归档不改变 FK、Storage 或历史实验。

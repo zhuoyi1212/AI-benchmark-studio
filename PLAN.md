@@ -373,3 +373,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 验证：新增 Service/Server Action/候选匹配/可见性回归；数据库 migration 已应用，service_role 下回滚事务验证通过（三次测评关联同一产品、原产品不变、冲突/无效/归档/重复拒绝、失败无半成品、执行权限），测试写入全部回滚。真实浏览器确认产品详情、调研历史、测评与内容入口、新建预选、更换产品、名称候选和重复选择禁用。未运行新一轮真实 AI/Storage 生成，也不宣称全产品 Acceptance Criteria 全部完成。
 
 本阶段最终本地验证：249/249 tests、npm run build、npm run typecheck、git diff --check 全部通过；Supabase 安全检查无 WARNING/ERROR，现有 10 条 server-only 表 RLS 无客户端策略 INFO 保持不变。
+
+2026-10-03 产品库清理与删除：按用户修正仅展示有自身有效原始测试结果的产品，同步已有产品候选与详情准入；从当前列表移除 17 个未测条目，保留懂你AI、豆包、deepseek、秘塔AI搜索。新增删除确认、即时 pending、错误重试及“已删除”恢复入口，复用 archived_at，无 migration 或物理删除。真实浏览器完成删除→列表移除→已删除→恢复→返回列表，验证产品已恢复；前后 TestRun/Artifact/ResearchSnapshot 行内容哈希一致。AI、Blind、Review、Final Score、Storage 及历史内容未改，不新增 Mock 回退。
+
+最终验证：257/257 tests、npm run build、npm run typecheck、git diff --check 通过。浏览器读取真实数据库并完成产品删除/恢复闭环，测试状态已恢复；截图 /private/tmp/product-library-cleanup.jpg。此轮不执行 AI 生成或文件上传，不代表全项目 Acceptance Criteria 全部重新验收。

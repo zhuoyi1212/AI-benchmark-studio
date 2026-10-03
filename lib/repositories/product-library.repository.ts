@@ -10,6 +10,22 @@ const projectProductColumns = "project_id, product_id, display_order, submitted_
 const projectColumns = "id, owner_id, name, intent, status, evaluation_mode, quick_preparation_status, quick_preparation_error, created_at, updated_at, deleted_at";
 
 export const productLibraryRepository = {
+  async setArchived(productId: string, archived: boolean): Promise<boolean> {
+    let query = getSupabaseServerClient().from("products")
+      .update({ archived_at: archived ? new Date().toISOString() : null }).eq("id", productId);
+    query = archived ? query.is("archived_at", null) : query.not("archived_at", "is", null);
+    const { data, error } = await query.select("id").maybeSingle();
+    if (error) throwRepositoryError("productLibrary.setArchived", error);
+    return data !== null;
+  },
+  async listTestedProducts(productIds: string[]) {
+    if (productIds.length === 0) return [];
+    const { data, error } = await getSupabaseServerClient().from("test_runs")
+      .select("product_id,project_id,test_artifacts!inner(id)")
+      .in("product_id", productIds).neq("status", "invalid").gt("test_artifacts.size_bytes", 0);
+    if (error) throwRepositoryError("productLibrary.listTestedProducts", error);
+    return data.map(run => ({ productId: run.product_id, projectId: run.project_id }));
+  },
   async listOutputs(projectIds: string[]) {
     if (projectIds.length === 0) return { reports: [], articles: [] };
     const client = getSupabaseServerClient();
@@ -21,8 +37,9 @@ export const productLibraryRepository = {
     if (articles.error) throwRepositoryError("productLibrary.articles", articles.error);
     return { reports: reports.data, articles: articles.data };
   },
-  async listProducts(productId?: string): Promise<ProductRow[]> {
-    let query = getSupabaseServerClient().from("products").select(productColumns).is("archived_at", null);
+  async listProducts(productId?: string, archived = false): Promise<ProductRow[]> {
+    let query = getSupabaseServerClient().from("products").select(productColumns);
+    query = archived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
     if (productId) query = query.eq("id", productId);
     const { data, error } = await query.order("updated_at", { ascending: false });
     if (error) throwRepositoryError("productLibrary.listProducts", error);
