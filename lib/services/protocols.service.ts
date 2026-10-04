@@ -18,6 +18,12 @@ import {
 import { testExecutionRepository } from "@/lib/repositories/test-execution.repository";
 import { createInputSignature } from "@/lib/signatures";
 import { getProjectMode, type EvaluationMode } from "@/lib/project-mode";
+import {
+  deriveProtocolInputConstraints,
+  validateProtocolFeasibility,
+  type ProtocolFeasibilityIssue,
+  type ProtocolInputConstraints,
+} from "@/lib/protocol-feasibility";
 import { getResearchWorkspace, type ResearchWorkspace } from "@/lib/services/research.service";
 import type { ProtocolRow, RubricDimensionRow } from "@/lib/types/database";
 import type { RubricDimension, TestCase, TestProtocol, TestRule } from "@/lib/types/protocol";
@@ -73,7 +79,13 @@ const standardizedExecutionRules = [
   "完整保留原始输出、工具调用或执行过程证据",
 ] as const;
 
-export type ProtocolWorkspace = { research: ResearchWorkspace; protocol: TestProtocol | null; versionCount: number };
+export type ProtocolWorkspace = {
+  research: ResearchWorkspace;
+  protocol: TestProtocol | null;
+  versionCount: number;
+  inputConstraints: ProtocolInputConstraints | null;
+  feasibilityIssues: ProtocolFeasibilityIssue[];
+};
 
 export class ProtocolExecutionError extends Error {
   constructor(message: string) { super(message); this.name = "ProtocolExecutionError"; }
@@ -88,7 +100,13 @@ export async function getProtocolWorkspace(projectId: string): Promise<ProtocolW
     })),
   ]);
   if (!research) return null;
-  return { research, ...current };
+  const inputConstraints = research.completedResult
+    ? deriveProtocolInputConstraints(research.completedResult.products)
+    : null;
+  const feasibilityIssues = current.protocol && inputConstraints
+    ? validateProtocolFeasibility(current.protocol.testCases, inputConstraints)
+    : [];
+  return { research, ...current, inputConstraints, feasibilityIssues };
 }
 
 export async function generateProtocol(projectId: string): Promise<string> {
@@ -97,6 +115,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
   if (!research || !result) throw new ProtocolExecutionError("请先完成产品调研，再生成测评方案。");
   const projectMode = getProjectMode(research.project.products);
   const evaluationMode = research.project.evaluationMode;
+  const inputConstraints = deriveProtocolInputConstraints(result.products);
   if (projectMode === "comparison" && result.comparability.status === "not_comparable") {
     throw new ProtocolExecutionError("当前产品不适合标准化横向测试，不能生成 Protocol。");
   }
@@ -122,6 +141,8 @@ export async function generateProtocol(projectId: string): Promise<string> {
         keyFeatures: product.keyFeatures,
         officialBestPractices: product.officialBestPractices,
         limitations: product.limitations,
+        inputFormats: product.inputFormats,
+        outputFormats: product.outputFormats,
         sources: product.sources.map(({ url, sourceType }) => ({ url, sourceType })),
       })),
       comparability: result.comparability,
@@ -149,6 +170,8 @@ export async function generateProtocol(projectId: string): Promise<string> {
         keyFeatures: product.keyFeatures,
         officialBestPractices: product.officialBestPractices,
         limitations: product.limitations,
+        inputFormats: product.inputFormats,
+        outputFormats: product.outputFormats,
       })),
       ...(projectMode === "comparison" ? { comparability: result.comparability } : {}),
     },
@@ -178,6 +201,9 @@ export async function generateProtocol(projectId: string): Promise<string> {
       if (isAutoDemo && protocol.testCases.some((testCase) => testCase.expectedOutputTypes.some((type) => !["text", "code", "mixed"].includes(type)))) {
         context.addIssue({ code: "custom", path: ["testCases"], message: "AUTO DEMO Protocol must use text, code, or mixed Evidence only" });
       }
+      for (const issue of validateProtocolFeasibility(protocol.testCases, inputConstraints)) {
+        context.addIssue({ code: "custom", path: ["testCases", issue.testCaseIndex], message: issue.message });
+      }
     });
     const generationTask = evaluationMode === "quick"
       ? aiTaskService.generateProtocol
@@ -189,8 +215,8 @@ export async function generateProtocol(projectId: string): Promise<string> {
         {
           role: "system",
           content: projectMode === "single"
-            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；任务领域必须被 positioning、capabilities、keyFeatures 或官方场景直接支持，禁止凭空发明旅行、写作、编程等无关领域。不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；关系沟通或情感产品测情境理解、沟通策略、边界与安全性；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。需要真实输入时必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备；PDF 的 description 与正文使用可打印英文和数字。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。"
-            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。需要真实输入时必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备；PDF 的 description 与正文使用可打印英文和数字。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。",
+            ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；任务领域必须被 positioning、capabilities、keyFeatures 或官方场景直接支持，禁止凭空发明旅行、写作、编程等无关领域。不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；关系沟通或情感产品测情境理解、沟通策略、边界与安全性；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。必须服从 inputConstraints：不支持文件上传时 inputArtifacts 必须为空，全部任务输入直接放进 Prompt；有字符上限时完整 Prompt 必须低于上限。支持文件且任务需要材料时，必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备。长材料只能选取能独立成立的代表性片段并明确抽样范围；若缩短后无法验证原目标，改选可执行任务，禁止静默截断。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。"
+            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。必须服从所有产品的共同 inputConstraints：任一产品不支持文件上传时 inputArtifacts 必须为空；字符上限取所有产品中最小值。长材料只能选取对所有产品公平且能独立成立的代表性片段；若无法保持测试目标，改选任务，禁止静默截断。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。",
         },
         {
           role: "user",
@@ -210,6 +236,7 @@ export async function generateProtocol(projectId: string): Promise<string> {
               },
               eachCaseInternallyAnswers: ["targetCapabilities", "whyThisTask", "evidenceExpected", "successCriteria"],
               caseOutput: { selfContainedPrompt: true, attachEveryRequiredInput: true, allowedInputArtifactTypes: ["application/pdf", "text/plain", "text/csv"], pdfContentLanguage: "printable English and numbers", expectedOutputTypes, evidenceMustSupportScoring: true },
+              inputConstraints,
               rubricOutput: { dynamicForProductAndTasks: true, concise: true, everyDimensionApplicableToEveryTestCase: true, scoringStandardFields: ["excellent", "good", "acceptable", "poor"], weightTotal: 100 },
               comparison: projectMode === "comparison" ? { sharedCoreCapabilitiesOnly: true, samePromptInputAndConditions: true, excludeExclusiveCapabilities: true } : undefined,
             },
@@ -220,6 +247,8 @@ export async function generateProtocol(projectId: string): Promise<string> {
     });
     const protocol = normalizeGeneratedProtocol(generated.data);
     assertProtocolFitsMode(protocol.testCases.length, evaluationMode);
+    const feasibilityIssues = validateProtocolFeasibility(protocol.testCases, inputConstraints);
+    if (feasibilityIssues.length) throw new ProtocolExecutionError(`生成的任务无法执行：${feasibilityIssues[0]!.message}。`);
     const protocolId = await protocolsRepository.createDraft({
       projectId,
       researchRunId: result.researchRunId,
@@ -294,6 +323,9 @@ export async function lockProtocol(projectId: string, protocolId: string): Promi
   if (!workspace?.protocol) throw new ProtocolExecutionError("没有可锁定的 Protocol 草稿。");
   if (workspace.protocol.id !== protocolId) throw new ProtocolExecutionError("只能锁定当前最新的 Protocol 版本。");
   if (workspace.protocol.status !== "draft") throw new ProtocolExecutionError("当前 Protocol 已锁定，不能重复操作。");
+  if (workspace.feasibilityIssues.length) {
+    throw new ProtocolExecutionError(`当前任务无法执行：${workspace.feasibilityIssues[0]!.message}。请重新生成方案。`);
+  }
   try {
     await protocolsRepository.lock(protocolId);
     // TestRun creation belongs to the explicit lock transition. Reading the

@@ -33,7 +33,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   research: {
     provider: "zhipu",
     capability: "structured_text",
-    promptVersion: "research-synthesis.v6",
+    promptVersion: "research-synthesis.v7-input-constraints",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -51,7 +51,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v11-quick",
+    promptVersion: "protocol.v12-quick-input-constraints",
     reasoning: "standard",
     repairReasoning: "standard",
     timeoutMs: standardTimeoutMs,
@@ -61,7 +61,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol_professional: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v12-professional",
+    promptVersion: "protocol.v13-professional-input-constraints",
     reasoning: "high",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -138,6 +138,15 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     promptVersion: "community-post-humanize.v2-copy-only",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.deepSeekWritingModel,
+  },
+  community_post_title: {
+    provider: "deepseek",
+    capability: "structured_text",
+    promptVersion: "community-post-title.v1",
+    reasoning: "standard",
+    timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.deepSeekWritingModel,
   },

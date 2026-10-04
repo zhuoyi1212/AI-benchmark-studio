@@ -14,6 +14,7 @@ export const aiTaskTypes = [
   "content_discovery",
   "community_post",
   "community_post_humanize",
+  "community_post_title",
   "community_post_evidence_check_text",
   "community_post_evidence_check",
   "screenshot_understanding",

@@ -81,6 +81,7 @@ const genericLabel = /^(?:好用(?:的(?:功能|地方)?)?|体验一般的功能
 
 export function publicationCopyIssues(copy: CommunityStyleEdit): string[] {
   const issues: string[] = [];
+  issues.push(...publicationTitleIssues(copy.title, copy.body));
   const lines = [copy.title, ...copy.body.split("\n")].map(plain).filter(Boolean);
   if (lines.some(line => genericLabel.test(line))) issues.push("标题或段首不得使用空泛分类标签，请直接表达具体发现");
   if (/(?:缺点|不足|问题|不舒服的地方)\s*[：:]\s*(?:没有|无|暂无)(?:[。！\s]|$)/m.test(copy.body)) issues.push("省略没有真实发现的空类别");
@@ -91,6 +92,24 @@ export function publicationCopyIssues(copy: CommunityStyleEdit): string[] {
   if (copy.interactionQuestion && copy.body.includes(copy.interactionQuestion)) issues.push("互动问题只在独立字段输出");
   if (/[（(]\s*p\d+\s*[)）]/i.test(copy.body)) issues.push("图片编号由程序生成");
   return issues;
+}
+
+export function publicationTitleIssues(title: string, body: string, previousTitle?: string): string[] {
+  const issues: string[] = [];
+  const length = Array.from(title.trim()).length;
+  if (length < 6) issues.push("标题至少用 6 个字符说清具体发现");
+  if (length > 28) issues.push("标题不能超过 28 个字符");
+  if (previousTitle && normalizeTitle(title) === normalizeTitle(previousTitle)) issues.push("新标题不能与当前标题相同");
+  if (/(?:震惊|必看|封神|绝了|天花板|颠覆认知|看完就|后悔没|真相竟然)/i.test(title)) issues.push("标题不能使用夸张或诱导点击的词");
+  if ((title.match(/[!?！？]/g) ?? []).length > 1) issues.push("标题不能堆叠问号或感叹号");
+  const bodyNumbers = new Set(body.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []);
+  const unsupportedNumber = (title.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []).find((value) => !bodyNumbers.has(value));
+  if (unsupportedNumber) issues.push(`标题数字 ${unsupportedNumber} 必须在正文中有依据`);
+  return issues;
+}
+
+function normalizeTitle(value: string) {
+  return value.replace(/[\s，。！？、：:；;《》“”"'‘’（）()【】\[\]-]/g, "").toLocaleLowerCase("zh-CN");
 }
 
 export function writingPlanIssues(plan: WritingPlan, facts: WritingFact[], template: WritingPlan["template"]) {

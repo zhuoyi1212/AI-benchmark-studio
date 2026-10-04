@@ -28,6 +28,11 @@
 
 ## Protocol
 
+- Product Research 明确查找 Prompt 字符上限、文件上传能力与输入格式
+- Prompt 不超过所有被测产品中最小的已知字符上限
+- 任一产品未明确支持文件上传时不生成 `inputArtifacts`
+- 生成后及 Lock 前校验任务可执行性；不兼容任务显示原因、不能锁定、可重新生成
+- 长材料不得静默截断；只有代表性片段仍能验证原目标时才允许缩短，否则改选任务
 - 基于指定 ResearchRun 生成
 - 默认快速生成恰好 1 个最有代表性的 TestCase
 - 历史多任务草稿仍可删除 TestCase，且至少保留 1 个
@@ -172,6 +177,9 @@ Reveal 只能发生在 locked 后，且不改变已锁定 Final Score。
 - ResultAnalysis
 - Report
 - PublishPack
+- 已完成文章可单独更换标题，不重新生成正文或证据关系
+- 新标题 6–28 字、与当前标题不同、无标题党词汇，数字在正文有依据
+- 每次更换标题创建新的 immutable PublishPack 版本并保存 route、signature、usage 与前后标题
 
 ## Error Handling
 

@@ -105,6 +105,26 @@ export const languagePassSchema = z.object({
   notes: z.array(text.max(500)).max(8),
 });
 
+export const communityPostTitleSchema = z.object({
+  title: text.max(28),
+}).strict();
+
+export const titleRefreshAuditSchema = z.object({
+  previousTitle: text.max(240),
+  title: text.max(28),
+  provider: z.enum(["zhipu", "deepseek"]),
+  model: text,
+  promptVersion: text,
+  inputSignature: text,
+  refreshedAt: z.string().datetime(),
+  usage: z.object({
+    inputTokens: z.number().nullable(),
+    outputTokens: z.number().nullable(),
+    latencyMs: z.number(),
+    estimatedCost: z.number().nullable(),
+  }),
+});
+
 export const editorialSectionSchema = z.object({
   heading: text.max(120),
   findingIds: z.array(text.max(100)).min(1).max(12),
@@ -232,6 +252,7 @@ export const communityPostContentSchema = z.object({
   styleEdit: styleEditAuditSchema.optional(),
   writingPlan: writingPlanSchema.optional(),
   contentPolicyVersion: text.optional(),
+  titleRefreshes: z.array(titleRefreshAuditSchema).max(20).optional(),
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({

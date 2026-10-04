@@ -29,7 +29,7 @@ async function ProtocolPage({ params }: ProtocolPageProps) {
   if (!workspace) notFound();
   if (!workflowState) notFound();
 
-  const { research, protocol, versionCount } = workspace;
+  const { research, protocol, versionCount, inputConstraints, feasibilityIssues } = workspace;
   if (research.project.evaluationMode === "quick" && !protocol) redirect(`/projects/${projectId}/quick`);
   const completedResearch = research.completedResult;
   const projectMode = getProjectMode(research.project.products);
@@ -62,7 +62,7 @@ async function ProtocolPage({ params }: ProtocolPageProps) {
       {versionCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {versionCount} 个 Protocol 版本；当前展示最新版本，历史锁定版本未被覆盖。</p>}
       {preparationFailed && <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4"><p className="text-sm font-semibold text-amber-950">方案未能自动完成</p><p className="mt-1 text-xs leading-5 text-amber-800">{preparationTimedOut ? "自动准备超过 10 分钟，已停止等待。可以直接重试当前步骤。" : research.project.quickPreparation.error ?? "请返回产品调研查看失败原因并重试。"}</p></div>}
 
-      {displayedProtocol ? <ProtocolView protocol={displayedProtocol} productCount={research.project.products.length} evaluationMode={research.project.evaluationMode} canRegenerate={canGenerate} preserveHistory={displayedProtocol.status === "locked" || workflowState.stages.test.completed} /> : (
+      {displayedProtocol ? <ProtocolView protocol={displayedProtocol} productCount={research.project.products.length} evaluationMode={research.project.evaluationMode} canRegenerate={canGenerate} preserveHistory={displayedProtocol.status === "locked" || workflowState.stages.test.completed} inputConstraints={inputConstraints} feasibilityIssues={feasibilityIssues} /> : (
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="flex min-h-64 flex-col items-center justify-center p-8 text-center shadow-none">
             <div className="grid h-11 w-11 place-items-center rounded-lg bg-blue-50 text-blue-700"><Sparkles className="h-5 w-5" /></div>

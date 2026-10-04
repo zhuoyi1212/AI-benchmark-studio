@@ -110,6 +110,25 @@ test("preserves Content Discovery provenance across Community Post retries", () 
   assert.match(lineageMigration, /grant execute[\s\S]*to service_role/);
 });
 
+test("refreshes only the title through a new immutable PublishPack version", async () => {
+  const titleMigration = await read("supabase/migrations/20261004180420_refresh_publish_pack_title.sql");
+  assert.match(titleMigration, /create function public\.refresh_publish_pack_title/);
+  assert.match(titleMigration, /Only the latest PublishPack title can be refreshed/);
+  assert.match(titleMigration, /insert into public\.publish_packs/);
+  assert.match(titleMigration, /insert into public\.publish_pack_artifacts/);
+  assert.match(titleMigration, /'titleRefreshes'/);
+  assert.match(titleMigration, /revoke all[\s\S]*from public, anon, authenticated/);
+  assert.match(titleMigration, /grant execute[\s\S]*to service_role/);
+  assert.match(service, /generateCommunityPostTitle/);
+  assert.match(service, /publicationTitleIssues/);
+  assert.match(repository, /refresh_publish_pack_title/);
+  assert.match(actions, /refreshCommunityPostTitle/);
+  assert.match(editor, /换一个标题/);
+  const { publicationTitleIssues } = await import("../lib/community-content-policy.ts");
+  assert.deepEqual(publicationTitleIssues("懂你AI把加薪建议写到了可执行步骤", "正文写明了具体建议。"), []);
+  assert.ok(publicationTitleIssues("震惊！3步封神！", "正文没有数字。", "旧标题").length >= 2);
+});
+
 test("requires content brief, language pass, and fact-check metadata for new generations while preserving historical posts", async () => {
   const { communityPostGenerationSchema, communityPostOutputSchema } = await import("../lib/ai/schemas/publish.schemas.ts");
   const post = { title: "测试结果", body: "本次回答提供了文献列表。".repeat(30), tags: ["测评"], interactionQuestion: "你如何核验引用？", screenshotRecommendations: [] };

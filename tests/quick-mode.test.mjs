@@ -31,7 +31,7 @@ test("defaults projects to quick mode while preserving a professional mode", () 
   assert.match(projectForm, /useState<EvaluationMode>\("quick"\)/);
   assert.match(projectForm, /快速模式/);
   assert.match(projectForm, /专业模式/);
-  assert.match(config, /protocol_professional:[\s\S]*protocol\.v12-professional/);
+  assert.match(config, /protocol_professional:[\s\S]*protocol\.v13-professional-input-constraints/);
   assert.match(protocol, /evaluationMode === "quick"[\s\S]*testCases\.length === 1/);
   assert.match(protocol, /protocol\.testCases\.length >= 2 && protocol\.testCases\.length <= 4/);
 });

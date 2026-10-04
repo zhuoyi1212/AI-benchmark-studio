@@ -389,3 +389,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 验证：283/283 tests、npm run build、npm run typecheck、git diff --check 通过。真实供应商合成短文跑通四阶段；早期视频样稿存在人工确认的越界，被排除为合格样稿并加入回归，收紧后多维样稿在最终审查明确失败而非保存 ready。短文样稿仍有轻微重复，模型审稿不能替代人工阅读，不宣称全部内容质量绝对合格。
 
 真实数据库/Storage 后台恢复验证通过：隔离项目 96b13f81-2071-4116-a85b-b2a299b81196 注入语言阶段失败→重启→重试，初稿与内容核验各一次、润色两次（含注入失败）、最终检查一次，Publish v2 ready；已归档。只读持久化核验确认 contentBrief/languagePass/writingPlan/规范版本/四阶段 trace/审稿与实际正文一致。本验证 AI 响应使用隔离 Provider fixture；真实模型测试另以合成材料运行且不写生产文章。用户项目、Blind、Human Review、Final Score、原始文件及历史文章未修改；无 Mock fallback。分支 codex/quick-backend-workflow，本次为 Publish 增量，不重新认证全产品 Acceptance Criteria。
+
+2026-10-05 标题刷新与任务可执行性：Publish 增加只换标题入口，生成 6–28 字、清晰且有真实钩子的标题，并用新的 immutable PublishPack 版本保存调用审计，正文与证据不重跑。Research 主动查找字符上限和文件上传能力；Protocol 以共同输入能力生成任务，并在模型输出后及 Lock 前确定性拦截超长 Prompt 和不受支持的附件。长材料只允许可验证的代表性抽样，无法保真时改选任务。远端 migration `20261004180420_refresh_publish_pack_title.sql` 已应用；事务回滚验证确认新版本、正文和 Artifact 复制正确且未留下测试数据。285/285 tests、typecheck、build、git diff check 与本地发布/方案页浏览器检查通过。

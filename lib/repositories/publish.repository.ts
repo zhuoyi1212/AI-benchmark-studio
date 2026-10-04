@@ -1,6 +1,7 @@
 import "server-only";
 
-import type { CommunityPostOutput, ContentIdea, PublishConfig, SelectedContentIdea } from "@/lib/ai/schemas/publish.schemas";
+import type { CommunityPostOutput, ContentIdea, PublishConfig, SelectedContentIdea, titleRefreshAuditSchema } from "@/lib/ai/schemas/publish.schemas";
+import type { z } from "zod";
 import type { AITaskRoute, AIUsage } from "@/lib/ai/types";
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -63,6 +64,27 @@ export const publishRepository = {
       p_usage: usage as unknown as Json,
     });
     if (error) throwRepositoryError("publish.complete", error);
+  },
+  async refreshTitle(
+    sourcePackId: string,
+    title: string,
+    audit: z.infer<typeof titleRefreshAuditSchema>,
+    route: AITaskRoute,
+    inputSignature: string,
+    usage: AIUsage,
+  ): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc("refresh_publish_pack_title", {
+      p_source_publish_pack_id: sourcePackId,
+      p_title: title,
+      p_title_refresh: audit as unknown as Json,
+      p_provider: route.provider,
+      p_model: route.model,
+      p_prompt_version: route.promptVersion,
+      p_input_signature: inputSignature,
+      p_usage: usage as unknown as Json,
+    });
+    if (error) throwRepositoryError("publish.refreshTitle", error);
+    return data;
   },
   async fail(packId: string, errorMessage: string): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("fail_publish_pack", { p_publish_pack_id: packId, p_error_message: errorMessage });

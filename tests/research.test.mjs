@@ -61,7 +61,7 @@ test("persists verified ProductResearch before comparability", () => {
   assert.match(service, /Single-product research must list at least one testable core capability/);
   assert.match(service, /schema: validatedComparabilitySchema/);
   assert.match(config, /research-search\.v3/);
-  assert.match(config, /research-synthesis\.v6/);
+  assert.match(config, /research-synthesis\.v7-input-constraints/);
   assert.match(config, /comparability\.v2/);
   assert.match(taskService, /verifiedResearchSchema/);
   assert.match(taskService, /Source URL must exactly reference one of the retrieved sources/);

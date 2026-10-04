@@ -5,6 +5,7 @@ import { communityExpressionIssues, communityExpressionRules, experienceWritingR
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
+  communityPostTitleSchema,
   publicationDraftSchema,
   reviewedPublicationSchema,
   publicationAuditSchema,
@@ -35,7 +36,7 @@ import type { Json, PublishPackRow } from "@/lib/types/database";
 
 import {
   contentPolicyVersion, contentRules, templateRules, contentReviewRules, polishRules, finalAuditRules,
-  chooseWritingTemplate, writingPlanIssues, scopeNotesIssues, unsupportedPublicationClaims, publicationCopyIssues, publicationReviewPassed, publicationStyleIssues,
+  chooseWritingTemplate, writingPlanIssues, scopeNotesIssues, unsupportedPublicationClaims, publicationCopyIssues, publicationReviewPassed, publicationStyleIssues, publicationTitleIssues,
   type WritingFact,
 } from "@/lib/community-content-policy";
 
@@ -299,6 +300,81 @@ export async function generateCommunityPost(
     if (error instanceof QuickYield) throw error;
     try { await publishRepository.fail(pack.id, `${stage}：${toUserFacingError(error)}`); } catch { /* preserve source error */ }
     throw new PublishExecutionError(`${stage}：${toUserFacingError(error)}`);
+  }
+}
+
+export async function refreshCommunityPostTitle(
+  projectId: string,
+  sourcePackId: string,
+): Promise<{ packId: string; title: string }> {
+  const workspace = await getPublishWorkspace(projectId);
+  const pack = workspace?.pack;
+  if (!workspace || !pack || pack.id !== sourcePackId || pack.status !== "ready" || !pack.post) {
+    throw new PublishExecutionError("只能为当前最新的已完成文章更换标题，请刷新页面后重试。");
+  }
+
+  const titleInput = {
+    channel: pack.config.channel,
+    currentTitle: pack.post.title,
+    articleBody: pack.post.body,
+    centralIdea: pack.selectedIdea?.title ?? pack.selectedIdea?.angle ?? "",
+    requirements: {
+      length: "6-28 个 Unicode 字符",
+      clear: true,
+      concreteHook: true,
+      preserveArticleMeaning: true,
+      avoidClickbait: true,
+      mustDifferFromCurrentTitle: true,
+    },
+  };
+  const messages: AIMessage[] = [
+    {
+      role: "system",
+      content: [
+        "你是中文社区文章标题编辑。只返回一个新标题，不改正文。",
+        "标题要让读者立刻知道产品、具体场景或核心发现，并用真实结果、矛盾或使用边界形成钩子。",
+        "先清楚，再有吸引力；不使用震惊、必看、封神、天花板等夸张词，不虚构数字、结果或未测试范围。",
+        "标题必须与当前标题明显不同，6-28 个字符，输出简体中文。",
+      ].join("\n"),
+    },
+    { role: "user", content: JSON.stringify(titleInput) },
+  ];
+  const inputSignature = createInputSignature(messages);
+
+  try {
+    const schema = communityPostTitleSchema.superRefine((value, context) => {
+      for (const issue of publicationTitleIssues(value.title, pack.post!.body, pack.post!.title)) {
+        context.addIssue({ code: "custom", path: ["title"], message: issue });
+      }
+    });
+    const generated = await aiTaskService.generateCommunityPostTitle({
+      schema,
+      schemaName: "CommunityPostTitle",
+      messages,
+      maxTokens: 300,
+      maxAttempts: 2,
+    });
+    const refreshedAt = new Date().toISOString();
+    const newPackId = await publishRepository.refreshTitle(
+      pack.id,
+      generated.data.title,
+      {
+        previousTitle: pack.post.title,
+        title: generated.data.title,
+        provider: generated.route.provider,
+        model: generated.route.model,
+        promptVersion: generated.route.promptVersion,
+        inputSignature,
+        refreshedAt,
+        usage: generated.usage,
+      },
+      generated.route,
+      inputSignature,
+      generated.usage,
+    );
+    return { packId: newPackId, title: generated.data.title };
+  } catch (error) {
+    throw new PublishExecutionError(`更换标题失败：${toUserFacingError(error)}`);
   }
 }
 

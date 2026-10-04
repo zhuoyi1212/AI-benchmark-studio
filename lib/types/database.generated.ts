@@ -2096,6 +2096,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_publish_pack_title: {
+        Args: {
+          p_input_signature: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_source_publish_pack_id: string
+          p_title: string
+          p_title_refresh: Json
+          p_usage: Json
+        }
+        Returns: string
+      }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
         Returns: undefined

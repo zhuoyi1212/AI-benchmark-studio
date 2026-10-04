@@ -88,7 +88,7 @@ test("models native product capabilities before designing realistic tasks", () =
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v11-quick"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v12-quick-input-constraints"/);
   assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
 });
 
@@ -157,6 +157,32 @@ test("wires the real Research to Protocol route and explicit generation failure 
   assert.match(actionComponent, /state\.message/);
   assert.match(page, /getProtocolWorkspace/);
   assert.match(page, /ResearchRun/);
+});
+
+test("rejects tasks that exceed researched product input capabilities", async () => {
+  const { deriveProtocolInputConstraints, validateProtocolFeasibility } = await import("../lib/protocol-feasibility.ts");
+  const constraints = deriveProtocolInputConstraints([{
+    productId: "product-1",
+    name: "受限产品",
+    initials: "XP",
+    positioning: "文本助手",
+    targetUsers: ["用户"],
+    capabilities: ["文本问答"],
+    keyFeatures: ["网页输入框"],
+    limitations: ["单次提示词输入不超过 1000 个字符", "不支持上传文件"],
+    officialBestPractices: [],
+    inputFormats: ["文本"],
+    outputFormats: ["文本"],
+    sources: [],
+  }]);
+  assert.equal(constraints.maxPromptCharacters, 1000);
+  assert.equal(constraints.supportsFileUpload, false);
+  const issues = validateProtocolFeasibility([{ prompt: "测".repeat(1001), inputArtifacts: [{}] }], constraints);
+  assert.deepEqual(issues.map((issue) => issue.code), ["prompt_too_long", "file_upload_unsupported"]);
+  assert.match(service, /validateProtocolFeasibility\(protocol\.testCases, inputConstraints\)/);
+  assert.match(service, /禁止静默截断/);
+  assert.match(protocolView, /任务与产品输入能力不匹配/);
+  assert.match(protocolView, /&& feasible/);
 });
 
 test("draft protocol lets the user remove unwanted test cases while retaining one", async () => {

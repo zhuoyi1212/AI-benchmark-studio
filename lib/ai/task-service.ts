@@ -242,6 +242,7 @@ export const aiTaskService = {
   discoverContentIdeas: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("content_discovery", request),
   generateCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post", request),
   humanizeCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_humanize", request),
+  generateCommunityPostTitle: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_title", request),
   factCheckTextCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check_text", request),
   factCheckCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check", request),
   understandScreenshots: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("screenshot_understanding", request),

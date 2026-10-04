@@ -217,14 +217,14 @@ async function researchOneProduct(
     messages: [
       {
         role: "system",
-        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实，不得依据记忆补充。优先使用提交官网域名内的产品页、文档、帮助中心、更新日志和定价页；二手来源只能补充官方资料未覆盖的体验或背景，不能覆盖官方事实。positioning 直接说明产品是什么、面向谁、解决什么问题，不要用“无法确认”“未找到信息”等检索说明代替产品定位；缺失信息写入 limitations。价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写，否则 pricing 返回 null。输出简体中文。sourceUrls 只能逐字引用给定 URL，并应优先选择高质量官方来源。",
+        content: "你是严谨的 AI 产品研究员。只允许使用随后提供的检索来源陈述产品事实，不得依据记忆补充。优先使用提交官网域名内的产品页、文档、帮助中心、更新日志和定价页；二手来源只能补充官方资料未覆盖的体验或背景，不能覆盖官方事实。positioning 直接说明产品是什么、面向谁、解决什么问题，不要用“无法确认”“未找到信息”等检索说明代替产品定位；缺失信息写入 limitations。必须核对实际交互限制：输入框字符上限、是否支持文件上传、支持的文件类型及单文件限制；有明确字符上限时在 limitations 中原样写出数值和单位，不支持上传时明确写“不支持上传文件”。inputFormats 只填写来源明确支持的输入方式，未知不能猜测。价格、免费方案和套餐结论只有在给定来源中存在官方定价或官方帮助页面时才可填写，否则 pricing 返回 null。输出简体中文。sourceUrls 只能逐字引用给定 URL，并应优先选择高质量官方来源。",
       },
       {
         role: "user",
         content: JSON.stringify({
           projectIntent: project.intent,
           product: { name: product.name, submittedOfficialUrl: product.officialUrl },
-          requestedFields: ["positioning", "targetUsers", "capabilities", "keyFeatures", "pricing", "officialBestPractices", "limitations", "inputFormats", "outputFormats", "sourceUrls"],
+          requestedFields: ["positioning", "targetUsers", "capabilities", "keyFeatures", "pricing", "officialBestPractices", "limitations including prompt character limits and file-upload support", "inputFormats from explicit source evidence", "outputFormats", "sourceUrls"],
         }),
       },
     ],
@@ -263,7 +263,7 @@ function buildSearches(product: ProjectProductSummary) {
       { query: `${exactName} AI 公司 官方`, count: 8 },
       { query: `${exactName} AI 助手 官网 官方文档`, count: 8 },
       { query: `${exactName} AI 产品 功能 使用指南`, count: 8 },
-      { query: `${exactName} AI 会员 价格 官方`, count: 8 },
+      { query: `${exactName} 输入限制 字符上限 文件上传 官方`, count: 8 },
     ];
   }
   const scope = `site:${site}`;
@@ -272,7 +272,7 @@ function buildSearches(product: ProjectProductSummary) {
     { query: `${scope} ${exactName} 产品 功能 官方文档`, count: 8 },
     { query: `${scope} ${exactName} 使用指南 release notes pricing`, count: 8 },
     { query: `${exactName} AI 产品 官方文档 功能 使用指南`, count: 8 },
-    { query: `${exactName} pricing 价格 套餐 官方`, count: 8 },
+    { query: `${scope} ${exactName} 输入限制 字符上限 文件上传`, count: 8 },
   ];
 }
 
