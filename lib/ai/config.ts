@@ -126,7 +126,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post.v5-complete-draft-json",
+    promptVersion: "community-post.v6-evidence-plan",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_humanize: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-humanize.v1",
+    promptVersion: "community-post-humanize.v2-copy-only",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -144,7 +144,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v2-fast-text",
+    promptVersion: "community-post-evidence-check.v3-content-policy-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -153,7 +153,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v2-fast",
+    promptVersion: "community-post-evidence-check.v3-content-policy-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: 1,

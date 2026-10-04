@@ -282,3 +282,7 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 `20261003102310_unique_project_names.sql` 新增部分唯一表达式索引 `projects_active_name_unique`：`lower(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g')))`，条件 `deleted_at is null`。适用于当前单工作区模型；创建、修改名称及恢复均由同一索引原子防重。上线前确认没有存量冲突，不重命名或删除历史行。无新表/字段、RPC 或权限变更，生成的 TypeScript Row 类型无需变动。
 
 重命名仍按 Page → Action → Service → Repository → DB；仅更新指定 active Project 的 name，updated_at 由既有 trigger 更新。`tests/project-name.contract.sql` 在 service_role 下回滚验证重复 INSERT/UPDATE、大小写/空白、保存原名、已删除名称复用、恢复冲突和其他字段不变。
+
+### 2026-10-04 社区内容规范元数据（无 DDL 变更）
+
+`publish_packs.community_post` JSON 新增可选 `writingPlan`、`contentPolicyVersion`；补齐 `contentBrief`、`languagePass` 的仓储透传，继续保存 `styleEdit`、`stylePreservation`、`articleReview` 与 `generationTrace`。新结果为四阶段，trace 增加 `content_check`；历史结构保持兼容。复用原子 `complete_publish_pack` 与不可变 ready 版本规则，无新增表、RPC、权限或 migration。成功后台阶段仍存 `quick_job_steps`，语义审查失败不能执行完成 RPC。

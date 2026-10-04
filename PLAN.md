@@ -383,3 +383,9 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 验证：261/261 tests 通过；service_role 回滚事务验证 duplicate INSERT/UPDATE、大小写/空白变体、原名保存、已删除名称复用、恢复冲突及其他字段不变。真实浏览器已验证重名提示、正常改名和跨页面/侧栏同步，临时验证名称随后恢复原名。数据库安全检查无 WARNING/ERROR，原有 10 条 server-only 表 RLS 无策略 INFO 保持不变。未触发 AI 或 Storage 写入；全产品 Acceptance Criteria 不在本轮重复验收。
 
 本轮最终 npm run build、npm run typecheck、git diff --check 均通过；重名 UI 验证截图位于 /private/tmp/project-rename-duplicate.jpg。
+
+2026-10-04 Final Content Policy v1：按用户要求新增 `docs/final-content-generation-standard.md`，统一快速/专业社区文章为材料与自动结构选择、证据关联提纲/初稿、原始证据内容核验、三字段语言编辑、只审不改的最终检查。取消固定分类标题、强制第一人称与最低200字/四段；保留短观察、空类别省略及测试范围独立。新增引用/重复选材/范围/分类前缀/数值/特定无依据收益和过程/图片映射门禁，六项保真或四项质量失败不得 ready。修复“15分钟”被旧评分正则误判、初稿核验声称修改但正文未变、仓储遗漏简报/润色状态的问题。Prompt 升版、四阶段 trace 与规范版本持久化，旧文章和上游实验不改；无 migration。
+
+验证：283/283 tests、npm run build、npm run typecheck、git diff --check 通过。真实供应商合成短文跑通四阶段；早期视频样稿存在人工确认的越界，被排除为合格样稿并加入回归，收紧后多维样稿在最终审查明确失败而非保存 ready。短文样稿仍有轻微重复，模型审稿不能替代人工阅读，不宣称全部内容质量绝对合格。
+
+真实数据库/Storage 后台恢复验证通过：隔离项目 96b13f81-2071-4116-a85b-b2a299b81196 注入语言阶段失败→重启→重试，初稿与内容核验各一次、润色两次（含注入失败）、最终检查一次，Publish v2 ready；已归档。只读持久化核验确认 contentBrief/languagePass/writingPlan/规范版本/四阶段 trace/审稿与实际正文一致。本验证 AI 响应使用隔离 Provider fixture；真实模型测试另以合成材料运行且不写生产文章。用户项目、Blind、Human Review、Final Score、原始文件及历史文章未修改；无 Mock fallback。分支 codex/quick-backend-workflow，本次为 Publish 增量，不重新认证全产品 Acceptance Criteria。

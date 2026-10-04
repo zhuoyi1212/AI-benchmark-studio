@@ -93,7 +93,7 @@ export const contentBriefSchema = z.object({
   supportingPoints: z.array(z.object({
     finding: text.max(800),
     userMeaning: text.max(800),
-  })).min(2).max(5),
+  })).min(1).max(5),
   ending: text.max(800),
   voice: text.max(400),
   avoidPhrases: z.array(text.max(200)).max(12),
@@ -101,7 +101,7 @@ export const contentBriefSchema = z.object({
 
 export const languagePassSchema = z.object({
   status: z.enum(["polished", "unchanged"]),
-  changedSentenceCount: z.number().int().nonnegative().max(100),
+  changedSentenceCount: z.number().int().nonnegative().max(100).optional(),
   notes: z.array(text.max(500)).max(8),
 });
 
@@ -163,7 +163,7 @@ export const articleReviewSchema = z.object({
 });
 
 export const publishGenerationTraceSchema = z.array(z.object({
-  stage: z.enum(["planning", "writing", "style_edit", "fact_check"]),
+  stage: z.enum(["planning", "writing", "content_check", "style_edit", "fact_check"]),
   provider: z.enum(["zhipu", "deepseek"]),
   model: text,
   promptVersion: text,
@@ -205,6 +205,18 @@ export const factCheckSchema = z.object({
   notes: z.array(text.max(800)).max(8),
 });
 
+export const writingPlanSchema = z.object({
+  template: z.enum(["single_scene", "multi_feature", "comparison"]),
+  scopeNotes: z.array(text.max(1000)).max(8),
+  sections: z.array(z.object({
+    heading: text.max(120),
+    sourceIds: z.array(text.max(160)).min(1).max(12),
+    observationQuote: text.max(1800),
+    judgment: text.max(1200),
+  })).min(1).max(8),
+});
+export type WritingPlan = z.infer<typeof writingPlanSchema>;
+
 export const communityPostContentSchema = z.object({
   title: text.max(240),
   body: text.max(12_000),
@@ -218,6 +230,8 @@ export const communityPostContentSchema = z.object({
   generationTrace: publishGenerationTraceSchema.optional(),
   stylePreservation: stylePreservationSchema.optional(),
   styleEdit: styleEditAuditSchema.optional(),
+  writingPlan: writingPlanSchema.optional(),
+  contentPolicyVersion: text.optional(),
 });
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({
@@ -257,7 +271,17 @@ const editorialGenerationSchema = communityPostOutputSchema.safeExtend({
 export const communityPostGenerationSchema = z.union([
   briefGenerationSchema,
   editorialGenerationSchema,
-]).refine(
-  (post) => post.body.trim().length >= 200 && post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length >= 4,
-  { path: ["body"], message: "Return the complete article in body, not just an opening: at least 200 characters and 4 paragraphs separated by blank lines. Include the tested task, concrete output, evidence-backed findings, and scope limitations without repeating the same conclusion." },
-);
+]);
+
+// New generations require evidence-bound planning; historical JSON stays readable.
+export const publicationDraftSchema = communityPostDraftSchema.safeExtend({ writingPlan: writingPlanSchema });
+export const reviewedPublicationSchema = publicationDraftSchema.safeExtend({
+  articleReview: articleReviewSchema,
+  factCheck: factCheckSchema,
+});
+// The last reviewer cannot rewrite the copy it approves.
+export const publicationAuditSchema = z.object({
+  articleReview: articleReviewSchema,
+  stylePreservation: stylePreservationSchema,
+  screenshotRecommendations: z.array(screenshotRecommendationSchema).max(9),
+}).strict();

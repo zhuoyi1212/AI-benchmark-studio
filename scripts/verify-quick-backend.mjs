@@ -68,7 +68,7 @@ try {
   }
   const complete = await until(state=>state.publish?.status==='ready' && state.jobs.some(job=>job.kind==='report' && job.status==='completed'));
   for (const kind of ['research','protocol','evaluate','findings','discovery','publish','analysis','report']) assert.equal(complete.jobs.filter(job=>job.kind===kind).length,1,kind);
-  for (const task of ['CommunityPostDraft','HumanizedCommunityPost','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'HumanizedCommunityPost' ? 2 : 1,task);
+  for (const task of ['CommunityPostDraft','ReviewedCommunityPost','HumanizedCommunityPost','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'HumanizedCommunityPost' ? 2 : 1,task);
   const html = await (await fetch(`${origin}/projects/${projectId}/quick`)).text();
   assert.ok(html.includes('快速模式'));
   console.log(JSON.stringify({ ok:true, recovery, projectId, runId, stages:complete.jobs.map(job=>job.kind), publishVersion:complete.publish.version, providerCalls:provider.stats().taskCounts }));

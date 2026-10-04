@@ -1,4 +1,4 @@
-// Runs planning → writing → style edit → fact-check against SYNTHETIC text evidence.
+// Runs plan/draft → content check → style edit → preservation check against SYNTHETIC text evidence.
 // No database access, no screenshot creation, no production PublishPack writes.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -40,7 +40,7 @@ const load = createLoader(root, {
 const out = join(root, 'outputs', 'community-style-evaluation', `${Date.now()}-${dimension ? 'dimensions' : 'scene'}`);
 await mkdir(out, { recursive: true });
 const taskService = load('@/lib/ai/task-service').aiTaskService;
-for (const name of ['generateCommunityPost', 'editCommunityPostStyle', 'factCheckCommunityPost']) {
+for (const name of ['generateCommunityPost', 'humanizeCommunityPost', 'factCheckTextCommunityPost', 'factCheckCommunityPost']) {
   const invoke = taskService[name];
   taskService[name] = options => invoke({ ...options, onResponse: async event => {
     // Provider reasoning is already removed. Retain only structured answer text and safe metadata.
@@ -56,4 +56,4 @@ await load('@/lib/services/publish.service').generateCommunityPost(productId, {
 assert.ok(saved?.articleReview);
 await writeFile(join(out, 'post.json'), JSON.stringify(saved, null, 2));
 await writeFile(join(out, 'sample.md'), `> 写作验证样稿：真实模型生成，输入为虚构测试夹具，不能作为真实产品测评发布。\n\n# ${saved.title}\n\n${saved.body}\n`);
-console.log(JSON.stringify({ output: out, mode, chapters: saved.editorialPlan.sections.length, review: saved.articleReview, stages: saved.generationTrace.map(item => item.stage) }));
+console.log(JSON.stringify({ output: out, mode, chapters: saved.writingPlan.sections.length, review: saved.articleReview, stages: saved.generationTrace.map(item => item.stage) }));

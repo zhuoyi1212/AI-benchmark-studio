@@ -355,3 +355,9 @@ publish_packs.community_post JSON 新增可选 articleReview、generationTrace�
 领取任务通过行锁、SKIP LOCKED、项目级 advisory lock 和 lease token 实现项目串行、项目间可并行；完成与入队后继在同一事务内。每 60 秒续租，进程死亡后最多 15 分钟可回收；连续 3 次执行中断进入 failed。相同项目/种类/scope 入队去重。AI 成功结果按 route/schema/input 签名保存在服务端检查点；写作每轮最多一个未完成 AI 阶段，避免三次模型调用绑定同一个函数请求。外部供应商响应到检查点写入之间仍是 at-least-once，不能保证计费 exactly-once。
 
 部署与验证见 `docs/quick-workflow.md`。
+
+### Final Content Policy v1（2026-10-04）
+
+`community-content-policy.ts` 集中维护生成、模板、内容核验、语言编辑、最终审核规则及确定性门禁。PublishService 从选题覆盖的 Findings/专业观察投影 factLedger，保留证据ID与任务关联，不传 Report全文/数值评分。初稿 schema 必需 writingPlan；ReviewedCommunityPost 同原始 Artifact 做内容核验；HumanizedCommunityPost 使用 strict 三字段 Schema；EvidenceCheckedCommunityPost 仅返回质量/六项保真/图片关联，程序合并实际审核文案。
+
+同一原始 Artifact 读取助手用于两类来源；图片/PDF混合路由仍按实际内容模态选择。复用 Router 和 quick_job_steps；新增阶段名称不新增任务队列，Prompt/Schema/输入参与签名，旧检查点不能误当新规范结果。publish_packs.community_post 保存 writingPlan/contentPolicyVersion/contentBrief/languagePass/styleEdit/stylePreservation/generationTrace，旧字段可选保证历史可读。此次补齐仓储曾遗漏的 contentBrief/languagePass 保存。没有新增表或客户端权限。

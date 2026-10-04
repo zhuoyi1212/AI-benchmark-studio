@@ -1,0 +1,22 @@
+// Read-only audit of an explicitly identified E2E fixture, never user project contents.
+import assert from 'node:assert/strict';
+import { createClient } from '@supabase/supabase-js';
+const projectId = process.argv[2];
+assert.match(projectId ?? '', /^[0-9a-f-]{36}$/);
+const client = createClient(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
+const { data: project, error } = await client.from('projects').select('name,deleted_at').eq('id', projectId).single();
+assert.equal(error, null);
+assert.ok(project.name.startsWith('[E2E] Backend Quick '));
+assert.ok(project.deleted_at, 'verification fixture must be archived after the run');
+const { data: packs, error: packError } = await client.from('publish_packs').select('status,community_post').eq('project_id', projectId).order('version', { ascending: false });
+assert.equal(packError, null);
+const post = packs.find(pack => pack.status === 'ready')?.community_post;
+assert.ok(post);
+assert.equal(post.contentPolicyVersion, 'community-content.v1');
+assert.ok(post.contentBrief && post.languagePass && post.writingPlan);
+assert.deepEqual(post.generationTrace.map(trace => trace.stage), ['writing', 'content_check', 'style_edit', 'fact_check']);
+assert.equal(post.body, post.styleEdit.edited.body);
+assert.equal(post.title, post.styleEdit.edited.title);
+assert.equal(post.articleReview.issues.length, 0);
+assert.equal(post.stylePreservation.issues.length, 0);
+console.log(JSON.stringify({ projectId, archived: true, persistedPolicy: post.contentPolicyVersion, verified: ['brief', 'languagePass', 'writingPlan', 'four-stage trace', 'exact reviewed copy', 'preservation review'] }));

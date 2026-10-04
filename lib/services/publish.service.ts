@@ -1,13 +1,14 @@
 import "server-only";
 import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 
-import { buildFindingSections, communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
+import { communityExpressionIssues, communityExpressionRules, experienceWritingRules } from "@/lib/community-experience";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   communityPostContentSchema,
-  communityPostDraftSchema,
-  communityPostGenerationSchema,
-  communityPostHumanizedSchema,
+  publicationDraftSchema,
+  reviewedPublicationSchema,
+  publicationAuditSchema,
+  communityStyleEditSchema,
   communityPostOutputSchema,
   contentIdeaSchema,
   contentIdeasOutputSchema,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/ai/schemas/publish.schemas";
 import { resultAnalysisInputSchema } from "@/lib/ai/schemas/result-analysis.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
-import type { AIMessage, AIUsage } from "@/lib/ai/types";
+import type { AIMessage, AIUsage, StructuredTaskResult } from "@/lib/ai/types";
 import { publishRepository } from "@/lib/repositories/publish.repository";
 import { defaultPublishConfig } from "@/lib/publish-config";
 import { RepositoryError } from "@/lib/repositories/repository-error";
@@ -32,11 +33,13 @@ import { getReportWorkspace, type ReportEvidence } from "@/lib/services/report.s
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import type { Json, PublishPackRow } from "@/lib/types/database";
 
+import {
+  contentPolicyVersion, contentRules, templateRules, contentReviewRules, polishRules, finalAuditRules,
+  chooseWritingTemplate, writingPlanIssues, scopeNotesIssues, unsupportedPublicationClaims, publicationCopyIssues, publicationReviewPassed, publicationStyleIssues,
+  type WritingFact,
+} from "@/lib/community-content-policy";
+
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
-const evidenceGroundedPostSchema = communityPostGenerationSchema.refine(
-  (post) => !unsupportedProcessInference.test(post.body),
-  "Missing process evidence must not be converted into claims about product behavior.",
-);
 
 export type PublishScreenshot = ReportEvidence & { productName: string; testCaseTitle: string };
 type PublishSource = Awaited<ReturnType<typeof getPublishSource>> extends infer Source ? NonNullable<Source> : never;
@@ -193,157 +196,118 @@ export async function generateCommunityPost(
     if (createInputSignature(pack.config) !== createInputSignature(config)) throw new PublishExecutionError('写作配置已变化，请重新生成。');
   }
   const confirmedFindings = source.kind === "findings" ? source.confirmedFindings.findings : [];
-  const checkedExpressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
-    const normalized = normalizeFindingCategories(post, confirmedFindings);
-    for (const message of communityExpressionIssues(normalized, config, confirmedFindings)) {
-      if (message === "截图需引用最终正文中的实际段落与原文短句") continue;
-      if (source.kind === "findings" && isQuickLayoutOnlyIssue(message)) continue;
-      context.addIssue({ code: "custom", message });
-    }
+  const facts = postInput.factLedger;
+  const template = postInput.template;
+  const plannedSchema = publicationDraftSchema.superRefine((post, context) => {
+    for (const message of [...writingPlanIssues(post.writingPlan, facts, template), ...scopeNotesIssues(post.writingPlan, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
   });
-  const finalExpressionSchema = evidenceGroundedPostSchema.superRefine((post, context) => {
-    for (const message of communityExpressionIssues(post, config, confirmedFindings)) {
-      if (source.kind === "findings" && isQuickLayoutOnlyIssue(message)) continue;
-      context.addIssue({ code: "custom", message });
-    }
+  const reviewedSchema = reviewedPublicationSchema.superRefine((post, context) => {
+    for (const message of [...writingPlanIssues(post.writingPlan, facts, template), ...scopeNotesIssues(post.writingPlan, postInput.scopeNotes), ...publicationCopyIssues(post), ...unsupportedPublicationClaims(post, facts, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
+    if (unsupportedProcessInference.test(post.body)) context.addIssue({ code: "custom", message: "不能从缺少过程记录推断产品行为" });
   });
-
+  let stage = "撰写初稿";
   try {
-    const draftResult = await aiTaskService.generateCommunityPost({
-      schema: communityPostDraftSchema,
-      schemaName: "CommunityPostDraft",
-      messages: [
-        {
-          role: "system",
-          content: [
-            "你是中文社区内容策划与初稿编辑。先生成 contentBrief，再严格按 brief 写完整草稿。",
-            communityExpressionRules,
-            config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
-            "社区内容的中心是实际测到了什么、哪些功能好用、哪些一般、哪些难用，以及这些现象对使用者意味着什么。",
-            source.kind === "findings"
-              ? "事实判断以 humanConfirmedFindings 为主；Research 只提供背景。不得引入评分、Judge 或 Report 中不存在于本次快速链路的信息。"
-              : "事实判断以真实 Case、Artifact、Judge Evidence 和 Human Review 为主；Final Score 只可作为辅助背景。",
-            "contentBrief 必须先明确 coreViewpoint、opening、supportingPoints、ending、voice 和 avoidPhrases；supportingPoints 要把“观察到什么”和“这对用户意味着什么”分开。avoidPhrases 最多 12 项，只选最相关的，不要照抄全部禁用词。",
-            "如果 config.stylePreset=真实体验：使用第一人称、短句、直接判断，可以写“我这次测试”“我的感受是”，但只能描述本项目真实留存的测试；不能虚构未发生的操作。",
-            "如果 config.structure=好用 / 一般 / 难用：正文优先按“先给结论 → 好用的功能 → 体验一般的功能 → 不能用/用着难受的功能 → 个人感受”组织；没有真实发现的类别就省略。",
-            "标题朴素直接，不做营销式悬念。每个功能段先说判断，再说具体测试现象和影响。",
-            "不要在开头解释 Test Protocol、AI Judge、Blind、Final Score、Rubric 等内部流程，除非当前选题本身就是方法论。",
-            "优先写具体体验和使用影响，不要把评分、流程或字段名翻译成社区语言后继续当正文主线。",
-            "避免媒体稿和 AI 总结腔，不要使用“总体而言、值得注意的是、从这个角度来看、这一表现说明”等空泛连接词。",
-            "不要为了显得严谨反复写免责声明。范围限制只在必要位置简短说明一次。",
-            "不得创造体验、数据、竞品对比或未测试能力。证据不完整时必须收缩说法。",
-            "有 imageArtifacts 时 screenshotRecommendations 只能引用其中 artifactId；没有图片时必须返回空数组。",
-            "返回符合 CommunityPostDraft Schema 的完整 JSON，必须包含 title、body、tags、interactionQuestion、contentBrief、screenshotRecommendations 六个字段。body 使用简体中文完整正文，不能只返回提纲。",
-          ].join("\n"),
-        },
-        { role: "user", content: JSON.stringify(postInput) },
-      ],
-      maxTokens: 8_000,
-      maxAttempts: 2,
-      beforeExecute: (route) => resuming ? Promise.resolve() : publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
-    });
-
-    const humanizedResult = await aiTaskService.humanizeCommunityPost({
-      schema: communityPostHumanizedSchema,
-      schemaName: "HumanizedCommunityPost",
-      messages: [
-        {
-          role: "system",
-          content: [
-            "你是中文社区内容语言编辑。只做语言自然化，不改事实、不增加结论、不扩大适用范围。",
-            "完整保留 contentBrief 的核心观点和结构；正文事实只能来自 draft 与 source。",
-            "删除或改写报告腔和常见 AI 连接词，例如“首先、其次、此外、总体而言、值得注意的是、综上所述、从这个角度来看、这一表现说明”。",
-            "减少过度工整的排比和每段相同句式；长句拆短，允许段落长短不完全一致。",
-            "把抽象评价改成已有证据支持的具体体验，但不能补充 source 中没有发生的操作。",
-            "第一人称只能描述本次真实测试，不得虚构“我长期使用”“我日常一直在用”等经历。",
-            "不要为了口语化加入夸张词、营销词或网络梗。标题、正文、互动问题都要自然、直接。",
-            "截图推荐只允许保留 draft 中已有的 artifactId，不要新增证据引用。",
-            "languagePass.status=polished 表示确实进行了语言改写；changedSentenceCount 记录明显重写的句子数量；notes 只写 1-3 条简短改写说明。",
-            "输出完整可发布正文，不要返回改写建议或前后对照。",
-          ].join("\n"),
-        },
-        { role: "user", content: JSON.stringify({ source: postInput, draft: draftResult.data }) },
-      ],
-      maxTokens: 8_000,
-      maxAttempts: 2,
-    });
-
-    const factCheckInput = {
-      source: postInput,
-      draft: humanizedResult.data,
-      factCheckRules: [
-        "逐条检查标题和正文中的事实性描述是否能被输入证据直接支持。",
-        "将过度概括改成证据实际覆盖的范围。例如只测试一个学校网站失败，不能写成所有非主流平台失败率高。",
-        "同一论文出现多个编号本身不能证明引用混乱；抽查一条引用不能扩大为全部来源真实或全部来源有误。",
-        "缺少过程日志只能写本次未留存，不能推断产品没有调用工具或能力不足。",
-        "评分不是社区文章主线，不要为了保留分数而牺牲真实使用发现。",
-        "保留自然社区语言，不要把核对后的文章改回报告体。",
-      ],
-    };
-    const expectedHeadings = config.structure === "好用 / 一般 / 难用" && confirmedFindings.length
-      ? [...buildFindingSections(confirmedFindings).map((section) => section.heading), "个人感受"]
-      : [];
-    const forbiddenHeadings = config.structure === "好用 / 一般 / 难用" && confirmedFindings.length
-      ? [
-          ["good", "好用的功能"],
-          ["neutral", "体验一般的功能"],
-          ["problem", "不能用 / 用着难受的功能"],
-        ].filter(([category]) => !confirmedFindings.some((finding) => finding.category === category)).map(([, heading]) => heading)
-      : [];
-
-    const factCheckMessages: AIMessage[] = [
-      {
-        role: "system",
-        content: [
-          "你是最终事实核对编辑。请基于 source 对 draft 做逐句事实核验。",
-          communityExpressionRules,
-          config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
-          source.kind === "findings" ? "Quick 模式还会再次提供完整原始 Artifact；当人工 Findings、草稿与原始 Artifact 冲突时，以原始 Artifact 可观察事实为准，并收缩结论。" : "专业模式以当前可用的 Case、Judge Evidence、Human Review 和 Report 证据边界为准。",
-          "如果某个表述超出证据范围，直接在最终正文中改成更窄、更准确的说法；不要只在 notes 里提醒。",
-          "保留 draft 的社区表达、第一人称语气和结构，不要重写成学术报告。",
-          "contentBrief 和 languagePass 必须保留；事实核对只能收缩或修正事实表述，不得把文章改回报告体。",
-          expectedHeadings.length
-            ? `最终正文必须按此顺序逐字保留章节标题：${expectedHeadings.join(" → ")}。${forbiddenHeadings.length ? `正文禁止出现这些空类别标题：${forbiddenHeadings.join("、")}。` : "不要增加不存在 Finding 的类别。"}`
-            : "保留 draft 已有正文结构。",
-          "factCheck.status 若正文发生任何事实范围修订则为 revised，否则为 passed；revisedClaimCount 记录被收缩或修正的事实性表述数量。",
-          "不得新增 source 中不存在的事实。最终 body 必须是可直接发布的完整文章。",
-        ].join("\n"),
-      },
-      { role: "user", content: JSON.stringify(factCheckInput) },
+    const draftMessages: AIMessage[] = [
+      { role: "system", content: [
+        "你是中文社区内容策划与初稿编辑。先填 writingPlan 和 contentBrief，再写完整正文；不能只返回提纲。",
+        contentRules, templateRules, communityExpressionRules,
+        config.stylePreset === "真实体验" ? experienceWritingRules : "保持所选写作风格。",
+        "事实判断以 humanConfirmedFindings 为主（若存在）；专业来源只使用 factLedger 的证据观察，不引入排名或数值评分。",
+        "有 imageArtifacts 时只引用真实 artifactId；没有图片时必须返回空数组。图片不凑数量。",
+        "不得创造体验、数据、竞品对比或未测试能力。一次学校网站失败不能推广到其他网站。",
+        "完整返回 title、body、tags、interactionQuestion、contentBrief、writingPlan、screenshotRecommendations。",
+      ].join("\n") },
+      { role: "user", content: JSON.stringify(postInput) },
     ];
-    const rawEvidence = source.kind === "findings"
-      ? await buildRawFindingsEvidenceContent(projectId, { preferPdfText: true })
-      : null;
-    if (rawEvidence) factCheckMessages.push({ role: "user" as const, content: rawEvidence });
-    const requiresVision = Array.isArray(rawEvidence)
-      && rawEvidence.some((item) => item.type === "image_url" || item.type === "file_url");
-    const factCheck = requiresVision
-      ? aiTaskService.factCheckCommunityPost
-      : aiTaskService.factCheckTextCommunityPost;
-
-    const checkedResult = await factCheck({
-      schema: checkedExpressionSchema,
-      schemaName: "EvidenceCheckedCommunityPost",
-      messages: factCheckMessages,
-      maxTokens: 3_500,
-      maxAttempts: requiresVision ? 1 : 3,
+    const draftResult = await aiTaskService.generateCommunityPost({
+      schema: plannedSchema, schemaName: "CommunityPostDraft", messages: draftMessages,
+      maxTokens: 8_000, maxAttempts: 2,
+      beforeExecute: route => resuming ? Promise.resolve() : publishRepository.startPost(pack.id, selectedIdea, config, route, inputSignature),
     });
 
-    const post = finalExpressionSchema.parse(normalizePostForValidation(
-      checkedResult.data,
-      selectedIdea,
-      imageArtifacts,
-      config.imageCount,
-      confirmedFindings,
-    ));
-    assertPost(post, imageArtifacts.map((artifact) => artifact.artifactId), config.imageCount);
-    await publishRepository.complete(pack.id, post, combineUsage(draftResult.usage, humanizedResult.usage, checkedResult.usage));
+    // Both Quick and professional articles are checked against raw evidence, not report prose.
+    stage = "核验初稿";
+    const rawEvidence = await buildRawFindingsEvidenceContent(projectId, { preferPdfText: true });
+    const requiresVision = Array.isArray(rawEvidence) && rawEvidence.some(item => item.type === "image_url" || item.type === "file_url");
+    const factCheck = requiresVision ? aiTaskService.factCheckCommunityPost : aiTaskService.factCheckTextCommunityPost;
+    const reviewMessages: AIMessage[] = [
+      { role: "system", content: ["你是内容核验编辑。完整原始 Artifact 优先于摘要和草稿。", contentRules, contentReviewRules,
+        "返回完整修订稿，保留 contentBrief、writingPlan 和可验证的材料引用，并附 articleReview 与 factCheck。"].join("\n") },
+      { role: "user", content: JSON.stringify({ source: postInput, draft: draftResult.data }) },
+      { role: "user", content: rawEvidence },
+    ];
+    const contentCheckedSchema = reviewedSchema.superRefine((post, context) => {
+      if (post.factCheck.status === "revised" && JSON.stringify(pickCopy(post)) === JSON.stringify(pickCopy(draftResult.data))) {
+        context.addIssue({ code: "custom", message: "声称已修订但正文未变；请实际修改 title/body/interactionQuestion，而非仅写 notes" });
+      }
+    });
+    const reviewedResult = await factCheck({ schema: contentCheckedSchema, schemaName: "ReviewedCommunityPost", messages: reviewMessages, maxTokens: 8_000, maxAttempts: 2 });
+    if (!publicationReviewPassed(reviewedResult.data.articleReview)) throw new PublishExecutionError("初稿的事实或内容质量未通过核验，请检查材料后重试。");
+    const original = pickCopy(reviewedResult.data);
+
+    stage = "调整语言";
+    const styleSchema = communityStyleEditSchema.superRefine((edited, context) => {
+      for (const message of [...publicationStyleIssues(original, edited, reviewedResult.data.writingPlan), ...unsupportedPublicationClaims(edited, facts, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
+    });
+    const styleMessages: AIMessage[] = [
+      { role: "system", content: [contentRules, polishRules].join("\n") },
+      { role: "user", content: JSON.stringify({ config, writingPlan: reviewedResult.data.writingPlan, draft: original }) },
+    ];
+    const humanizedResult = await aiTaskService.humanizeCommunityPost({ schema: styleSchema, schemaName: "HumanizedCommunityPost", messages: styleMessages, maxTokens: 6_000, maxAttempts: 2 });
+
+    stage = "最终保真检查";
+    const auditMessages: AIMessage[] = [
+      { role: "system", content: [contentRules, contentReviewRules, finalAuditRules].join("\n") },
+      { role: "user", content: JSON.stringify({ source: postInput, writingPlan: reviewedResult.data.writingPlan, originalDraft: original, draft: humanizedResult.data }) },
+      { role: "user", content: rawEvidence },
+    ];
+    const auditSchema = publicationAuditSchema.superRefine((audit, context) => {
+      const refs = audit.screenshotRecommendations;
+      const paragraphs = humanizedResult.data.body.split(/\n\s*\n/).filter(p => p.trim());
+      if (refs.length > config.imageCount || new Set(refs.map(ref => ref.artifactId)).size !== refs.length || refs.some((ref, index) =>
+        !postInput.imageArtifacts.some(image => image.artifactId === ref.artifactId) || ref.order !== index + 1 ||
+        !ref.supportsParagraph || !ref.supportsClaim || !paragraphs[ref.supportsParagraph - 1]?.includes(ref.supportsClaim))) {
+        context.addIssue({ code: "custom", message: "只推荐 imageArtifacts 中能对应最终正文段落和原文的图片；没有可用图片或 imageCount=0 必须返回 []" });
+      }
+    });
+    const checkedResult = await factCheck({ schema: auditSchema, schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 2_500, maxAttempts: 2 });
+    const preservation = checkedResult.data.stylePreservation;
+    if (!publicationReviewPassed(checkedResult.data.articleReview) || preservation.issues.length ||
+      !preservation.facts || !preservation.scope || !preservation.stance || !preservation.experience || !preservation.advice || !preservation.evidence) {
+      throw new PublishExecutionError("最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。");
+    }
+    const changed = JSON.stringify(original) !== JSON.stringify(humanizedResult.data);
+    const post = communityPostOutputSchema.parse({
+      ...reviewedResult.data, ...humanizedResult.data,
+      screenshotRecommendations: checkedResult.data.screenshotRecommendations,
+      articleReview: checkedResult.data.articleReview, stylePreservation: preservation,
+      styleEdit: { original, edited: humanizedResult.data, changed },
+      contentPolicyVersion,
+      languagePass: { status: changed ? "polished" : "unchanged", notes: [changed ? "已完成受约束语言编辑与独立含义检查" : "文案无需修改，已完成独立含义检查"] },
+      generationTrace: [
+        trace("writing", draftResult, draftMessages), trace("content_check", reviewedResult, reviewMessages),
+        trace("style_edit", humanizedResult, styleMessages), trace("fact_check", checkedResult, auditMessages),
+      ],
+    });
+    const issues = [...publicationCopyIssues(post), ...communityExpressionIssues(post, config, confirmedFindings)];
+    if (issues.length) throw new PublishExecutionError(`最终内容规范未通过：${issues[0]}。请重试。`);
+    assertPost(post, postInput.imageArtifacts.map(artifact => artifact.artifactId), config.imageCount);
+    stage = "保存文章";
+    await publishRepository.complete(pack.id, post, combineUsage(draftResult.usage, reviewedResult.usage, humanizedResult.usage, checkedResult.usage));
     return pack.id;
   } catch (error) {
     if (error instanceof QuickYield) throw error;
-    try { await publishRepository.fail(pack.id, safeFailureMessage(error)); } catch { /* preserve source error */ }
-    throw new PublishExecutionError(toUserFacingError(error));
+    try { await publishRepository.fail(pack.id, `${stage}：${toUserFacingError(error)}`); } catch { /* preserve source error */ }
+    throw new PublishExecutionError(`${stage}：${toUserFacingError(error)}`);
   }
+}
+
+function pickCopy(post: { title: string; body: string; interactionQuestion: string }) {
+  return { title: post.title, body: post.body, interactionQuestion: post.interactionQuestion };
+}
+
+function trace(stage: "writing" | "content_check" | "style_edit" | "fact_check", result: StructuredTaskResult<unknown>, messages: AIMessage[]) {
+  return { stage, provider: result.route.provider, model: result.route.model, promptVersion: result.route.promptVersion, inputSignature: createInputSignature(messages), usage: result.usage };
 }
 
 async function getPublishSource(projectId: string) {
@@ -446,36 +410,32 @@ function buildDiscoveryInput(source: PublishSource) {
     project: { name: source.projectName, intent: source.projectIntent },
     research: source.research,
     protocol: source.protocol,
-    ranking: source.ranking,
-    caseScores: source.caseScores,
-    finalAnalysis: source.analysis,
-    report: source.reportContent,
     judgeEvidence: source.judgeEvidence,
     imageArtifacts,
   };
 }
 
 function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea, config: PublishConfig) {
-  const common = {
-    sourceType: source.kind,
-    projectMode: source.projectMode,
-    selectedIdea,
-    config,
-    research: source.research,
-    protocol: source.protocol,
-    imageArtifacts: source.screenshots,
-  };
-  if (source.kind === "findings") {
-    return { ...common, humanConfirmedFindings: source.confirmedFindings };
-  }
+  const allFacts: WritingFact[] = source.kind === "findings"
+    ? source.confirmedFindings.findings.map(f => ({ id: f.id, productId: f.productId, testCaseId: f.testCaseId, observation: f.observation, interpretation: f.impact, evidenceArtifactIds: f.evidenceArtifactIds }))
+    : source.judgeEvidence.flatMap(product => product.scores.map((score, index) => ({
+        id: `${product.productId}-${index}`, productId: product.productId, testCaseId: score.testCaseId,
+        observation: score.evidence.join("\n"), interpretation: score.humanReviewAdjustment ?? score.reason,
+        evidenceArtifactIds: score.evidenceArtifactIds,
+      })));
+  const factLedger = allFacts.filter(f => f.evidenceArtifactIds.length && (!selectedIdea.relatedTestCaseIds.length || selectedIdea.relatedTestCaseIds.includes(f.testCaseId)));
+  if (!factLedger.length) throw new PublishExecutionError("所选角度没有可追溯的实测材料，请重新选择角度。");
+  const coveredCases = new Set(factLedger.map(f => f.testCaseId));
   return {
-    ...common,
-    report: source.reportContent,
-    ranking: source.ranking,
-    analysis: source.analysis,
-    caseScores: source.caseScores,
-    humanReview: source.humanReview,
-    judgeEvidence: source.judgeEvidence,
+    contentPolicyVersion,
+    sourceType: source.kind, projectMode: source.projectMode,
+    selectedIdea, config, products: source.products,
+    tasks: source.protocol.testCases.filter(c => coveredCases.has(c.id)),
+    factLedger,
+    scopeNotes: source.kind === "findings" ? source.confirmedFindings.limitations : source.analysis?.limitations ?? [],
+    template: chooseWritingTemplate(factLedger, selectedIdea.relatedTestCaseIds, config),
+    humanConfirmedFindings: source.kind === "findings" ? source.confirmedFindings.findings.filter(f => factLedger.some(fact => fact.id === f.id)) : undefined,
+    imageArtifacts: source.screenshots.filter(a => coveredCases.has(a.testCaseId)).map(({ fileUrl: _url, ...artifact }) => artifact),
   };
 }
 
@@ -486,9 +446,9 @@ function buildJudgeEvidence(experiment: ReturnType<typeof resultAnalysisInputSch
     scores: product.scores.map((score) => ({
       testCaseId: score.testCaseId,
       dimensionId: score.rubricDimensionId,
-      finalScore: score.finalScore,
       reason: score.reason,
       evidence: score.evidence,
+      evidenceArtifactIds: product.artifacts.filter(a => a.testCaseId === score.testCaseId).map(a => a.artifactId),
       humanReviewAdjustment: score.humanOverrideReason,
     })),
   }));
@@ -553,76 +513,13 @@ function normalizeIdeas(ideas: ContentIdea[], source: PublishSource): ContentIde
 function assertPost(post: CommunityPostOutput, artifactIds: string[], imageCount: number) {
   const allowed = new Set(artifactIds);
   const refs = post.screenshotRecommendations;
-  if (post.body.trim().length < 200 || post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).length < 4) {
-    throw new AIValidationError("community_post", "publishableEvidenceArticleStructure");
-  }
   if (refs.length > imageCount
     || new Set(refs.map((item) => item.artifactId)).size !== refs.length
     || refs.some((item) => !allowed.has(item.artifactId))
+    || refs.some((item) => item.supportsParagraph == null || !item.supportsClaim)
     || refs.some((item, index) => item.order !== index + 1)) {
     throw new AIValidationError("community_post", "orderedRealScreenshotReferences");
   }
-}
-
-function normalizeScreenshotRecommendations(
-  post: CommunityPostOutput,
-  idea: SelectedContentIdea,
-  artifacts: ReportEvidence[],
-  imageCount: number,
-): CommunityPostOutput {
-  const allowed = new Set(artifacts.map((artifact) => artifact.artifactId));
-  const seen = new Set<string>();
-  const valid = post.screenshotRecommendations.filter((item) => allowed.has(item.artifactId) && !seen.has(item.artifactId) && seen.add(item.artifactId));
-  const preferredIds = [
-    ...idea.relatedArtifactIds,
-    ...artifacts.filter((artifact) => idea.relatedTestCaseIds.includes(artifact.testCaseId)).map((artifact) => artifact.artifactId),
-    ...artifacts.map((artifact) => artifact.artifactId),
-  ];
-  for (const artifactId of preferredIds) {
-    if (valid.length >= imageCount || seen.has(artifactId) || !allowed.has(artifactId)) continue;
-    seen.add(artifactId);
-    valid.push({
-      artifactId,
-      reason: `支持“${idea.title}”这一观点的原始测试截图。`,
-      supportsClaim: idea.insight,
-      supportsParagraph: null,
-      order: valid.length + 1,
-    });
-  }
-  return { ...post, screenshotRecommendations: valid.slice(0, imageCount).map((item, index) => ({ ...item, order: index + 1 })) };
-}
-
-function normalizePostForValidation(
-  post: CommunityPostOutput,
-  idea: SelectedContentIdea,
-  artifacts: ReportEvidence[],
-  imageCount: number,
-  findings: Array<{ category: "good" | "neutral" | "problem" }>,
-): CommunityPostOutput {
-  const normalized = normalizeScreenshotRecommendations(post, idea, artifacts, imageCount);
-  return normalizeFindingCategories(normalized, findings);
-}
-
-function normalizeFindingCategories(
-  post: CommunityPostOutput,
-  findings: Array<{ category: "good" | "neutral" | "problem" }>,
-): CommunityPostOutput {
-  const normalized = post;
-  if (!normalized.editorialPlan) return normalized;
-  const has = (category: "good" | "neutral" | "problem") => findings.some((finding) => finding.category === category);
-  return {
-    ...normalized,
-    editorialPlan: {
-      ...normalized.editorialPlan,
-      highlights: has("good") ? normalized.editorialPlan.highlights : [],
-      neutralPoints: has("neutral") ? normalized.editorialPlan.neutralPoints : [],
-      painPoints: has("problem") ? normalized.editorialPlan.painPoints : [],
-    },
-  };
-}
-
-function isQuickLayoutOnlyIssue(message: string) {
-  return message === "补齐 openingAngle 与 closingTakeaway" || message.startsWith("按顺序保留章节：");
 }
 
 function withAvailableImageCount(config: PublishConfig, availableImageCount: number): PublishConfig {

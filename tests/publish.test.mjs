@@ -62,10 +62,10 @@ test("plans community content, humanizes the draft, and fact-checks the final po
   assert.match(service, /CommunityPostDraft/);
   assert.match(service, /HumanizedCommunityPost/);
   assert.match(service, /EvidenceCheckedCommunityPost/);
-  assert.match(service, /只做语言自然化，不改事实/);
-  assert.match(service, /逐句事实核验/);
-  assert.match(service, /评分不是社区文章主线/);
-  assert.match(service, /好用 \/ 一般 \/ 难用/);
+  assert.match(service, /polishRules/);
+  assert.match(service, /contentReviewRules/);
+  assert.match(service, /finalAuditRules/);
+  assert.match(service, /chooseWritingTemplate/);
   assert.match(editor, /写作风格/);
   assert.match(editor, /文章结构/);
   assert.match(editor, /内容简报/);
@@ -76,11 +76,11 @@ test("plans community content, humanizes the draft, and fact-checks the final po
 test("keeps community writing grounded in confirmed Findings instead of score-first summaries", () => {
   assert.match(service, /humanConfirmedFindings/);
   assert.match(service, /事实判断以 humanConfirmedFindings 为主/);
-  assert.match(service, /Final Score 只可作为辅助背景/);
+  assert.match(service, /不引入排名或数值评分/);
   assert.match(service, /不得创造体验、数据、竞品对比或未测试能力/);
-  assert.match(service, /将过度概括改成证据实际覆盖的范围/);
-  assert.match(service, /缺少过程日志只能写本次未留存/);
-  assert.match(service, /evidenceGroundedPostSchema/);
+  assert.match(service, /publicationReviewPassed/);
+  assert.match(service, /不能从缺少过程记录推断产品行为/);
+  assert.match(service, /reviewedPublicationSchema/);
   assert.match(service, /atLeastOneEvidenceGroundedIdea/);
 });
 
@@ -130,10 +130,9 @@ test("requires content brief, language pass, and fact-check metadata for new gen
     factCheck: { status: "passed", revisedClaimCount: 0, notes: [] },
   };
   const incomplete = communityPostGenerationSchema.safeParse({ ...post, ...metadata });
-  assert.equal(incomplete.success, false);
-  assert.deepEqual(incomplete.error.issues[0].path, ["body"]);
-  assert.match(incomplete.error.issues[0].message, /complete article/);
+  assert.equal(incomplete.success, true); // No paragraph quota: content quality is independently reviewed.
+  assert.equal(communityPostGenerationSchema.safeParse(post).success, false);
   const body = ["任务：检索学术综述并列出来源。", "回答：给出了论文链接和方法比较。", "核验：部分文献发表状态不完整。", "范围：仅核查本次回答，不推断其他功能。"].map(p => p.repeat(5)).join("\n\n");
   assert.equal(communityPostGenerationSchema.safeParse({ ...post, ...metadata, body }).success, true);
-  assert.match(service, /const evidenceGroundedPostSchema = communityPostGenerationSchema/);
+  assert.match(service, /publicationCopyIssues/);
 });

@@ -318,10 +318,11 @@ function buildStructuredOutput(schemaName, messages) {
   if (schemaName === "CommunityPostDraft") {
     const input = findJsonMessage(messages, (value) => value.selectedIdea && value.config && value.sourceType);
     const idea = input.selectedIdea;
-    const findings = input.humanConfirmedFindings?.findings ?? [];
+    const findings = input.factLedger ?? [];
     const observation = findings[0]?.observation ?? idea.insight;
     return {
       title: idea.title,
+      writingPlan: { template: input.template, scopeNotes: input.scopeNotes ?? [], sections: [{ heading: idea.title, sourceIds: [findings[0].id], observationQuote: observation, judgment: idea.insight }] },
       body: [
         `本次测试先聚焦一个具体问题：${idea.angle}。测试把这一要求写入锁定的用例，并逐项检查产品有没有走到可核对的结果，因此这里讨论的是任务执行过程，而不是产品页面列出的功能数量。`,
         `${observation} 对应的原始输出已保存在本次测试记录和证据材料中，读者可以回到同一任务的截图或输出核实这条描述，也能区分哪些信息来自测试，哪些仍需进一步判断。`,
@@ -344,25 +345,19 @@ function buildStructuredOutput(schemaName, messages) {
       },
     };
   }
+  if (schemaName === "ReviewedCommunityPost") {
+    const input = findJsonMessage(messages, value => value.source && value.draft);
+    return { ...input.draft, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: "passed", revisedClaimCount: 0, notes: [] } };
+  }
   if (schemaName === "HumanizedCommunityPost") {
-    const input = findJsonMessage(messages, (value) => value.source && value.draft);
-    return {
-      ...input.draft,
-      body: input.draft.body
-        .replace("本次测试先聚焦一个具体问题：", "我这次主要想看一件事：")
-        .replace("从真实体验看，", "真实体验下来，"),
-      languagePass: {
-        status: "polished",
-        changedSentenceCount: 2,
-        notes: ["删掉报告式开场", "把抽象连接词换成更自然的体验表达"],
-      },
-    };
+    const input = findJsonMessage(messages, value => value.config && value.draft);
+    return { title: input.draft.title, body: input.draft.body, interactionQuestion: input.draft.interactionQuestion };
   }
   if (schemaName === "EvidenceCheckedCommunityPost") {
-    const input = findJsonMessage(messages, (value) => value.source && value.draft);
     return {
-      ...input.draft,
-      factCheck: { status: "passed", revisedClaimCount: 0, notes: [] },
+      articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] },
+      stylePreservation: { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] },
+      screenshotRecommendations: [],
     };
   }
   if (schemaName === "MicroFindingDiscovery") {

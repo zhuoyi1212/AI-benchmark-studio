@@ -27,7 +27,7 @@ test('presets change writing only, keeping user choices for images/channel/ratin
   const deep = applyWritingPreset(config, publishWritingPresets[1]);
   assert.equal(deep.stylePreset, '深度观察'); assert.equal(deep.structure, '场景深度测评');
   assert.equal(deep.channel, '知乎'); assert.equal(deep.imageCount, 0); assert.equal(deep.personalRatingEnabled, true);
-  assert.equal(applyWritingPreset(deep, publishWritingPresets[0]).structure, '好用 / 一般 / 难用');
+  assert.equal(applyWritingPreset(deep, publishWritingPresets[0]).structure, '自由结构');
 });
 test('chapter planning rejects fabricated, unrelated and duplicated evidence', () => {
   const plan = planFor(sceneFindings);
