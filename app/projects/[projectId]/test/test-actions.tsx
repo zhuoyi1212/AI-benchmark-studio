@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { finalizeTestExecutionAction, startProfessionalReviewAction, uploadTestArtifactAction, type TestExecutionActionState } from "@/app/projects/[projectId]/test/actions";
+import {
+  completeTestArtifactUploadAction,
+  finalizeTestExecutionAction,
+  prepareTestArtifactUploadAction,
+  startProfessionalReviewAction,
+  type TestExecutionActionState,
+} from "@/app/projects/[projectId]/test/actions";
 import { clipboardImageFiles, queueArtifact, uploadArtifactQueue, type ArtifactUploadEntry } from "@/lib/artifact-upload-queue";
 import { copyText } from "@/lib/copy-text";
-import type { TestRun } from "@/lib/types/test-run";
+import { sha256File, uploadArtifactDirectly } from "@/lib/direct-artifact-upload";
+import type { PreparedArtifactUpload, TestRun } from "@/lib/types/test-run";
 
 const initialState: TestExecutionActionState = { ok: false, message: null };
 
@@ -29,6 +36,11 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const uploading = useRef(false);
+  const uploadSessions = useRef(new Map<string, {
+    prepared: PreparedArtifactUpload;
+    sha256: Promise<string>;
+    uploaded: boolean;
+  }>());
 
   const addFiles = (files: File[]) => {
     if (uploading.current) return;
@@ -59,8 +71,32 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
     setEntries(batch);
     setRawText(""); // Text is now a queued file, retained even when its upload fails.
     try {
-      const completed = await uploadArtifactQueue(batch, metadata,
-        form => uploadTestArtifactAction(initialState, form),
+      const completed = await uploadArtifactQueue(batch,
+        async (entry, quickBatchComplete, onProgress) => {
+          let session = uploadSessions.current.get(entry.id);
+          if (!session) {
+            const prepareForm = artifactActionForm(metadata, entry.file);
+            const prepared = await prepareTestArtifactUploadAction(prepareForm);
+            if (!prepared.ok || !prepared.upload) return { ok: false, message: prepared.message };
+            session = { prepared: prepared.upload, sha256: sha256File(entry.file), uploaded: false };
+            uploadSessions.current.set(entry.id, session);
+          }
+
+          if (!session.uploaded) {
+            await uploadArtifactDirectly(entry.file, session.prepared, onProgress);
+            session.uploaded = true;
+          }
+          onProgress(100);
+
+          const completeForm = artifactActionForm(metadata, entry.file);
+          completeForm.set("artifactId", session.prepared.artifactId);
+          completeForm.set("storagePath", session.prepared.storagePath);
+          completeForm.set("sha256", await session.sha256);
+          completeForm.set("quickBatchComplete", String(quickBatchComplete));
+          const completedUpload = await completeTestArtifactUploadAction(completeForm);
+          if (completedUpload.ok || completedUpload.restartUpload) uploadSessions.current.delete(entry.id);
+          return completedUpload;
+        },
         updated => setEntries(current => current.map(entry => entry.id === updated.id ? updated : entry)),
       );
       const failed = completed.filter(entry => entry.status === "failed").length;
@@ -90,7 +126,7 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
             <p className="mt-2 text-xs text-muted-foreground">可多选、继续添加，或在此按 ⌘V / Ctrl+V 粘贴截图。</p>
           </div>
           {entries.length > 0 && <ul aria-label="待上传文件" className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">{entries.map(entry => <li key={entry.id} className="flex items-start gap-2 text-xs">
-            <div className="min-w-0 flex-1"><span className="block break-all">{entry.file.name}</span><span className={entry.status === "failed" ? "text-red-600" : "text-muted-foreground"}>{entry.status === "saved" ? "已保存" : entry.status === "uploading" ? "正在上传…" : entry.status === "failed" ? entry.error : `${Math.max(1, Math.ceil(entry.file.size / 1024))} KB · 待上传`}</span></div>
+            <div className="min-w-0 flex-1"><span className="block break-all">{entry.file.name}</span><span className={entry.status === "failed" ? "text-red-600" : "text-muted-foreground"}>{entry.status === "saved" ? "已保存" : entry.status === "uploading" ? `正在上传 ${entry.progress}%` : entry.status === "failed" ? entry.error : `${formatFileSize(entry.file.size)} · 待上传`}</span></div>
             {entry.status === "saved" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" disabled={pending} aria-label={`移除 ${entry.file.name}`} onClick={() => setEntries(current => current.filter(item => item.id !== entry.id))}><X className="h-3.5 w-3.5" /></Button>}
           </li>)}</ul>}
           <p role="status" className="sr-only">{pending ? `已保存 ${entries.filter(entry => entry.status === "saved").length} / ${entries.length} 个文件` : ""}</p>
@@ -102,7 +138,7 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
           </div>
           <label className="flex items-start gap-2.5 rounded-md border bg-slate-50 p-3 text-xs leading-5 text-slate-700"><input name="manuallyEdited" disabled={pending} type="checkbox" defaultChecked={run.manuallyEdited} className="mt-1" /><span><span className="font-medium">结果经过人工编辑</span><br /><span className="text-muted-foreground">标准化测试通常应保持未勾选；如有编辑，请如实记录。</span></span></label>
           <Field label="执行备注"><Textarea name="notes" disabled={pending} maxLength={2000} defaultValue={run.notes ?? ""} placeholder="可选：记录导出格式、异常或执行环境" /></Field>
-          <p className="text-[11px] leading-5 text-muted-foreground">图片、PDF、Word、Excel、PPT 和视频单文件不超过 50 MB；文本不超过 500 KB。上传任一有效原始文件即可分析。</p>
+          <p className="text-[11px] leading-5 text-muted-foreground">文件直传 Supabase，显示进度并自动重试。单文件不超过 50 MB；文本不超过 500 KB。</p>
           {message && <p role="alert" className="text-xs leading-5 text-red-600">{message}</p>}
           <div className="flex justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={pending}>取消</Button></DialogClose><Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="h-4 w-4 animate-spin" />正在上传...</> : <><UploadCloud className="h-4 w-4" />保存原始结果</>}</Button></div>
         </form>
@@ -139,4 +175,21 @@ export function ProfessionalReviewAction({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-medium text-slate-700">{label}</span>{children}</label>;
+}
+
+function artifactActionForm(metadata: FormData, file: File) {
+  const form = new FormData();
+  for (const [key, value] of metadata) {
+    if (key !== "artifact" && key !== "rawText") form.append(key, value);
+  }
+  form.set("fileName", file.name);
+  form.set("fileSize", String(file.size));
+  form.set("fileType", file.type);
+  form.set("fileLastModified", String(file.lastModified || ""));
+  return form;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
 }

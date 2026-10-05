@@ -258,6 +258,8 @@ Evidence authenticity 是硬边界：真实用户 Evidence 才能启用 Experien
 
 不要依赖产品显示名作为路径主键。
 
+Artifact 文件不经过 Next.js Server Action 或 Vercel Function。服务端校验 TestRun 与文件描述后签发一次性 Supabase 上传 URL，浏览器直接 PUT 到私有 bucket，并显示上传进度与有限自动重试；上传完成后，服务端再次核对 Storage 中的大小、MIME、文件头和文本 SHA-256，才写入 `test_artifacts`。校验或数据库写入失败时清理对应对象，成功响应丢失时可按 storage path 幂等确认。Vercel Function 的请求体上限不能作为 Artifact 大小上限。
+
 ## 18. 路由
 
 长期目标：

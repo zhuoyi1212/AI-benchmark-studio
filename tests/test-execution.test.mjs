@@ -6,13 +6,14 @@ async function read(relativePath) {
   return readFile(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const [migration, repository, service, page, actions, actionComponent, config, schema] = await Promise.all([
+const [migration, repository, service, page, actions, actionComponent, directUpload, config, schema] = await Promise.all([
   read("supabase/migrations/202608170008_test_execution_lifecycle.sql"),
   read("lib/repositories/test-execution.repository.ts"),
   read("lib/services/test-execution.service.ts"),
   read("app/projects/[projectId]/test/page.tsx"),
   read("app/projects/[projectId]/test/actions.ts"),
   read("app/projects/[projectId]/test/test-actions.tsx"),
+  read("lib/direct-artifact-upload.ts"),
   read("next.config.ts"),
   read("supabase/migrations/202608170001_initial_benchmark_schema.sql"),
 ]);
@@ -38,7 +39,17 @@ test("uploads only validated raw multimodal evidence to private Storage", () => 
   assert.match(service, /sha256/);
   assert.match(service, /raw_test_output/);
   assert.match(service, /removeStorageObject/);
-  assert.match(config, /bodySizeLimit: "51mb"/);
+  assert.match(service, /findArtifactByStoragePath\(expectedPath\)\.catch/);
+  assert.match(repository, /createSignedUploadUrl/);
+  assert.match(repository, /\.info\(path\)/);
+  assert.match(repository, /signedUrl: data\.signedUrl/);
+  assert.match(directUpload, /new XMLHttpRequest\(\)/);
+  assert.match(directUpload, /request\.open\("PUT", prepared\.signedUrl\)/);
+  assert.match(directUpload, /request\.upload\.onprogress/);
+  assert.match(directUpload, /retryDelays = \[0, 1_000, 3_000\]/);
+  assert.match(directUpload, /body\.append\("cacheControl", "3600"\)/);
+  assert.match(service, /uploadMethod: "supabase_signed_url"/);
+  assert.doesNotMatch(config, /bodySizeLimit/);
 });
 
 test("records immutable Artifact and execution metadata in one database transaction", () => {
@@ -68,9 +79,11 @@ test("finalizes only a complete Artifact-backed matrix without auto-starting sco
 test("real Test Execution route validates actions and never imports demo data", () => {
   assert.match(page, /getTestExecutionWorkspace/);
   assert.match(page, /redirect\(`\/projects\/\$\{projectId\}\/protocol`\)/);
-  assert.match(actions, /instanceof File/);
-  assert.match(actions, /pasted-raw-output\.txt/);
-  assert.match(actions, /rawText\.trim\(\)\.length > 0[\s\S]*new File\(\[rawText\]/);
+  assert.match(actions, /prepareTestArtifactUploadAction/);
+  assert.match(actions, /completeTestArtifactUploadAction/);
+  assert.doesNotMatch(actions, /formData\.get\("artifact"\)/);
+  assert.match(actionComponent, /pasted-raw-output\.txt/);
+  assert.match(actionComponent, /new File\(\[rawText\]/);
   assert.match(actionComponent, /直接粘贴文本/);
   assert.match(actionComponent, /name="rawText"/);
   assert.match(actions, /TestExecutionError/);

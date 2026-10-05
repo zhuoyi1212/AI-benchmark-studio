@@ -16,7 +16,7 @@ test('development allowlist contains only loopback and this host IPv4 addresses'
   });
   const config = load('./next.config.ts').default;
   assert.deepEqual(config.allowedDevOrigins, ['127.0.0.1', '192.168.1.4']);
-  assert.equal(config.experimental.serverActions.allowedOrigins, undefined, 'Do not relax Server Action origin checks');
+  assert.equal(config.experimental?.serverActions?.allowedOrigins, undefined, 'Do not relax Server Action origin checks');
 });
 
 test('upload queue and pasted images work without secure-context randomUUID', () => {

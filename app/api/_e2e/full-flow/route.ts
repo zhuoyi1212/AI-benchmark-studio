@@ -1,5 +1,4 @@
 import { Buffer } from "node:buffer";
-import { uploadTestArtifactAction } from "@/app/projects/[projectId]/test/actions";
 import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
@@ -110,15 +109,12 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   for (const [index, run] of testWorkspace.testRuns.entries()) {
     const rawText = `  # Raw Test Result\n\nRun ${run.id} completed the requested task with traceable output.\n  `;
     if (textOnlyEvidence && index === 0) {
-      const formData = new FormData();
-      formData.set("projectId", projectId);
-      formData.set("testRunId", run.id);
-      formData.set("rawText", rawText);
-      formData.set("generationTimeSeconds", "7");
-      formData.set("retryCount", "0");
-      formData.set("notes", `Self-contained E2E pasted raw Artifact ${runId}`);
-      const state = await uploadTestArtifactAction({ ok: false, message: null }, formData);
-      assert(state.ok, `Direct pasted text upload failed: ${state.message}`);
+      await uploadTestArtifact({
+        projectId,
+        testRunId: run.id,
+        file: new File([rawText], "pasted-raw-output.txt", { type: "text/plain" }),
+        metadata: { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E pasted raw Artifact ${runId}` },
+      });
       expectedTextByRun.set(run.id, rawText);
       continue;
     }

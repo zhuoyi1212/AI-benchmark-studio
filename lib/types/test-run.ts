@@ -12,6 +12,13 @@ export type TestArtifact = {
   createdAt: string;
 };
 
+export type PreparedArtifactUpload = {
+  artifactId: string;
+  storagePath: string;
+  signedUrl: string;
+  mimeType: string;
+};
+
 export type TestRun = {
   id: string;
   projectId: string;

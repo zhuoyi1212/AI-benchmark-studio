@@ -108,7 +108,7 @@ test("full route E2E owns a unique temporary Project lifecycle instead of a fixe
   assert.match(e2eRoute, /\[E2E\] Single Product Flow \$\{runId\}/);
   assert.match(e2eRoute, /softDeleteProject/);
   assert.match(e2eRunner, /project\.deleted_at && project\.name\.includes\(runId\)/);
-  assert.match(e2eRoute, /uploadTestArtifactAction/);
+  assert.match(e2eRoute, /pasted-raw-output\.txt/);
   assert.match(e2eRoute, /application\/octet-stream/);
   assert.match(e2eRoute, /preserved byte-for-byte/);
   assert.doesNotMatch(`${e2eRunner}\n${e2eRoute}\n${legacyVerifier}`, /\[E2E Fixture\] M14 Complete Flow/);

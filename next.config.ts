@@ -17,11 +17,6 @@ const nextConfig: NextConfig = {
       (addresses ?? []).filter(address => address.family === "IPv4" && !address.internal).map(address => address.address),
     ),
   ])],
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "51mb",
-    },
-  },
 };
 
 export default nextConfig;

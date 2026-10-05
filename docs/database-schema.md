@@ -288,3 +288,7 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 `publish_packs.community_post` JSON 新增可选 `writingPlan`、`contentPolicyVersion`；补齐 `contentBrief`、`languagePass` 的仓储透传，继续保存 `styleEdit`、`stylePreservation`、`articleReview` 与 `generationTrace`。新结果为四阶段，trace 增加 `content_check`；历史结构保持兼容。复用原子 `complete_publish_pack` 与不可变 ready 版本规则，无新增表、RPC、权限或 migration。成功后台阶段仍存 `quick_job_steps`，语义审查失败不能执行完成 RPC。
 
 `refresh_publish_pack_title` 只允许 service role 对当前最新 ready PublishPack 操作。函数锁定 Findings/Report 来源，创建下一版本，复制配置、选题、正文 JSON 与全部 `publish_pack_artifacts`，仅替换标题并追加 `titleRefreshes` 审计；随后按 `draft → generating → ready` 经过既有状态机。旧 PublishPack 不更新，文本文章仍允许零截图。
+
+### 2026-10-05 Artifact 签名直传（无 DDL 变更）
+
+上传继续使用私有 `benchmark-artifacts` bucket 与既有 `projects/{projectId}/runs/{testRunId}/{artifactId}.{ext}` 路径。服务端签发单次上传 URL，浏览器直传完成后才调用既有 `record_test_artifact`；确认阶段以 Storage 实际对象核验大小、MIME、文件头和文本 SHA-256。校验或记录失败会删除孤立对象，重复确认按 storage path 返回已有 Artifact。没有新增表、字段、RPC、客户端数据库权限或公开 bucket。

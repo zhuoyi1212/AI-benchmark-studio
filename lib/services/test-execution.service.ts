@@ -11,7 +11,7 @@ import {
 } from "@/lib/repositories/test-execution.repository";
 import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
-import type { TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
+import type { PreparedArtifactUpload, TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
 
 const maxArtifactBytes = 50 * 1024 * 1024;
 const maxTextArtifactBytes = 500_000;
@@ -41,6 +41,15 @@ const executionMetadataSchema = z.object({
   manuallyEdited: z.boolean(),
   notes: z.string().trim().max(2000).nullable(),
 });
+const artifactIdSchema = z.string().uuid();
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
+
+export type ArtifactFileDescriptor = {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number | null;
+};
 
 type SupportedArtifact = {
   kind: "image" | "pdf" | "text" | "video" | "document";
@@ -165,6 +174,107 @@ export async function uploadTestArtifact(input: {
   }
 }
 
+export async function prepareTestArtifactUpload(input: {
+  projectId: string;
+  testRunId: string;
+  file: ArtifactFileDescriptor;
+}): Promise<PreparedArtifactUpload> {
+  const run = await findOpenRun(input.projectId, input.testRunId);
+  const file = normalizeAndValidateFileDescriptor(input.file);
+  const artifactType = supportedArtifacts[file.mimeType]!;
+  const artifactId = randomUUID();
+  const storagePath = artifactStoragePath(run.project_id, run.id, artifactId, artifactType.extension);
+
+  try {
+    const { signedUrl } = await testExecutionRepository.createSignedUpload(storagePath);
+    return {
+      artifactId,
+      storagePath,
+      signedUrl,
+      mimeType: file.mimeType,
+    };
+  } catch (error) {
+    throw new TestExecutionError(toUserFacingError(error));
+  }
+}
+
+export async function completeTestArtifactUpload(input: {
+  projectId: string;
+  testRunId: string;
+  artifactId: string;
+  storagePath: string;
+  file: ArtifactFileDescriptor;
+  sha256: string;
+  metadata: RunExecutionMetadata;
+}): Promise<string> {
+  const metadata = executionMetadataSchema.parse(input.metadata);
+  const artifactId = artifactIdSchema.parse(input.artifactId);
+  const sha256 = sha256Schema.parse(input.sha256);
+  const run = await findOpenRun(input.projectId, input.testRunId);
+  const file = normalizeAndValidateFileDescriptor(input.file);
+  const artifactType = supportedArtifacts[file.mimeType]!;
+  const expectedPath = artifactStoragePath(run.project_id, run.id, artifactId, artifactType.extension);
+  if (input.storagePath !== expectedPath) throw new TestExecutionError("上传文件路径与当前测试项不一致。");
+
+  try {
+    const existing = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
+    if (existing) {
+      if (existing.test_run_id !== run.id || existing.id !== artifactId || existing.size_bytes !== file.size || existing.sha256 !== sha256) {
+        throw new TestExecutionError("已保存文件与本次上传不一致，请移除后重新上传。");
+      }
+      return existing.id;
+    }
+
+    const stored = await testExecutionRepository.getStorageObjectInfo(expectedPath);
+    const storedMimeType = stored.contentType.split(";", 1)[0]?.trim();
+    if (stored.size !== file.size || storedMimeType !== file.mimeType) {
+      throw new TestExecutionError("Storage 中的文件大小或类型与本次上传不一致。");
+    }
+
+    let verifiedSha256 = sha256;
+    if (artifactType.kind === "text") {
+      const bytes = await testExecutionRepository.readStorageObject(expectedPath, maxTextArtifactBytes);
+      validateFileSignature(bytes, file.mimeType);
+      verifiedSha256 = createHash("sha256").update(bytes).digest("hex");
+      if (verifiedSha256 !== sha256) throw new TestExecutionError("上传文件完整性校验失败，请重试。");
+    } else {
+      validateFileSignature(await testExecutionRepository.readStorageObjectPrefix(expectedPath, 32), file.mimeType);
+    }
+
+    try {
+      return await testExecutionRepository.recordArtifact(run.id, {
+        id: artifactId,
+        kind: artifactType.kind,
+        storagePath: expectedPath,
+        fileName: file.name,
+        mimeType: file.mimeType,
+        sizeBytes: file.size,
+        sha256: verifiedSha256,
+        metadata: {
+          originalLastModified: file.lastModified,
+          capturedAs: "raw_test_output",
+          uploadMethod: "supabase_signed_url",
+          storageEtag: stored.etag,
+        } satisfies Json,
+      }, metadata);
+    } catch (error) {
+      const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
+      if (recorded) return recorded.id;
+      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the persistence error. */ }
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof TestExecutionError) {
+      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve validation error. */ }
+      throw error;
+    }
+    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath).catch(() => null);
+    if (recorded) return recorded.id;
+    try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the original storage or database error. */ }
+    throw new TestExecutionError(toUserFacingError(error));
+  }
+}
+
 export async function finalizeTestExecution(projectId: string, protocolId: string): Promise<void> {
   const workspace = await getTestExecutionWorkspace(projectId);
   if (!workspace || workspace.protocol.id !== protocolId) throw new TestExecutionError("只能完成当前锁定 Protocol 的测试。");
@@ -216,12 +326,22 @@ async function mapArtifact(row: TestArtifactRow): Promise<TestArtifact> {
 }
 
 function normalizeAndValidateFile(file: File) {
-  if (!(file instanceof File) || file.size <= 0) throw new TestExecutionError("请选择非空的测试结果文件。");
+  const descriptor = normalizeAndValidateFileDescriptor({
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: file.lastModified || null,
+  });
+  return { file, mimeType: descriptor.mimeType };
+}
+
+function normalizeAndValidateFileDescriptor(file: ArtifactFileDescriptor) {
+  if (!Number.isSafeInteger(file.size) || file.size <= 0) throw new TestExecutionError("请选择非空的测试结果文件。");
   if (file.size > maxArtifactBytes) throw new TestExecutionError("单个文件不能超过 50 MB。");
-  const fileName = file.name.trim();
+  const fileName = typeof file.name === "string" ? file.name.trim() : "";
   if (!fileName || fileName.length > 255) throw new TestExecutionError("文件名无效或过长。");
 
-  let mimeType = file.type.toLowerCase();
+  let mimeType = typeof file.type === "string" ? file.type.toLowerCase() : "";
   const extension = fileName.split(".").pop()?.toLowerCase();
   const inferredMimeType = extension ? mimeTypeByExtension[extension] : undefined;
   if ((!mimeType || mimeType === "application/octet-stream") && inferredMimeType) mimeType = inferredMimeType;
@@ -235,7 +355,23 @@ function normalizeAndValidateFile(file: File) {
   if (supportedArtifacts[mimeType].kind === "text" && file.size > maxTextArtifactBytes) {
     throw new TestExecutionError("文本结果不能超过 500 KB；请只保留完成任务和评分所需的原始内容。");
   }
-  return { file, mimeType };
+  const lastModified = file.lastModified === null || file.lastModified === 0
+    ? null
+    : Number.isSafeInteger(file.lastModified) && file.lastModified > 0
+      ? file.lastModified
+      : null;
+  return { name: fileName, size: file.size, type: mimeType, lastModified, mimeType };
+}
+
+async function findOpenRun(projectId: string, testRunId: string) {
+  const run = await testExecutionRepository.findRun(testRunId);
+  if (!run || run.project_id !== projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
+  if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+  return run;
+}
+
+function artifactStoragePath(projectId: string, testRunId: string, artifactId: string, extension: string) {
+  return `projects/${projectId}/runs/${testRunId}/${artifactId}.${extension}`;
 }
 
 function validateFileSignature(bytes: Uint8Array, mimeType: string) {

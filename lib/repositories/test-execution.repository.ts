@@ -26,6 +26,12 @@ export type ArtifactRecord = {
   metadata: Json;
 };
 
+export type StoredArtifactInfo = {
+  size: number;
+  contentType: string;
+  etag: string | null;
+};
+
 export const testExecutionRepository = {
   async ensureMatrix(projectId: string, protocolId: string): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("ensure_test_run_matrix", {
@@ -73,6 +79,64 @@ export const testExecutionRepository = {
     if (error) throwRepositoryError("testExecution.uploadStorageObject", error);
   },
 
+  async createSignedUpload(path: string): Promise<{ signedUrl: string }> {
+    const { data, error } = await getSupabaseServerClient().storage
+      .from(artifactBucket)
+      .createSignedUploadUrl(path, { upsert: false });
+    if (error) throwRepositoryError("testExecution.createSignedUpload", error);
+    return { signedUrl: data.signedUrl };
+  },
+
+  async getStorageObjectInfo(path: string): Promise<StoredArtifactInfo> {
+    const { data, error } = await getSupabaseServerClient().storage.from(artifactBucket).info(path);
+    if (error) throwRepositoryError("testExecution.getStorageObjectInfo", error);
+    if (typeof data.size !== "number" || !data.contentType) {
+      throwRepositoryError("testExecution.getStorageObjectInfo", { message: "Storage object metadata is incomplete" });
+    }
+    return { size: data.size, contentType: data.contentType.toLowerCase(), etag: data.etag ?? null };
+  },
+
+  async readStorageObject(path: string, maximumBytes: number): Promise<Uint8Array> {
+    const { data, error } = await getSupabaseServerClient().storage.from(artifactBucket).download(path);
+    if (error) throwRepositoryError("testExecution.readStorageObject", error);
+    if (data.size > maximumBytes) {
+      throwRepositoryError("testExecution.readStorageObject", { message: "Storage object exceeds verification limit" });
+    }
+    return new Uint8Array(await data.arrayBuffer());
+  },
+
+  async readStorageObjectPrefix(path: string, byteCount: number): Promise<Uint8Array> {
+    const { data, error } = await getSupabaseServerClient().storage.from(artifactBucket).createSignedUrl(path, 60);
+    if (error) throwRepositoryError("testExecution.readStorageObjectPrefix", error);
+    const response = await fetch(data.signedUrl, {
+      headers: { Range: `bytes=0-${byteCount - 1}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+      throwRepositoryError("testExecution.readStorageObjectPrefix", { message: `Storage range read failed (${response.status})` });
+    }
+    const reader = response.body?.getReader();
+    if (!reader) return new Uint8Array();
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    while (length < byteCount) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const remaining = byteCount - length;
+      const chunk = value.slice(0, remaining);
+      chunks.push(chunk);
+      length += chunk.length;
+      if (chunk.length < value.length || length >= byteCount) {
+        await reader.cancel();
+        break;
+      }
+    }
+    const output = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.length; }
+    return output;
+  },
+
   async removeStorageObject(path: string): Promise<void> {
     const { error } = await getSupabaseServerClient().storage.from(artifactBucket).remove([path]);
     if (error) throwRepositoryError("testExecution.removeStorageObject", error);
@@ -96,6 +160,16 @@ export const testExecutionRepository = {
       p_run_metadata: metadata as unknown as Json,
     });
     if (error) throwRepositoryError("testExecution.recordArtifact", error);
+    return data;
+  },
+
+  async findArtifactByStoragePath(path: string): Promise<TestArtifactRow | null> {
+    const { data, error } = await getSupabaseServerClient()
+      .from("test_artifacts")
+      .select(artifactColumns)
+      .eq("storage_path", path)
+      .maybeSingle();
+    if (error) throwRepositoryError("testExecution.findArtifactByStoragePath", error);
     return data;
   },
 

@@ -3,10 +3,11 @@ export type ArtifactUploadEntry = {
   file: File;
   status: "queued" | "uploading" | "saved" | "failed";
   error: string | null;
+  progress: number;
 };
 
 export function queueArtifact(file: File): ArtifactUploadEntry {
-  return { id: createUploadId(), file, status: "queued", error: null };
+  return { id: createUploadId(), file, status: "queued", error: null, progress: 0 };
 }
 
 function createUploadId(): string {
@@ -28,31 +29,40 @@ export function clipboardImageFiles(data: Pick<DataTransfer, "items" | "files">)
   });
 }
 
-// One server action per file keeps large batches within the existing request limit.
+// Files stay sequential so progress is clear and retries do not compete for bandwidth.
 // Successful entries remain in the queue and are skipped on explicit retry.
 export async function uploadArtifactQueue(
   entries: ArtifactUploadEntry[],
-  metadata: FormData,
-  upload: (form: FormData) => Promise<{ ok: boolean; message: string | null }>,
+  upload: (
+    entry: ArtifactUploadEntry,
+    quickBatchComplete: boolean,
+    onProgress: (progress: number) => void,
+  ) => Promise<{ ok: boolean; message: string | null }>,
   onUpdate: (entry: ArtifactUploadEntry) => void,
 ): Promise<ArtifactUploadEntry[]> {
   const result: ArtifactUploadEntry[] = [];
   for (const entry of entries) {
     if (entry.status === "saved") { result.push(entry); continue; }
-    onUpdate({ ...entry, status: "uploading", error: null });
-    const form = new FormData();
-    for (const [key, value] of metadata) {
-      if (key !== "artifact" && key !== "rawText") form.append(key, value);
-    }
-    form.set("artifact", entry.file);
+    let active: ArtifactUploadEntry = { ...entry, status: "uploading", error: null };
+    onUpdate(active);
     const remaining = entries.slice(entries.indexOf(entry) + 1).some(item => item.status !== "saved");
-    form.set("quickBatchComplete", String(!remaining && result.every(item => item.status === "saved")));
     let outcome: { ok: boolean; message: string | null };
-    try { outcome = await upload(form); }
-    catch { outcome = { ok: false, message: "连接中断，未确认保存结果；请先核对已上传文件再重试。" }; }
+    try {
+      outcome = await upload(
+        entry,
+        !remaining && result.every(item => item.status === "saved"),
+        progress => {
+          active = { ...active, progress: Math.max(active.progress, Math.min(100, Math.round(progress))) };
+          onUpdate(active);
+        },
+      );
+    } catch {
+      outcome = { ok: false, message: "上传中断；点击重试会重新上传这个文件。" };
+    }
     const updated: ArtifactUploadEntry = {
-      ...entry,
+      ...active,
       status: outcome.ok ? "saved" : "failed",
+      progress: outcome.ok ? 100 : active.progress,
       error: outcome.ok ? null : outcome.message ?? "上传失败，请重试。",
     };
     result.push(updated);

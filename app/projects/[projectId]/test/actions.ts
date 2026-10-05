@@ -5,10 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { BlindReviewError, startProfessionalReview } from "@/lib/services/blind-review.service";
 import {
+  completeTestArtifactUpload,
   finalizeTestExecution,
+  prepareTestArtifactUpload,
   TestExecutionError,
-  uploadTestArtifact,
+  type ArtifactFileDescriptor,
 } from "@/lib/services/test-execution.service";
+import type { PreparedArtifactUpload } from "@/lib/types/test-run";
 import { QuickEvaluationError } from "@/lib/services/quick-evaluation.service";
 import { enqueueQuickEvaluation } from "@/lib/services/quick-workflow.service";
 import { wakeQuickWorker } from "@/lib/quick/dispatch";
@@ -20,28 +23,56 @@ export type TestExecutionActionState = {
   message: string | null;
 };
 
-export async function uploadTestArtifactAction(
-  _previousState: TestExecutionActionState,
+export type PrepareArtifactUploadActionState = TestExecutionActionState & {
+  upload?: PreparedArtifactUpload;
+};
+
+export type CompleteArtifactUploadActionState = TestExecutionActionState & {
+  restartUpload?: boolean;
+};
+
+export async function prepareTestArtifactUploadAction(
   formData: FormData,
-): Promise<TestExecutionActionState> {
+): Promise<PrepareArtifactUploadActionState> {
   const projectId = idSchema.safeParse(formData.get("projectId"));
   const testRunId = idSchema.safeParse(formData.get("testRunId"));
-  const uploadedFile = formData.get("artifact");
-  const rawTextEntry = formData.get("rawText");
-  const rawText = typeof rawTextEntry === "string" ? rawTextEntry : "";
   if (!projectId.success || !testRunId.success) return { ok: false, message: "测试项标识无效。" };
-  const file = uploadedFile instanceof File && uploadedFile.size > 0
-    ? uploadedFile
-    : rawText.trim().length > 0
-      ? new File([rawText], "pasted-raw-output.txt", { type: "text/plain" })
-      : null;
-  if (!file) return { ok: false, message: "请选择结果文件，或直接粘贴原始文本结果。" };
 
   try {
-    await uploadTestArtifact({
+    const upload = await prepareTestArtifactUpload({
       projectId: projectId.data,
       testRunId: testRunId.data,
-      file,
+      file: parseFileDescriptor(formData),
+    });
+    return { ok: true, message: null, upload };
+  } catch (error) {
+    if (error instanceof TestExecutionError || error instanceof z.ZodError) {
+      return { ok: false, message: error instanceof TestExecutionError ? error.message : "文件信息无效。" };
+    }
+    throw error;
+  }
+}
+
+export async function completeTestArtifactUploadAction(
+  formData: FormData,
+): Promise<CompleteArtifactUploadActionState> {
+  const projectId = idSchema.safeParse(formData.get("projectId"));
+  const testRunId = idSchema.safeParse(formData.get("testRunId"));
+  const artifactId = idSchema.safeParse(formData.get("artifactId"));
+  const storagePath = formData.get("storagePath");
+  const sha256 = formData.get("sha256");
+  if (!projectId.success || !testRunId.success || !artifactId.success || typeof storagePath !== "string" || typeof sha256 !== "string") {
+    return { ok: false, message: "上传结果标识无效。", restartUpload: true };
+  }
+
+  try {
+    await completeTestArtifactUpload({
+      projectId: projectId.data,
+      testRunId: testRunId.data,
+      artifactId: artifactId.data,
+      storagePath,
+      sha256,
+      file: parseFileDescriptor(formData),
       metadata: {
         generationTimeSeconds: parseOptionalInteger(formData.get("generationTimeSeconds")),
         retryCount: parseInteger(formData.get("retryCount")),
@@ -51,7 +82,11 @@ export async function uploadTestArtifactAction(
     });
   } catch (error) {
     if (error instanceof TestExecutionError || error instanceof z.ZodError) {
-      return { ok: false, message: error instanceof TestExecutionError ? error.message : "测试执行元数据无效。" };
+      return {
+        ok: false,
+        message: error instanceof TestExecutionError ? error.message : "测试执行元数据无效。",
+        restartUpload: true,
+      };
     }
     throw error;
   }
@@ -141,4 +176,13 @@ function parseOptionalInteger(value: FormDataEntryValue | null) {
 
 function parseOptionalText(value: FormDataEntryValue | null) {
   return typeof value !== "string" || value.trim() === "" ? null : value.trim();
+}
+
+function parseFileDescriptor(formData: FormData): ArtifactFileDescriptor {
+  return {
+    name: formData.get("fileName")?.toString() ?? "",
+    size: Number(formData.get("fileSize")),
+    type: formData.get("fileType")?.toString() ?? "",
+    lastModified: parseOptionalInteger(formData.get("fileLastModified")),
+  };
 }
