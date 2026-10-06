@@ -42,6 +42,10 @@ test("Findings are evidence-backed observations rather than scores", () => {
   assert.match(service, /type: "image_url"/);
   assert.match(service, /type: "file_url"/);
   assert.match(service, /normalizeMimeType\(artifact\.fileType\)/);
+  assert.match(service, /selectFindingsEvidence\(test\)/);
+  assert.match(service, /selectJudgeEvidenceInputs\(inputs, expectedOutputTypes\)/);
+  assert.match(service, /selectedFamily: selection\.selectedFamily/);
+  assert.match(service, /artifacts: run\.artifacts\.filter\(\(artifact\) => selectedIds\.has\(artifact\.id\)\)/);
   assert.match(service, /mimeType === "application\/pdf" && hasTextArtifact/);
   assert.match(service, /Image omitted because this TestRun has a text Artifact/);
   assert.match(service, /renderPdfEvidence\(await readArtifactBytes\(artifact\)/);

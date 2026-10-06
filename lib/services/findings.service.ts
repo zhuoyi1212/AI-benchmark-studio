@@ -7,6 +7,7 @@ import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { experienceFindingsOutputSchema, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
+import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/judge-evidence-selection";
 import { findingsRepository } from "@/lib/repositories/findings.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createInputSignature } from "@/lib/signatures";
@@ -108,7 +109,8 @@ export async function generateExperienceFindings(projectId: string): Promise<str
     throw new FindingsExecutionError("请先完成 Blind Judge、异常复核和揭盲，再生成候选 Findings。");
   }
 
-  const snapshot = buildSnapshot(test, research.completedResult);
+  const evidence = selectFindingsEvidence(test);
+  const snapshot = buildSnapshot(evidence.test, research.completedResult, evidence.transport);
   const inputSignature = createInputSignature(snapshot);
   let findingsId: string | null = null;
 
@@ -119,7 +121,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
     if (persisted.status === "completed") return persisted.id;
     if (persisted.status !== "pending") throw new RepositoryError("findings.requirePending", { message: "Findings is not pending" });
 
-    const content = await buildArtifactContent(test, research.completedResult);
+    const content = await buildArtifactContent(evidence.test, research.completedResult, {}, evidence.transport);
     const result = await aiTaskService.generateFindings({
       schema: experienceFindingsOutputSchema,
       schemaName: "ExperienceFindings",
@@ -128,7 +130,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
           role: "system",
           content: [
             "你是 AI 产品真实体验的 Findings 编辑，不是评分员。",
-            "只根据给定 Research 背景、Locked Test Plan、TestRun 元数据、原始文本和带 artifactId 的截图视觉观察提炼可观察发现。",
+            "只根据给定 Research 背景、Locked Test Plan、TestRun 元数据和带 artifactId 的原始证据提炼可观察发现。",
             "不要生成分数、排名、冠军或总评等级。重点找：明确好用的功能、体验一般的功能、不能用/难用/明显有问题的功能。",
             "每条 finding 必须绑定真实 productId、testCaseId 和至少一个 evidenceArtifactId。",
             "observation 写本次实际观察到的现象；impact 写它对真实使用者意味着什么。二者不能重复。",
@@ -145,8 +147,8 @@ export async function generateExperienceFindings(projectId: string): Promise<str
       beforeExecute: (route) => findingsRepository.start(persisted.id, route),
     });
 
-    const normalized = normalizeSingleRunReferences(result.data, test);
-    assertEvidenceReferences(normalized, test);
+    const normalized = normalizeSingleRunReferences(result.data, evidence.test);
+    assertEvidenceReferences(normalized, evidence.test);
     await findingsRepository.complete(persisted.id, normalized, result.usage);
     return persisted.id;
   } catch (error) {
@@ -194,7 +196,8 @@ export async function buildRawFindingsEvidenceContent(
     getResearchWorkspace(projectId),
   ]);
   if (!test || !research?.completedResult) throw new FindingsExecutionError("无法读取当前真实测试证据。");
-  return buildArtifactContent(test, research.completedResult, options);
+  const evidence = selectFindingsEvidence(test);
+  return buildArtifactContent(evidence.test, research.completedResult, options, evidence.transport);
 }
 
 export async function confirmExperienceFindings(projectId: string, findingsId: string, value: unknown): Promise<void> {
@@ -222,9 +225,70 @@ export async function confirmExperienceFindings(projectId: string, findingsId: s
   await findingsRepository.confirm(findingsId, output);
 }
 
-function buildSnapshot(test: TestExecutionWorkspace, research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"]): Json {
+type FindingsEvidenceTransport = {
+  policyVersion: string;
+  selectedFamily: string;
+  omittedArtifactCount: number;
+};
+
+function selectFindingsEvidence(test: TestExecutionWorkspace): {
+  test: TestExecutionWorkspace;
+  transport: FindingsEvidenceTransport;
+} {
+  const inputs = test.testRuns.flatMap((run) => run.artifacts.map((artifact) => ({
+    blind_sample_id: run.id,
+    artifact_id: artifact.id,
+    mime_type: artifact.fileType,
+  })));
+  const binaryMimeTypes = inputs
+    .map((input) => normalizeMimeType(input.mime_type))
+    .filter((mimeType) => !textMimeTypes.has(mimeType));
+  const pdfAndImagesCanShareVisionInput = binaryMimeTypes.includes("application/pdf")
+    && binaryMimeTypes.some((mimeType) => mimeType.startsWith("image/"))
+    && binaryMimeTypes.every((mimeType) => mimeType === "application/pdf" || mimeType.startsWith("image/"));
+  if (pdfAndImagesCanShareVisionInput) {
+    return {
+      test,
+      transport: {
+        policyVersion: "pdf-pages-to-image.v1",
+        selectedFamily: "image",
+        omittedArtifactCount: 0,
+      },
+    };
+  }
+  const expectedOutputTypes = test.protocol.testCases.flatMap((testCase) => testCase.expectedOutputTypes);
+  try {
+    const selection = selectJudgeEvidenceInputs(inputs, expectedOutputTypes);
+    const selectedIds = new Set(selection.selected.map((input) => input.artifact_id));
+    return {
+      test: {
+        ...test,
+        testRuns: test.testRuns.map((run) => ({
+          ...run,
+          artifacts: run.artifacts.filter((artifact) => selectedIds.has(artifact.id)),
+        })),
+      },
+      transport: {
+        policyVersion: selection.policyVersion,
+        selectedFamily: selection.selectedFamily,
+        omittedArtifactCount: selection.omittedArtifactIds.length,
+      },
+    };
+  } catch (error) {
+    if (error instanceof JudgeEvidenceSelectionError) {
+      throw new FindingsExecutionError("各测试结果没有共同可分析的证据格式，请为每项测试补充同一种截图、文档、视频或文本后重试。");
+    }
+    throw error;
+  }
+}
+
+function buildSnapshot(
+  test: TestExecutionWorkspace,
+  research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
+  evidenceTransport: FindingsEvidenceTransport,
+): Json {
   return JSON.parse(JSON.stringify({
-    evidenceTransport: "mixed-pdf-pages.v1",
+    evidenceTransport,
     project: { id: test.project.id, name: test.project.name },
     protocol: {
       id: test.protocol.id,
@@ -270,6 +334,7 @@ async function buildArtifactContent(
   test: TestExecutionWorkspace,
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
   options: { preferPdfText?: boolean } = {},
+  evidenceTransport?: FindingsEvidenceTransport,
 ): Promise<AIMessageContent> {
   const artifacts = test.testRuns.flatMap((run) => run.artifacts);
   const renderPdfs = artifacts.some((artifact) => normalizeMimeType(artifact.fileType).startsWith("image/"))
@@ -309,6 +374,7 @@ async function buildArtifactContent(
           observationFocus: item.observationFocus,
         })),
       },
+      evidenceTransport,
     }),
   }];
 

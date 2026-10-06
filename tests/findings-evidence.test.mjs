@@ -42,7 +42,7 @@ test('PDF limits and corrupt files fail explicitly without returning partial evi
 });
 
 function serviceFixture(artifacts, overrides={}) {
-  const testWorkspace={project:{id:'project',name:'test',products:[{id:'product',name:'tool'}]},protocol:{id:'protocol',version:1,testCases:[{id:'case',title:'task'}]},testRuns:[{id:'run',productId:'product',testCaseId:'case',status:'ready_for_review',artifacts}]};
+  const testWorkspace={project:{id:'project',name:'test',products:[{id:'product',name:'tool'}]},protocol:{id:'protocol',version:1,testCases:[{id:'case',title:'task',expectedOutputTypes:['mixed']}]},testRuns:[{id:'run',productId:'product',testCaseId:'case',status:'ready_for_review',artifacts}]};
   return createLoader(root, {
     '@/lib/services/test-execution.service':{getTestExecutionWorkspace:async()=>testWorkspace},
     '@/lib/services/research.service':{getResearchWorkspace:async()=>({completedResult:{products:[]}})},
@@ -53,6 +53,15 @@ function serviceFixture(artifacts, overrides={}) {
 const pdf=pdfFixture();
 const pdfArtifact={id:'pdf-original',fileName:'fixture.pdf',fileType:'application/pdf',sizeBytes:pdf.length,sha256:createHash('sha256').update(pdf).digest('hex'),fileUrl:'https://fixture.invalid/pdf'};
 const imageArtifact={id:'screenshot-original',fileName:'fixture.png',fileType:'image/png',fileUrl:'https://fixture.invalid/image'};
+const videoArtifact={id:'video-original',fileName:'fixture.mp4',fileType:'video/mp4',fileUrl:'https://fixture.invalid/video'};
+
+test('video evidence is sent without an accompanying screenshot', async () => {
+  const content=await serviceFixture([imageArtifact,videoArtifact]).buildRawFindingsEvidenceContent('project');
+  assert.equal(content.filter(part=>part.type==='image_url').length,0);
+  assert.deepEqual(content.filter(part=>part.type==='file_url').map(part=>part.file_url.url),[videoArtifact.fileUrl]);
+  assert.match(content[0].text,/"selectedFamily":"video"/);
+  assert.doesNotMatch(JSON.stringify(content),/screenshot-original/);
+});
 
 test('mixed PDF and screenshots contain all PDF pages with original IDs and no file_url', async t => {
   t.mock.method(globalThis,'fetch',async()=>new Response(pdf));

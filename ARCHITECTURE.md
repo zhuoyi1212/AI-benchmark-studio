@@ -350,6 +350,8 @@ publish_packs.community_post JSON 新增可选 articleReview、generationTrace�
 
 每次混合分析最多 32 页 PDF、页面图片编码总量 20 MiB；超限、损坏或加密明确失败，不截页或用 OCR 摘要替代。输入快照标记 mixed-pdf-pages.v1，Findings promptVersion 更新。Next 服务端依赖保留 native Canvas、worker、字体、CMap 与 WASM 追踪。Provider 错误仅保留数字业务码和已知混合输入错误分类，不记录供应商原始报错中可能回显的证据、签名 URL 或密钥；Findings 持久化可操作的中文错误。无数据库迁移。
 
+Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择规则。系统按 Locked Protocol 的期望输出类型选择所有 TestRun 都具备的一种二进制媒体（视频、文档或图片），可同时保留文本；未选中的附件继续作为原始 Artifact 保存，但不与另一种二进制媒体放进同一次 Provider 请求。这样既保留证据追踪，又避免供应商拒绝图片、视频和文档混合输入。
+
 同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。
 
 ## Durable Quick Workflow
