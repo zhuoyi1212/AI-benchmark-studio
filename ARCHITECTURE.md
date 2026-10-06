@@ -356,6 +356,8 @@ Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择
 
 结构化响应解析只规范化四类不改变数据含义的格式偏差：UTF-8 BOM、包住完整对象的单层 JSON Markdown fence、JSON 字符串中的原始换行/制表符，以及对象或数组末尾的多余逗号。带说明性前后缀、缺少闭合结构或其他任意文本继续失败；规范化后的值仍须通过任务 Zod Schema 和业务门禁。
 
+内容核验模型只拥有 `title`、`body`、`interactionQuestion`、`articleReview` 和 `factCheck` 的输出权限。初稿阶段已经验证的 `writingPlan`、`contentBrief`、标签、截图推荐和证据引用由服务端保留并合并，核验模型不能改写证据片段或来源关系；修订文案仍需重新通过事实、范围和表达门禁。
+
 同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。
 
 ## Durable Quick Workflow

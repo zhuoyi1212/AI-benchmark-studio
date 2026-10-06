@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { chooseWritingTemplate, publicationCopyIssues, writingPlanIssues, publicationStyleIssues, scopeNotesIssues, unsupportedPublicationClaims } from '../lib/community-content-policy.ts';
-import { publicationAuditSchema, communityPostOutputSchema } from '../lib/ai/schemas/publish.schemas.ts';
+import { publicationAuditSchema, communityContentReviewSchema, communityPostOutputSchema } from '../lib/ai/schemas/publish.schemas.ts';
 import { config, findings, draft, id, harness, review, preservation } from './helpers/publication.mjs';
 const fact = { ...findings[0], interpretation: findings[0].impact };
 
@@ -76,6 +76,13 @@ test('polish cannot edit protected metadata and final auditor cannot replace art
   await assert.rejects(h.run(), /调整语言/);
   assert.equal(h.state.saved, null);
   assert.equal(publicationAuditSchema.safeParse({ articleReview: review, stylePreservation: preservation, screenshotRecommendations: [], body: '替换文章' }).success, false);
+});
+
+test('content review cannot rewrite the evidence plan or other protected metadata', () => {
+  const reviewOutput = { title: draft.title, body: draft.body, interactionQuestion: draft.interactionQuestion, articleReview: review, factCheck: { status: 'passed', revisedClaimCount: 0, notes: [] } };
+  assert.equal(communityContentReviewSchema.safeParse(reviewOutput).success, true);
+  assert.equal(communityContentReviewSchema.safeParse({ ...reviewOutput, writingPlan: draft.writingPlan }).success, false);
+  assert.equal(communityContentReviewSchema.safeParse({ ...reviewOutput, tags: draft.tags }).success, false);
 });
 
 test('bad screenshot mapping cannot slip into a successful final result', async () => {

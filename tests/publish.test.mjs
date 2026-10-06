@@ -81,6 +81,8 @@ test("keeps community writing grounded in confirmed Findings instead of score-fi
   assert.match(service, /publicationReviewPassed/);
   assert.match(service, /不能从缺少过程记录推断产品行为/);
   assert.match(service, /reviewedPublicationSchema/);
+  assert.match(service, /communityContentReviewSchema/);
+  assert.match(service, /reviewedPublicationSchema\.parse\(\{ \.\.\.draftResult\.data, \.\.\.reviewedResult\.data \}\)/);
   assert.match(service, /atLeastOneEvidenceGroundedIdea/);
 });
 

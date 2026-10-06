@@ -113,3 +113,5 @@
 2026-10-06 社区核验结构修复：多模态内容核验与其他 structured task 一样，允许同一 Provider/Model 对 invalid JSON 或 Schema 问题做一次有界修复。结构修复不等于内容改写；事实、范围、立场、经历、建议和证据任一审核不通过仍然失败，禁止跨 Provider fallback 或降低门禁。
 
 2026-10-06 结构化 JSON 规范化：Provider 返回的完整 JSON 可在解析前移除 BOM 或单层 JSON code fence，并修复字符串控制字符与尾逗号；不得从解释性散文中截取对象，也不得补造缺失字段或闭合结构。解析后的对象继续执行原 Zod Schema、引用校验和内容门禁，避免把格式容错变成业务放宽。
+
+2026-10-06 内容核验字段权限：视觉核验只能修订标题、正文和互动问题并返回审核结果。初稿已通过校验的 writingPlan、contentBrief、标签、截图与证据引用改由服务端原样保留；核验模型不能重写 observationQuote 或来源 ID。最终保真检查继续使用原始 Artifact 和系统保留的证据计划。

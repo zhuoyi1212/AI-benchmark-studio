@@ -8,6 +8,7 @@ import {
   communityPostTitleSchema,
   publicationDraftSchema,
   reviewedPublicationSchema,
+  communityContentReviewSchema,
   publicationAuditSchema,
   communityStyleEditSchema,
   communityPostOutputSchema,
@@ -202,10 +203,6 @@ export async function generateCommunityPost(
   const plannedSchema = publicationDraftSchema.superRefine((post, context) => {
     for (const message of [...writingPlanIssues(post.writingPlan, facts, template), ...scopeNotesIssues(post.writingPlan, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
   });
-  const reviewedSchema = reviewedPublicationSchema.superRefine((post, context) => {
-    for (const message of [...writingPlanIssues(post.writingPlan, facts, template), ...scopeNotesIssues(post.writingPlan, postInput.scopeNotes), ...publicationCopyIssues(post), ...unsupportedPublicationClaims(post, facts, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
-    if (unsupportedProcessInference.test(post.body)) context.addIssue({ code: "custom", message: "不能从缺少过程记录推断产品行为" });
-  });
   let stage = "撰写初稿";
   try {
     const draftMessages: AIMessage[] = [
@@ -233,33 +230,42 @@ export async function generateCommunityPost(
     const factCheck = requiresVision ? aiTaskService.factCheckCommunityPost : aiTaskService.factCheckTextCommunityPost;
     const reviewMessages: AIMessage[] = [
       { role: "system", content: ["你是内容核验编辑。完整原始 Artifact 优先于摘要和草稿。", contentRules, contentReviewRules,
-        "返回完整修订稿，保留 contentBrief、writingPlan 和可验证的材料引用，并附 articleReview 与 factCheck。"].join("\n") },
+        "只返回修订后的 title、body、interactionQuestion，以及 articleReview 与 factCheck。不得返回或修改 tags、contentBrief、writingPlan、截图推荐和证据引用。"].join("\n") },
       { role: "user", content: JSON.stringify({ source: postInput, draft: draftResult.data }) },
       { role: "user", content: rawEvidence },
     ];
-    const contentCheckedSchema = reviewedSchema.superRefine((post, context) => {
-      if (post.factCheck.status === "revised" && JSON.stringify(pickCopy(post)) === JSON.stringify(pickCopy(draftResult.data))) {
+    const contentCheckedSchema = communityContentReviewSchema.superRefine((reviewedCopy, context) => {
+      const immutablePlan = draftResult.data.writingPlan;
+      for (const message of [
+        ...writingPlanIssues(immutablePlan, facts, template),
+        ...scopeNotesIssues(immutablePlan, postInput.scopeNotes),
+        ...publicationCopyIssues(reviewedCopy),
+        ...unsupportedPublicationClaims(reviewedCopy, facts, postInput.scopeNotes),
+      ]) context.addIssue({ code: "custom", message });
+      if (unsupportedProcessInference.test(reviewedCopy.body)) context.addIssue({ code: "custom", message: "不能从缺少过程记录推断产品行为" });
+      if (reviewedCopy.factCheck.status === "revised" && JSON.stringify(pickCopy(reviewedCopy)) === JSON.stringify(pickCopy(draftResult.data))) {
         context.addIssue({ code: "custom", message: "声称已修订但正文未变；请实际修改 title/body/interactionQuestion，而非仅写 notes" });
       }
     });
     const reviewedResult = await factCheck({ schema: contentCheckedSchema, schemaName: "ReviewedCommunityPost", messages: reviewMessages, maxTokens: 8_000, maxAttempts: 2 });
-    if (!publicationReviewPassed(reviewedResult.data.articleReview)) throw new PublishExecutionError("初稿的事实或内容质量未通过核验，请检查材料后重试。");
-    const original = pickCopy(reviewedResult.data);
+    const reviewedPost = reviewedPublicationSchema.parse({ ...draftResult.data, ...reviewedResult.data });
+    if (!publicationReviewPassed(reviewedPost.articleReview)) throw new PublishExecutionError("初稿的事实或内容质量未通过核验，请检查材料后重试。");
+    const original = pickCopy(reviewedPost);
 
     stage = "调整语言";
     const styleSchema = communityStyleEditSchema.superRefine((edited, context) => {
-      for (const message of [...publicationStyleIssues(original, edited, reviewedResult.data.writingPlan), ...unsupportedPublicationClaims(edited, facts, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
+      for (const message of [...publicationStyleIssues(original, edited, reviewedPost.writingPlan), ...unsupportedPublicationClaims(edited, facts, postInput.scopeNotes)]) context.addIssue({ code: "custom", message });
     });
     const styleMessages: AIMessage[] = [
       { role: "system", content: [contentRules, polishRules].join("\n") },
-      { role: "user", content: JSON.stringify({ config, writingPlan: reviewedResult.data.writingPlan, draft: original }) },
+      { role: "user", content: JSON.stringify({ config, writingPlan: reviewedPost.writingPlan, draft: original }) },
     ];
     const humanizedResult = await aiTaskService.humanizeCommunityPost({ schema: styleSchema, schemaName: "HumanizedCommunityPost", messages: styleMessages, maxTokens: 6_000, maxAttempts: 2 });
 
     stage = "最终保真检查";
     const auditMessages: AIMessage[] = [
       { role: "system", content: [contentRules, contentReviewRules, finalAuditRules].join("\n") },
-      { role: "user", content: JSON.stringify({ source: postInput, writingPlan: reviewedResult.data.writingPlan, originalDraft: original, draft: humanizedResult.data }) },
+      { role: "user", content: JSON.stringify({ source: postInput, writingPlan: reviewedPost.writingPlan, originalDraft: original, draft: humanizedResult.data }) },
       { role: "user", content: rawEvidence },
     ];
     const auditSchema = publicationAuditSchema.superRefine((audit, context) => {
@@ -279,7 +285,7 @@ export async function generateCommunityPost(
     }
     const changed = JSON.stringify(original) !== JSON.stringify(humanizedResult.data);
     const post = communityPostOutputSchema.parse({
-      ...reviewedResult.data, ...humanizedResult.data,
+      ...reviewedPost, ...humanizedResult.data,
       screenshotRecommendations: checkedResult.data.screenshotRecommendations,
       articleReview: checkedResult.data.articleReview, stylePreservation: preservation,
       styleEdit: { original, edited: humanizedResult.data, changed },

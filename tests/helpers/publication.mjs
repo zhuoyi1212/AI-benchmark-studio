@@ -35,7 +35,7 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
       value.writingPlan.sections[0].sourceIds = [input.factLedger[0].id];
       value.writingPlan.sections[0].observationQuote = input.factLedger[0].observation;
     } else if (options.schemaName === 'ReviewedCommunityPost') {
-      value = { ...input.draft, articleReview: review, factCheck: { status: 'passed', revisedClaimCount: 0, notes: [] } };
+      value = { title: input.draft.title, body: input.draft.body, interactionQuestion: input.draft.interactionQuestion, articleReview: review, factCheck: { status: 'passed', revisedClaimCount: 0, notes: [] } };
     } else if (options.schemaName === 'HumanizedCommunityPost') {
       value = input.draft;
     } else if (options.schemaName === 'EvidenceCheckedCommunityPost') {

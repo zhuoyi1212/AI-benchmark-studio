@@ -225,6 +225,11 @@ export const factCheckSchema = z.object({
   notes: z.array(text.max(800)).max(8),
 });
 
+export const communityContentReviewSchema = communityStyleEditSchema.safeExtend({
+  articleReview: articleReviewSchema,
+  factCheck: factCheckSchema,
+});
+
 export const writingPlanSchema = z.object({
   template: z.enum(["single_scene", "multi_feature", "comparison"]),
   scopeNotes: z.array(text.max(1000)).max(8),
