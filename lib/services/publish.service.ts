@@ -268,25 +268,22 @@ export async function generateCommunityPost(
       { role: "user", content: JSON.stringify({ source: postInput, writingPlan: reviewedPost.writingPlan, originalDraft: original, draft: humanizedResult.data }) },
       { role: "user", content: rawEvidence },
     ];
-    const auditSchema = publicationAuditSchema.superRefine((audit, context) => {
-      const refs = audit.screenshotRecommendations;
-      const paragraphs = humanizedResult.data.body.split(/\n\s*\n/).filter(p => p.trim());
-      if (refs.length > config.imageCount || new Set(refs.map(ref => ref.artifactId)).size !== refs.length || refs.some((ref, index) =>
-        !postInput.imageArtifacts.some(image => image.artifactId === ref.artifactId) || ref.order !== index + 1 ||
-        !ref.supportsParagraph || !ref.supportsClaim || !paragraphs[ref.supportsParagraph - 1]?.includes(ref.supportsClaim))) {
-        context.addIssue({ code: "custom", message: "只推荐 imageArtifacts 中能对应最终正文段落和原文的图片；没有可用图片或 imageCount=0 必须返回 []" });
-      }
-    });
-    const checkedResult = await factCheck({ schema: auditSchema, schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 2_500, maxAttempts: 2 });
+    const checkedResult = await factCheck({ schema: publicationAuditSchema, schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 2_500, maxAttempts: 2 });
     const preservation = checkedResult.data.stylePreservation;
     if (!publicationReviewPassed(checkedResult.data.articleReview) || preservation.issues.length ||
       !preservation.facts || !preservation.scope || !preservation.stance || !preservation.experience || !preservation.advice || !preservation.evidence) {
       throw new PublishExecutionError("最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。");
     }
     const changed = JSON.stringify(original) !== JSON.stringify(humanizedResult.data);
+    const screenshotRecommendations = normalizeScreenshotRecommendations(
+      checkedResult.data.screenshotRecommendations,
+      humanizedResult.data.body,
+      postInput.imageArtifacts.map(artifact => artifact.artifactId),
+      config.imageCount,
+    );
     const post = communityPostOutputSchema.parse({
       ...reviewedPost, ...humanizedResult.data,
-      screenshotRecommendations: checkedResult.data.screenshotRecommendations,
+      screenshotRecommendations,
       articleReview: checkedResult.data.articleReview, stylePreservation: preservation,
       styleEdit: { original, edited: humanizedResult.data, changed },
       contentPolicyVersion,
@@ -595,13 +592,38 @@ function normalizeIdeas(ideas: ContentIdea[], source: PublishSource): ContentIde
 function assertPost(post: CommunityPostOutput, artifactIds: string[], imageCount: number) {
   const allowed = new Set(artifactIds);
   const refs = post.screenshotRecommendations;
+  const paragraphs = post.body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim());
   if (refs.length > imageCount
     || new Set(refs.map((item) => item.artifactId)).size !== refs.length
     || refs.some((item) => !allowed.has(item.artifactId))
     || refs.some((item) => item.supportsParagraph == null || !item.supportsClaim)
+    || refs.some((item) => !paragraphs[item.supportsParagraph! - 1]?.includes(item.supportsClaim!))
     || refs.some((item, index) => item.order !== index + 1)) {
     throw new AIValidationError("community_post", "orderedRealScreenshotReferences");
   }
+}
+
+function normalizeScreenshotRecommendations(
+  recommendations: CommunityPostOutput["screenshotRecommendations"],
+  body: string,
+  artifactIds: string[],
+  imageCount: number,
+): CommunityPostOutput["screenshotRecommendations"] {
+  if (imageCount < 1 || artifactIds.length < 1) return [];
+
+  const allowed = new Set(artifactIds);
+  const seen = new Set<string>();
+  const paragraphs = body.split(/\n\s*\n/).filter((paragraph) => paragraph.trim());
+  return recommendations
+    .filter((item) => {
+      if (!allowed.has(item.artifactId) || seen.has(item.artifactId)) return false;
+      if (item.supportsParagraph == null || !item.supportsClaim) return false;
+      if (!paragraphs[item.supportsParagraph - 1]?.includes(item.supportsClaim)) return false;
+      seen.add(item.artifactId);
+      return true;
+    })
+    .slice(0, imageCount)
+    .map((item, index) => ({ ...item, order: index + 1 }));
 }
 
 function withAvailableImageCount(config: PublishConfig, availableImageCount: number): PublishConfig {

@@ -328,6 +328,8 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-09-21 Community Experience Expression：在 chatgpt/content-flow-refactor 延续 Quick Findings Publish，新增内容分类规划、开头/结尾字段、真实体验风格运行时校验、默认关闭的个人评分及 Findings 来源校验；复用 screenshotRecommendations，以原段落锚点在预览/复制时生成 p1/p2，删图/换图/编辑不继承错误引用。保留原始 Artifact 最终核对、专业测评与历史 JSON 兼容，无 migration。新增 golden/style/formatter 回归及实际 Publish Service 的隔离集成测试，验证无 Judge/Report 依赖与失败不保存 ready。TypeScript 仅排除工作区原有未跟踪 dormant-community-pipeline 归档，严格检查实际源码。该轮验证不代表真实在线模型语言质量或完整外部 DB/Storage E2E 已验收。
 验证结果：npm test 155/155、npm run typecheck、npm run build、git diff --check 全部通过。真实供应商在线生成、浏览器视觉验证和外部 DB/Storage E2E 本轮未运行；不能将本轮标为全部产品 Acceptance Criteria 完成。
 
+2026-10-06 Publish 视频证据配图修复：最终审计继续用视频参与事实核验，但可选配图只接受真实图片 Artifact。服务端确定性过滤模型返回的非图片、重复、超额、段落不存在或正文无逐字对应的推荐并重排 order；无有效图片时保存空数组，不再让配图建议阻断已通过的正文。保留最终 assertPost 门禁和历史失败版本。295 项测试、typecheck、build 与 diff check 通过。
+
 2026-09-21 Evidence-backed Editorial Follow-up：按用户提供的体验清单、场景深度和多维度参考稿，新增三种一键写法，独立策划→正文→原始证据/文章质量核对。章节绑定 Findings/Artifact，使用收益从确认 impact 引用；无效证据、重复章节、未知方法依据及缺少具体观察均会失败。专业来源投影为不含数字评分的观察，专业功能不删除。保存各阶段 route/signature/usage；旧 JSON 兼容，无 migration。修复同一 pack 从 draft 变 ready 时编辑器状态未重置的问题。
 
 验证：162 项测试通过，typecheck、build、diff check 通过。包含策划失败不执行写作、最终质量失败不写 ready、两种深度稿结构和真实模型发现的虚构调色/补拍收益负例。真实模型探测曾出现一次格式合格但内容越界的样稿，人工审查后拒绝并收紧规则；随后场景稿与多维稿核对阶段连续网络失败，未保存合格最终稿。浏览器只读确认生产构建首页正常，当前真实项目尚无可用 Publish 数据，未补造用户实验。线上语言质量及完整 DB/Storage/浏览器生成 E2E 不标为全部验收通过。

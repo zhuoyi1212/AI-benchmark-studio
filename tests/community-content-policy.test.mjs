@@ -85,10 +85,10 @@ test('content review cannot rewrite the evidence plan or other protected metadat
   assert.equal(communityContentReviewSchema.safeParse({ ...reviewOutput, tags: draft.tags }).success, false);
 });
 
-test('bad screenshot mapping cannot slip into a successful final result', async () => {
+test('invalid optional screenshot mappings are dropped without blocking an audited article', async () => {
   const h = harness({ mutate: (stage, value) => stage === 'EvidenceCheckedCommunityPost' ? { ...value, screenshotRecommendations: [{ artifactId: id, reason: '测试', supportsClaim: '不在正文', supportsParagraph: 99, order: 1 }] } : value });
-  await assert.rejects(h.run(), /保真/);
-  assert.equal(h.state.saved, null);
+  await h.run();
+  assert.deepEqual(h.state.saved.screenshotRecommendations, []);
 });
 
 test('missing semantic review and old unstructured articles have separate contracts', () => {

@@ -74,7 +74,8 @@ test('generation and final raw Artifact fact-check both retain expression rules'
   assert.match(service, /factCheckTextCommunityPost/);
   assert.match(service, /requiresVision/);
   assert.match(service, /schema: styleSchema/);
-  assert.match(service, /schema: auditSchema/);
+  assert.match(service, /schema: publicationAuditSchema/);
+  assert.match(service, /normalizeScreenshotRecommendations/);
   assert.doesNotMatch(service, /expectedHeadings|isQuickLayoutOnlyIssue/);
   assert.match(service, /communityExpressionIssues\(post, config, confirmedFindings\)/);
   assert.match(service, /学校网站失败/);
