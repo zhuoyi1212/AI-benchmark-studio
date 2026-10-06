@@ -45,12 +45,14 @@ test("routes all Samples in one TestCase through one immutable JudgeCaseRun", ()
   assert.match(hardening, /full Sample × Rubric score matrix for its TestCase/);
   assert.match(service, /for \(const testCase of context\.testCases\)[\s\S]*executeJudgeCase/);
   assert.match(service, /aiTaskService\.judgeSamples\(testCase\.id, descriptors/);
+  assert.match(service, /selectJudgeEvidenceInputs\(inputs, testCase\.expectedOutputTypes\)/);
+  assert.match(service, /selectedInputs\.map/);
   assert.match(service, /beforeExecute:[\s\S]*judgeRepository\.beginCase/);
   assert.ok(router.indexOf("await request.beforeExecute?.(route)") < router.indexOf("provider.generateStructured"));
   assert.match(taskService, /selectJudgeTaskForCase\(testCaseId, artifacts\)/);
 });
 
-test("sends all supported text formats as text and image/PDF/mixed Cases as original multimodal evidence", () => {
+test("sends supported text and one provider-compatible binary media family per Case", () => {
   for (const mimeType of ["text/plain", "text/markdown", "application/json", "text/csv"]) {
     assert.match(router, new RegExp(mimeType.replace("/", "\\/")));
     assert.match(service, new RegExp(mimeType.replace("/", "\\/")));
@@ -78,6 +80,7 @@ test("validates and atomically stores the exact Sample × Rubric score matrix", 
 test("records failed runs and never falls back to Mock or another provider", () => {
   assert.match(migration, /create function public\.fail_judge_run/);
   assert.match(service, /judgeRepository\.fail/);
+  assert.match(service, /error\.inputIssue === "mixed_media"/);
   assert.doesNotMatch(service + repository + actions, /@\/lib\/mock|mockJudge|fallback/i);
 });
 

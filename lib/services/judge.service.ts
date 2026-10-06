@@ -10,6 +10,7 @@ import { humanReviewRepository } from "@/lib/repositories/human-review.repositor
 import { judgeRepository, type JudgeCaseInputRow } from "@/lib/repositories/judge.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { protocolsRepository, type ProtocolTestCaseRow } from "@/lib/repositories/protocols.repository";
+import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/judge-evidence-selection";
 import { createInputSignature } from "@/lib/signatures";
 import { BlindReviewError, getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
 import type { JudgeCaseRunRow, JudgeRunRow, JudgeScoreRow, RubricDimensionRow } from "@/lib/types/database";
@@ -162,7 +163,9 @@ async function executeJudgeCase(
 ) {
   const inputs = await judgeRepository.listCaseInputs(judgeRunId, testCase.id);
   assertCompleteSampleInputs(inputs, context.samples);
-  const descriptors = inputs.map((input): JudgeArtifactDescriptor => ({
+  const selection = selectJudgeEvidenceInputs(inputs, testCase.expectedOutputTypes);
+  const selectedInputs = selection.selected;
+  const descriptors = selectedInputs.map((input): JudgeArtifactDescriptor => ({
     id: input.artifact_id,
     testCaseId: testCase.id,
     mimeType: input.mime_type,
@@ -172,7 +175,11 @@ async function executeJudgeCase(
     testCase,
     rubric: context.rubric,
     samples: context.samples,
-    artifacts: inputs.map((input) => ({
+    evidenceTransport: {
+      policyVersion: selection.policyVersion,
+      selectedFamily: selection.selectedFamily,
+    },
+    artifacts: selectedInputs.map((input) => ({
       blindSampleId: input.blind_sample_id,
       artifactId: input.artifact_id,
       mimeType: input.mime_type,
@@ -180,7 +187,11 @@ async function executeJudgeCase(
       sha256: input.sha256,
     })),
   });
-  const content = await buildJudgeContent(context, testCase, inputs);
+  const content = await buildJudgeContent(context, testCase, selectedInputs, {
+    policyVersion: selection.policyVersion,
+    selectedFamily: selection.selectedFamily,
+    omittedArtifactCount: selection.omittedArtifactIds.length,
+  });
   const expectedScoreKeys = new Set(context.samples.flatMap((sample) => context.rubric.map((dimension) => `${sample.sampleId}:${dimension.id}`)));
   const expectedScorePairs = context.samples.flatMap((sample) => context.rubric.map((dimension) => ({
     blindSampleId: sample.sampleId,
@@ -253,6 +264,7 @@ async function buildJudgeContent(
   context: NonNullable<Awaited<ReturnType<typeof loadJudgeContext>>>,
   testCase: JudgeTestCase,
   inputs: JudgeCaseInputRow[],
+  evidenceTransport: { policyVersion: string; selectedFamily: string; omittedArtifactCount: number },
 ): Promise<AIMessageContent> {
   const prepared = await Promise.all(inputs.map(prepareArtifact));
   const instruction = {
@@ -271,6 +283,7 @@ async function buildJudgeContent(
       confidenceRange: "0-1",
       evidenceMustReferenceArtifactId: true,
     },
+    evidenceTransport,
   };
   if (prepared.every((artifact) => isTextArtifactMimeType(artifact.mimeType))) {
     return JSON.stringify({
@@ -413,15 +426,21 @@ function mapRun(run: JudgeRunRow, caseRuns: JudgeCaseRunRow[], scores: JudgeScor
 
 function safeFailureMessage(error: unknown) {
   if (error instanceof AIValidationError) return "AI Judge structured output validation failed";
-  if (error instanceof AIProviderError) return "AI Provider request failed";
+  if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"
+    ? "AI Provider 不支持当前证据的媒体组合"
+    : "AI Provider request failed";
   if (error instanceof RepositoryError) return `Judge persistence failed at ${error.operation}`;
+  if (error instanceof JudgeEvidenceSelectionError) return error.message;
   if (error instanceof JudgeExecutionError) return error.message;
   return "AI Judge execution failed";
 }
 
 function toUserFacingError(error: unknown) {
   if (error instanceof AIValidationError) return "AI Judge 返回结果未通过评分矩阵校验，请重新运行。";
-  if (error instanceof AIProviderError) return "AI Provider 暂时无法完成 Blind Judge，请稍后重试。";
+  if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"
+    ? "当前原始文件包含模型无法同时读取的媒体组合，请补充同类型证据后重试。"
+    : "AI Provider 暂时无法完成 Blind Judge，请稍后重试。";
   if (error instanceof RepositoryError) return "AI Judge 数据保存失败，请刷新后重试。";
+  if (error instanceof JudgeEvidenceSelectionError) return error.message;
   return "AI Judge 执行失败，请稍后重试。";
 }

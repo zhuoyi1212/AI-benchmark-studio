@@ -105,3 +105,5 @@
 2026-10-05 标题与任务可执行性：完成文章可只刷新标题，每次创建新 PublishPack 版本，正文与证据原样复制，记录独立标题调用审计；标题限 6–28 字并拒绝夸张词、同名标题及正文无依据数字。Research 必须查明字符上限和文件上传能力，Protocol 生成与锁定都做确定性校验；不支持文件时不得生成附件任务，长材料仅可在代表性片段仍能验证原目标时缩短，否则改选任务。禁止静默截断或让用户执行产品做不到的输入操作。
 
 2026-10-05 Artifact 直传：50 MB 的产品上限不得通过 Vercel Function 转发；Server Action 只接收文件元数据、签发一次性私有 Storage 上传 URL，并在直传后确认对象。浏览器显示真实进度，网络/5xx 有限自动重试，失败保留队列供用户重试。Supabase 当前签名 TUS 路径在本项目返回 `Invalid Compact JWS`，不宣称断点续传；改用已真实验证的标准签名 PUT。写入 `test_artifacts` 前继续执行服务端大小、类型、文件头及文本 SHA-256 校验，半成功必须补偿或幂等确认。
+
+2026-10-06 Judge 媒体兼容：智谱视觉接口不接受视频、图片、文档在同一请求中混合。JudgeCaseRun 仍保持同一 TestCase 全 Sample 共享 Provider/Model/PromptVersion，但传输层只选择一种所有 Sample 共同具备的二进制媒体族，并可附加文本；选择顺序优先遵循 Locked Protocol 的 expectedOutputTypes。原始 Artifact 不删除，未发送媒体不允许成为 Judge Evidence。比较项目没有共同媒体族且没有共同文本时必须在 Provider 调用前失败，禁止遗漏某个 Sample 后继续评分。

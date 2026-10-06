@@ -217,6 +217,8 @@ Research 支持多次运行并保留旧版本。Protocol 必须引用具体 rese
 
 同一个 TestCase 的 Sample A/B/C 必须引用同一个 JudgeCaseRun。全部 Artifact 为纯文本才可选择 text-only route；任一 Sample 为图片/PDF/视觉文件或混合模态时，该 Case 全部 Sample 统一选择多模态 route。禁止按 Sample 路由。
 
+多模态 route 每次只传一种二进制媒体族，避免 Provider 拒绝视频、图片和文档混合输入。系统先按 Locked Protocol 的 expectedOutputTypes 选择每个 Sample 都具备的共同媒体族，再附加文本 Artifact；视频任务优先视频，图片或文档仍保存在原始 Artifact 清单中但不与视频同请求发送。比较项目没有共同证据格式时，在调用 Provider 前明确失败并要求补充同类型证据。选择策略版本、媒体族和实际发送的 Artifact 进入 input signature，保持可审计。
+
 JudgeScore 粒度：
 
 `test_case × blind_sample × rubric_dimension`
