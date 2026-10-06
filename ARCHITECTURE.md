@@ -352,6 +352,8 @@ publish_packs.community_post JSON 新增可选 articleReview、generationTrace�
 
 Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择规则。系统按 Locked Protocol 的期望输出类型选择所有 TestRun 都具备的一种二进制媒体（视频、文档或图片），可同时保留文本；未选中的附件继续作为原始 Artifact 保存，但不与另一种二进制媒体放进同一次 Provider 请求。这样既保留证据追踪，又避免供应商拒绝图片、视频和文档混合输入。
 
+社区初稿的多模态内容核验允许同一 Provider/Model 做一次有界结构修复。第一次响应不是合法 JSON 或不符合 Schema 时，Router 使用精简校验问题请求第二次完整结构化输出；这只是传输结构修复，不会把未通过事实或内容审核的文章改判为通过，也不会跨 Provider fallback。
+
 同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。
 
 ## Durable Quick Workflow

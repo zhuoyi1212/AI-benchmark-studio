@@ -109,3 +109,5 @@
 2026-10-06 Judge 媒体兼容：智谱视觉接口不接受视频、图片、文档在同一请求中混合。JudgeCaseRun 仍保持同一 TestCase 全 Sample 共享 Provider/Model/PromptVersion，但传输层只选择一种所有 Sample 共同具备的二进制媒体族，并可附加文本；选择顺序优先遵循 Locked Protocol 的 expectedOutputTypes。原始 Artifact 不删除，未发送媒体不允许成为 Judge Evidence。比较项目没有共同媒体族且没有共同文本时必须在 Provider 调用前失败，禁止遗漏某个 Sample 后继续评分。
 
 2026-10-06 Findings 媒体兼容：Experience Findings 复用 Judge 的单媒体族选择规则，输入签名记录规则版本、选中媒体和省略数量。PDF 与截图可先把 PDF 页渲染成图片后作为同一视觉媒体处理；视频任务优先分析原视频，不再把辅助截图放进同一 Provider 请求。省略附件仍保留在原始 Artifact 与产品记录中，不能被生成内容引用。
+
+2026-10-06 社区核验结构修复：多模态内容核验与其他 structured task 一样，允许同一 Provider/Model 对 invalid JSON 或 Schema 问题做一次有界修复。结构修复不等于内容改写；事实、范围、立场、经历、建议和证据任一审核不通过仍然失败，禁止跨 Provider fallback 或降低门禁。

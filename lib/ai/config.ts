@@ -165,7 +165,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     promptVersion: "community-post-evidence-check.v3-content-policy-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
-    maxAttempts: 1,
+    maxAttempts: structuredTaskMaxAttempts,
     model: (models) => models.zhipuVisionModel,
   },
   screenshot_understanding: {

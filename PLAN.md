@@ -397,3 +397,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-06 视频 Judge 修复：线上万彩AI的 46.9 MB MP4 已成功保存，但同一 TestRun 还保留一张截图，旧 Judge 请求同时发送 video file_url 与 image_url，智谱 `glm-4.6v` 三次返回 400/1214 mixed_media。新增确定性证据选择：按 Locked Protocol 期望类型，在全部 Blind Sample 共有的媒体族中选择一种，文本可同时发送；当前任务期望 video + text，因此实际评分只发送视频，不混入截图。原图继续作为原始证据保存，不会被模型引用。比较项目没有共同格式时在调用模型前明确失败。290/290 tests、typecheck、build、git diff check 通过；无 migration，不改变 Blind 顺序、AI Score 或 Review 审计。
 
 2026-10-06 视频 Findings 修复：Judge 成功后，后台候选 Findings 仍沿用旧混合证据请求并再次触发智谱 400/1214。Findings 现与 Judge 共用 `single-media-family.v1`：按 Locked Protocol 与全部 TestRun 的共同格式选择一种二进制媒体，可附加文本；万彩AI任务分析原 MP4，辅助截图保留但不参与该次生成。PDF + 截图仍走逐页图片归一化，避免回退既有文档分析。输入签名和 PromptVersion 已升级，旧失败记录保留审计，重试创建新版本。291/291 tests、typecheck、build、git diff check 通过；无 migration。
+
+2026-10-06 社区初稿核验恢复：万彩AI社区内容在视觉核验阶段收到 finishReason=stop 的完整响应，但内容不是合法 JSON；该路由旧配置 maxAttempts=1，导致通用结构修复没有执行。将同 Provider/Model 的上限恢复为两次，第一次 invalid JSON 或 Schema 失败时只做一次结构修复，不改变事实与质量门禁、不跨 Provider。相关路由测试、全量测试、typecheck、build 与 diff check 通过；无 migration。
