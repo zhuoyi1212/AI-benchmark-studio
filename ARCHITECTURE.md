@@ -354,6 +354,8 @@ Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择
 
 社区初稿的多模态内容核验允许同一 Provider/Model 做一次有界结构修复。第一次响应不是合法 JSON 或不符合 Schema 时，Router 使用精简校验问题请求第二次完整结构化输出；这只是传输结构修复，不会把未通过事实或内容审核的文章改判为通过，也不会跨 Provider fallback。
 
+结构化响应解析只规范化四类不改变数据含义的格式偏差：UTF-8 BOM、包住完整对象的单层 JSON Markdown fence、JSON 字符串中的原始换行/制表符，以及对象或数组末尾的多余逗号。带说明性前后缀、缺少闭合结构或其他任意文本继续失败；规范化后的值仍须通过任务 Zod Schema 和业务门禁。
+
 同轮真实验证中，同步 completion 在等待整段输出时出现网络中断。智谱 structured completion 改为 SSE 流式接收，在服务端仅累计 answer delta，逐事件丢弃 reasoning；收到结束标记后仍走既有 normalize 与 schema 校验。缺少 finish_reason 的半截响应视为网络失败，截断原因仍进入原有限重试，不把半截 JSON 保存为完成。原非流式 JSON 响应仍可兼容。
 
 ## Durable Quick Workflow

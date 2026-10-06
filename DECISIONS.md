@@ -111,3 +111,5 @@
 2026-10-06 Findings 媒体兼容：Experience Findings 复用 Judge 的单媒体族选择规则，输入签名记录规则版本、选中媒体和省略数量。PDF 与截图可先把 PDF 页渲染成图片后作为同一视觉媒体处理；视频任务优先分析原视频，不再把辅助截图放进同一 Provider 请求。省略附件仍保留在原始 Artifact 与产品记录中，不能被生成内容引用。
 
 2026-10-06 社区核验结构修复：多模态内容核验与其他 structured task 一样，允许同一 Provider/Model 对 invalid JSON 或 Schema 问题做一次有界修复。结构修复不等于内容改写；事实、范围、立场、经历、建议和证据任一审核不通过仍然失败，禁止跨 Provider fallback 或降低门禁。
+
+2026-10-06 结构化 JSON 规范化：Provider 返回的完整 JSON 可在解析前移除 BOM 或单层 JSON code fence，并修复字符串控制字符与尾逗号；不得从解释性散文中截取对象，也不得补造缺失字段或闭合结构。解析后的对象继续执行原 Zod Schema、引用校验和内容门禁，避免把格式容错变成业务放宽。

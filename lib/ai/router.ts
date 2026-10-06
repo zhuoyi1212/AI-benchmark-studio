@@ -8,6 +8,7 @@ import { DeepSeekProvider } from "@/lib/ai/providers/deepseek.provider";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import { ZhipuProvider } from "@/lib/ai/providers/zhipu.provider";
 import { getAIProviderKey } from "@/lib/env/server";
+import { parseStructuredJson } from "@/lib/ai/structured-json";
 import type {
   AIAttemptPerformance,
   AIMessage,
@@ -325,7 +326,7 @@ function createProvider(providerName: "zhipu" | "deepseek"): AIProvider {
 
 function parseJson(content: string, task: string, schemaName: string): unknown {
   try {
-    return JSON.parse(content);
+    return parseStructuredJson(content);
   } catch {
     throw new AIValidationError(task, schemaName, {
       category: "invalid_json",

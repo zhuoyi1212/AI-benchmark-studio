@@ -399,3 +399,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-06 视频 Findings 修复：Judge 成功后，后台候选 Findings 仍沿用旧混合证据请求并再次触发智谱 400/1214。Findings 现与 Judge 共用 `single-media-family.v1`：按 Locked Protocol 与全部 TestRun 的共同格式选择一种二进制媒体，可附加文本；万彩AI任务分析原 MP4，辅助截图保留但不参与该次生成。PDF + 截图仍走逐页图片归一化，避免回退既有文档分析。输入签名和 PromptVersion 已升级，旧失败记录保留审计，重试创建新版本。291/291 tests、typecheck、build、git diff check 通过；无 migration。
 
 2026-10-06 社区初稿核验恢复：万彩AI社区内容在视觉核验阶段收到 finishReason=stop 的完整响应，但内容不是合法 JSON；该路由旧配置 maxAttempts=1，导致通用结构修复没有执行。将同 Provider/Model 的上限恢复为两次，第一次 invalid JSON 或 Schema 失败时只做一次结构修复，不改变事实与质量门禁、不跨 Provider。相关路由测试、全量测试、typecheck、build 与 diff check 通过；无 migration。
+
+2026-10-06 Provider JSON 规范化：万彩AI核验在有界重试后两次均以 stop 正常结束、输出 1301 tokens，但视觉模型持续返回非严格 JSON。新增独立解析边界，只接受严格 JSON 或完整 code fence，并有限修复原始控制字符和尾逗号；不从散文中提取对象、不补字段，之后仍执行完整 Schema 与内容门禁。新增直接解析回归测试；294/294 tests、typecheck、build 与 diff check 通过，无 migration。
