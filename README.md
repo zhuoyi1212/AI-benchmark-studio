@@ -64,18 +64,16 @@ npm run dev
 
 开发服务支持通过终端显示的本机局域网地址访问；`allowedDevOrigins` 仅允许本机实际 IPv4 地址。切换网络后重启开发服务。局域网 HTTP 下，测试页复制 Prompt 和上传队列使用兼容路径，不依赖安全上下文限定的剪贴板 API 或 `randomUUID`。
 
-## 公开展示与工作台访问保护
+## Vercel 访问保护
 
-根路径 `/` 是公开作品展示页，只包含静态、脱敏的流程和案例，不读取数据库，也不提供写入或 AI 调用入口。
-
-受保护的工作台路由（包括 `/projects`、`/products`、`/settings`、Route Handlers 与 Server Actions）继续使用共享门禁。在 Vercel Project Settings → Environment Variables 中配置：
+公开部署前，在 Vercel Project Settings → Environment Variables 中配置：
 
 ```text
 APP_ACCESS_USERNAME=studio
 APP_ACCESS_PASSWORD=<使用密码管理器生成的长随机密码>
 ```
 
-两项应覆盖 Production 和 Preview。生产环境缺少 `APP_ACCESS_PASSWORD` 时，公开首页仍可访问，受保护的工作台路由返回 503，不会暴露项目页面、Server Actions、上传接口或 AI 调用入口；本地开发未配置时保持原有访问方式。该共享门禁适合当前内部测试阶段，后续如需区分成员、撤销单个账号或按用户计费，应迁移到 Supabase Auth。
+两项应覆盖 Production 和 Preview。生产环境缺少 `APP_ACCESS_PASSWORD` 时整站返回 503，不会暴露页面、Server Actions、上传接口或 AI 调用入口；本地开发未配置时保持原有访问方式。该共享门禁适合当前内部测试阶段，后续如需区分成员、撤销单个账号或按用户计费，应迁移到 Supabase Auth。
 
 ## 检查
 

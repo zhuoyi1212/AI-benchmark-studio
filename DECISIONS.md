@@ -117,5 +117,3 @@
 2026-10-06 内容核验字段权限：视觉核验只能修订标题、正文和互动问题并返回审核结果。初稿已通过校验的 writingPlan、contentBrief、标签、截图与证据引用改由服务端原样保留；核验模型不能重写 observationQuote 或来源 ID。最终保真检查继续使用原始 Artifact 和系统保留的证据计划。
 
 2026-10-06 可选配图降级：最终保真检查返回的 screenshotRecommendations 由服务端按真实图片 Artifact、最终正文逐字片段、段落编号、去重和 imageCount 确定性过滤并重排。视频、文档、无效段落或无原文对应的推荐直接丢弃，不把非图片伪装成截图，也不因可选配图错误阻断已经通过事实与内容审计的正文；最终保存前继续执行完整引用断言。
-
-2026-10-08 公开作品展示：采用“公开只读展示页 + 受保护工作台”。根路径 `/` 仅呈现代码内的脱敏流程与演示案例，不读取 Supabase、Storage、真实项目或 AI，也不提供表单和写操作。`/projects`、`/products`、`/settings`、Route Handlers、Server Actions 与上传/AI 入口继续使用现有 Basic Auth；缺少生产密码时仅受保护路由 fail closed。公开入口不改变 Blind、Protocol、Artifact、评分、审核或内容生成规则。

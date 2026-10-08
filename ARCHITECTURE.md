@@ -31,13 +31,6 @@
 
 页面不得直接写 SQL、调用任何 AI Provider、使用 Service Role、读取 blind mapping 或依赖固定业务产品/Case/Rubric。
 
-部署入口分为两个明确表面：
-
-- `/`：公开只读作品展示，只使用代码内的脱敏演示内容，不读取数据库、Storage 或 AI。
-- 工作台页面、Route Handlers 与 Server Actions：继续经过统一访问门禁，再进入既有 Page → Service → Repository/API 数据链。
-
-根布局依赖 Proxy 写入的内部请求标记选择展示外壳；Proxy 会覆盖该标记，不能由客户端用请求头把受保护路由切换成公开页面。
-
 ## 3. 核心 Domain
 
 ```text
