@@ -2,7 +2,7 @@
 
 import { NavigationLink as Link } from "@/components/navigation-link";
 import { usePathname } from "next/navigation";
-import { Boxes, ChevronDown, Database, FlaskConical, LayoutDashboard, Menu, Settings, X } from "lucide-react";
+import { Boxes, ChevronDown, Database, Eye, FlaskConical, LayoutDashboard, LockKeyhole, Menu, Settings, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,7 +13,7 @@ const nav = [
   { label: "产品库", href: "/products", icon: Boxes },
 ];
 
-export function AppShell({ children, recentProject }: { children: React.ReactNode; recentProject: React.ReactNode }) {
+export function AppShell({ children, recentProject, readOnly }: { children: React.ReactNode; recentProject: React.ReactNode; readOnly: boolean }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -43,8 +43,15 @@ export function AppShell({ children, recentProject }: { children: React.ReactNod
       <div onClick={() => setMobileOpen(false)}>{recentProject}</div>
 
       <div className="mt-auto border-t pt-3">
-        <Link href="/settings" onClick={() => setMobileOpen(false)} className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-slate-600 hover:bg-slate-100"><Settings className="h-4 w-4 text-slate-400" />设置</Link>
-        <DropdownMenu>
+        {readOnly ? (
+          <a href="/admin" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-slate-100">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-500"><Eye className="h-3.5 w-3.5" /></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">只读访客</span><span className="block truncate text-[10px] text-muted-foreground">登录后可编辑</span></span>
+            <LockKeyhole className="h-3.5 w-3.5 text-muted-foreground" />
+          </a>
+        ) : <>
+          <Link href="/settings" onClick={() => setMobileOpen(false)} className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-slate-600 hover:bg-slate-100"><Settings className="h-4 w-4 text-slate-400" />设置</Link>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-slate-100">
               <span className="grid h-7 w-7 place-items-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">PM</span>
@@ -55,7 +62,8 @@ export function AppShell({ children, recentProject }: { children: React.ReactNod
           <DropdownMenuContent align="end" side="top" className="w-52">
             <DropdownMenuItem><Database className="h-4 w-4 text-blue-600" />真实项目数据已启用</DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </>}
       </div>
     </aside>
   );
@@ -68,7 +76,10 @@ export function AppShell({ children, recentProject }: { children: React.ReactNod
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></Button>
         <span className="ml-2 text-sm font-semibold">AI Benchmark Studio</span>
       </header>
-      <main className="min-w-0 flex-1 md:ml-[248px]">{children}</main>
+      <main className="min-w-0 flex-1 md:ml-[248px]">
+        {readOnly && <div className="flex min-h-10 items-center justify-between gap-4 border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-950 lg:px-10"><span>只读浏览 · 内容可查看，修改与 AI 操作需要管理员登录</span><a href="/admin" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">管理员登录</a></div>}
+        {children}
+      </main>
     </div>
   );
 }

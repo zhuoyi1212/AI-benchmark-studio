@@ -4,11 +4,26 @@ import { NextResponse } from "next/server";
 
 const ACCESS_REALM = "AI Benchmark Studio";
 const DEFAULT_USERNAME = "studio";
+const ACCESS_HEADER = "x-ai-benchmark-access";
 
 export function proxy(request: NextRequest) {
-  // This exact endpoint verifies CRON_SECRET itself. All user routes retain Basic Auth.
+  // This exact endpoint verifies CRON_SECRET itself.
   if (request.nextUrl.pathname === '/api/cron/quick-workflow') return NextResponse.next();
   const configuredPassword = process.env.APP_ACCESS_PASSWORD;
+  const configuredUsername = process.env.APP_ACCESS_USERNAME?.trim() || DEFAULT_USERNAME;
+  const credentials = parseBasicCredentials(request.headers.get("authorization"));
+  const authenticated = Boolean(
+    configuredPassword
+    && credentials
+    && secureEqual(credentials.username, configuredUsername)
+    && secureEqual(credentials.password, configuredPassword),
+  );
+
+  if (authenticated) return nextWithAccess(request, "admin");
+
+  if (isPublicReadRequest(request)) {
+    return nextWithAccess(request, "read-only");
+  }
 
   if (!configuredPassword) {
     if (process.env.NODE_ENV === "production") {
@@ -17,28 +32,35 @@ export function proxy(request: NextRequest) {
         headers: { "Cache-Control": "no-store" },
       });
     }
-    return NextResponse.next();
+    return nextWithAccess(request, "admin");
   }
 
-  const configuredUsername = process.env.APP_ACCESS_USERNAME?.trim() || DEFAULT_USERNAME;
-  const credentials = parseBasicCredentials(request.headers.get("authorization"));
+  return new NextResponse("Administrator authentication required.", {
+    status: 401,
+    headers: {
+      "Cache-Control": "no-store",
+      "WWW-Authenticate": `Basic realm="${ACCESS_REALM}", charset="UTF-8"`,
+    },
+  });
+}
 
-  if (
-    !credentials
-    || !secureEqual(credentials.username, configuredUsername)
-    || !secureEqual(credentials.password, configuredPassword)
-  ) {
-    return new NextResponse("Authentication required.", {
-      status: 401,
-      headers: {
-        "Cache-Control": "no-store",
-        "WWW-Authenticate": `Basic realm="${ACCESS_REALM}", charset="UTF-8"`,
-      },
-    });
-  }
+function isPublicReadRequest(request: NextRequest) {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
 
-  const response = NextResponse.next();
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/api/")) return false;
+  if (pathname === "/admin" || pathname.startsWith("/settings") || pathname.startsWith("/benchmark")) return false;
+  if (pathname === "/projects/new" || pathname.startsWith("/projects/demo")) return false;
+  if (/^\/projects\/[^/]+\/settings(?:\/|$)/.test(pathname)) return false;
+  return true;
+}
+
+function nextWithAccess(request: NextRequest, access: "admin" | "read-only") {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(ACCESS_HEADER, access);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Vary", "Authorization");
   return response;
 }
 

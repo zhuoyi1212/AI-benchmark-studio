@@ -31,6 +31,8 @@
 
 页面不得直接写 SQL、调用任何 AI Provider、使用 Service Role、读取 blind mapping 或依赖固定业务产品/Case/Rubric。
 
+线上访问分为公开只读与管理员两层。普通 GET/HEAD 页面请求可以读取项目、产品和已生成内容；所有 Server Action、非读取请求、`/api`、设置、创建项目和内部 Demo 仍须通过 Basic Auth。Proxy 覆盖内部访问标记，根布局只用该标记显示只读状态，业务授权以服务端请求门禁为准。`/admin` 用于触发管理员认证并返回工作台。生产环境缺少管理员密码时，公开读取继续可用，写入与内部入口 fail closed。
+
 ## 3. 核心 Domain
 
 ```text
