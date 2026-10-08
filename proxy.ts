@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 const ACCESS_REALM = "AI Benchmark Studio";
 const DEFAULT_USERNAME = "studio";
-const PUBLIC_PATHS = new Set(["/"]);
+const PUBLIC_PATHS = new Set(["/", "/favicon.ico"]);
 
 export function proxy(request: NextRequest) {
   // This exact endpoint verifies CRON_SECRET itself.
@@ -75,5 +75,5 @@ function secureEqual(actual: string, expected: string) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };

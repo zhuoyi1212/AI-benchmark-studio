@@ -17,7 +17,7 @@ const [proxy, envExample, readme, home, rootLayout, autoDemoRoute, publicAutoDem
 ]);
 
 test("keeps only the exact showcase route public and protects the workspace", () => {
-  assert.match(proxy, /const PUBLIC_PATHS = new Set\(\["\/"\]\)/);
+  assert.match(proxy, /const PUBLIC_PATHS = new Set\(\["\/", "\/favicon\.ico"\]\)/);
   assert.match(proxy, /PUBLIC_PATHS\.has\(request\.nextUrl\.pathname\)/);
   assert.match(proxy, /nextWithSurface\(request, "showcase"\)/);
   assert.match(proxy, /requestHeaders\.set\("x-ai-benchmark-surface", surface\)/);
@@ -27,7 +27,7 @@ test("keeps only the exact showcase route public and protects the workspace", ()
   assert.match(proxy, /status: 401/);
   assert.match(proxy, /WWW-Authenticate/);
   assert.match(proxy, /timingSafeEqual/);
-  assert.match(proxy, /matcher: \["\/\(\(\?!_next\/static\|_next\/image\|favicon\.ico\)\.\*\)"\]/);
+  assert.match(proxy, /matcher: \["\/\(\(\?!_next\/static\|_next\/image\)\.\*\)"\]/);
   assert.doesNotMatch(proxy, /startsWith\(["']\/(projects|products|api)/);
   assert.doesNotMatch(proxy, /ZAI_API_KEY|DEEPSEEK_API_KEY|SUPABASE_SECRET_KEY/);
 });
