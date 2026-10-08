@@ -287,6 +287,8 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 
 `publish_packs.community_post` JSON 新增可选 `writingPlan`、`contentPolicyVersion`；补齐 `contentBrief`、`languagePass` 的仓储透传，继续保存 `styleEdit`、`stylePreservation`、`articleReview` 与 `generationTrace`。新结果为四阶段，trace 增加 `content_check`；历史结构保持兼容。复用原子 `complete_publish_pack` 与不可变 ready 版本规则，无新增表、RPC、权限或 migration。成功后台阶段仍存 `quick_job_steps`，语义审查失败不能执行完成 RPC。
 
+`get_workflow_navigation_snapshot(project_id)` 是只读、`stable`、`security invoker` 的聚合 RPC，用一次数据库往返返回工作流解锁所需的跨阶段最小状态，替代页面原有的 13 次 REST 查询。函数不返回 Blind Mapping、Judge 原始输入或评分内容；`public`、`anon`、`authenticated` 均无执行权限，仅服务端 `service_role` 可调用。
+
 `refresh_publish_pack_title` 只允许 service role 对当前最新 ready PublishPack 操作。函数锁定 Findings/Report 来源，创建下一版本，复制配置、选题、正文 JSON 与全部 `publish_pack_artifacts`，仅替换标题并追加 `titleRefreshes` 审计；随后按 `draft → generating → ready` 经过既有状态机。旧 PublishPack 不更新，文本文章仍允许零截图。
 
 ### 2026-10-05 Artifact 签名直传（无 DDL 变更）

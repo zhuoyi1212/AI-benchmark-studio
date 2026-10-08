@@ -4,6 +4,11 @@ import { networkInterfaces } from "node:os";
 const nextConfig: NextConfig = {
   distDir: process.env.AI_BENCHMARK_NEXT_DIST_DIR ?? ".next",
   reactStrictMode: true,
+  experimental: {
+    // Keep recently visited dynamic workflow pages in the browser router cache.
+    // Server Actions already invalidate affected routes after every write.
+    staleTimes: { dynamic: 120 },
+  },
   serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas"],
   outputFileTracingIncludes: {
     "/api/cron/quick-workflow": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*", "./node_modules/pdfjs-dist/wasm/**/*"],

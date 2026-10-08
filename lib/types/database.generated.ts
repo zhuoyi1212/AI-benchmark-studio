@@ -1804,6 +1804,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_workflow_navigation_snapshot: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       save_quick_step: {
         Args: { p_id: string; p_key: string; p_output: Json; p_token: string }
         Returns: undefined
