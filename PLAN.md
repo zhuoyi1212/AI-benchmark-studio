@@ -413,3 +413,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-08 生产提示词清单：新增 `docs/ai-prompt-inventory.md`，覆盖 18 条生产 AI 路由、默认模型与 Prompt Version、全局结构化 JSON 指令、格式修复与重试指令、Research/Search/Comparability/Protocol/Judge/Findings/Analysis/Report，以及社区选题、初稿、证据核验、润色、最终审核和标题刷新。动态 User Prompt 以字段模板整理，明确 Search/OCR 当前只调用一次、OCR 没有自然语言 Prompt、测试夹具不计入生产清单。新增回归测试确保新增 Prompt Version 不会漏出清单。302/302 tests、typecheck、build 与 diff check 通过。
 
 2026-10-09 提示词重构上下文：新增 `docs/ai-prompt-refactor-context.md`，为外部模型解释产品目标、单/多产品与快/专业模式、完整证据工作流、快速后台接力、14 个 AI 阶段职责、模型路由、不可改变的产品边界、当前内容质量问题、评测矩阵和分阶段重构顺序，并附可直接交给新模型的任务说明。新增文档契约测试，确保完整流程和核心边界不会从交接材料中遗漏。305/305 tests、typecheck、build 与 diff check 通过。
+
+2026-10-09 Claude 提示词重构三文件包：保留 `docs/ai-prompt-inventory.md` 作为完整生产提示词，新增精简的 `docs/prompt-refactor-project-flow.md` 与 `docs/prompt-refactor-final-goal.md`。流程文件只说明产品如何从调研、人工实测和证据分析走到社区文章；目标文件邀请外部模型重新设计阶段和提示词，描述读者价值、内容质量与事实可信目标，不预设固定文章模板或塞入详细工程约束。新增三文件契约测试。307/307 tests、typecheck、build 与 diff check 通过。
