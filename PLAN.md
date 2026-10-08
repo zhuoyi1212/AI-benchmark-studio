@@ -411,3 +411,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-08 历史页面加载优化：线上实测页面首包约 0.55–0.73 秒，但完整动态内容需 2–6 秒；请求级日志确认各步骤每次执行 19–37 个唯一 Supabase 请求，其中工作流导航状态单独读取 13 张表。新增只限 service role 的聚合 RPC，将导航状态收敛为一次数据库往返；浏览器 Router Cache 保留已访问的动态页面 120 秒，写操作继续通过既有 `revalidatePath` 立即失效。远端 migration 已应用，匿名/登录角色无执行权、service role 调用成功；本地复测各步骤唯一请求降至 5–24 次，健康请求下调研/方案/实测完成时间为 0.75–1.47 秒。299/299 tests、typecheck、build、diff check 通过。未缓存跨用户 HTML，未公开 Blind/评分内部数据；本机到 Supabase 仍有间歇性 TLS 重置，会产生独立的超时离群值。
 
 2026-10-08 生产提示词清单：新增 `docs/ai-prompt-inventory.md`，覆盖 18 条生产 AI 路由、默认模型与 Prompt Version、全局结构化 JSON 指令、格式修复与重试指令、Research/Search/Comparability/Protocol/Judge/Findings/Analysis/Report，以及社区选题、初稿、证据核验、润色、最终审核和标题刷新。动态 User Prompt 以字段模板整理，明确 Search/OCR 当前只调用一次、OCR 没有自然语言 Prompt、测试夹具不计入生产清单。新增回归测试确保新增 Prompt Version 不会漏出清单。302/302 tests、typecheck、build 与 diff check 通过。
+
+2026-10-09 提示词重构上下文：新增 `docs/ai-prompt-refactor-context.md`，为外部模型解释产品目标、单/多产品与快/专业模式、完整证据工作流、快速后台接力、14 个 AI 阶段职责、模型路由、不可改变的产品边界、当前内容质量问题、评测矩阵和分阶段重构顺序，并附可直接交给新模型的任务说明。新增文档契约测试，确保完整流程和核心边界不会从交接材料中遗漏。305/305 tests、typecheck、build 与 diff check 通过。
