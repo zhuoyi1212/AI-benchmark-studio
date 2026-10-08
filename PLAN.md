@@ -405,3 +405,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-06 Provider JSON 规范化：万彩AI核验在有界重试后两次均以 stop 正常结束、输出 1301 tokens，但视觉模型持续返回非严格 JSON。新增独立解析边界，只接受严格 JSON 或完整 code fence，并有限修复原始控制字符和尾逗号；不从散文中提取对象、不补字段，之后仍执行完整 Schema 与内容门禁。新增直接解析回归测试；294/294 tests、typecheck、build 与 diff check 通过，无 migration。
 
 2026-10-06 核验字段权限修复：JSON 规范化后确认真实失败项为核验模型改写 writingPlan.observationQuote，导致其不再逐字属于引用发现；第二次修复仍重复该问题。将内容核验契约缩小为三项文案和两项审核结果，服务端保留初稿已验证的 writingPlan、contentBrief、标签、截图及证据引用，再对合并结果执行原门禁。新增受保护字段 strict Schema 回归；295/295 tests、typecheck、build 与 diff check 通过，无 migration。
+
+2026-10-08 公开作品展示：根路径 `/` 改为公开只读作品页，展示测评流程、脱敏案例和工程原则；不读取数据库、Storage、真实项目或 AI。根布局按 Proxy 覆盖的内部 surface 标记隔离公开页与工作台外壳，避免公开请求加载最近项目。工作台页面、Route Handlers、Server Actions、上传与 AI 入口继续经过 Basic Auth，只有精确根路径公开。桌面 1440×900 与手机 390×844 已完成浏览器视觉检查；296/296 tests、typecheck、build 与 diff check 通过，无 migration。

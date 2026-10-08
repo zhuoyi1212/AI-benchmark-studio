@@ -4,10 +4,13 @@ import { NextResponse } from "next/server";
 
 const ACCESS_REALM = "AI Benchmark Studio";
 const DEFAULT_USERNAME = "studio";
+const PUBLIC_PATHS = new Set(["/"]);
 
 export function proxy(request: NextRequest) {
-  // This exact endpoint verifies CRON_SECRET itself. All user routes retain Basic Auth.
+  // This exact endpoint verifies CRON_SECRET itself.
   if (request.nextUrl.pathname === '/api/cron/quick-workflow') return NextResponse.next();
+  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return nextWithSurface(request, "showcase");
+
   const configuredPassword = process.env.APP_ACCESS_PASSWORD;
 
   if (!configuredPassword) {
@@ -17,7 +20,7 @@ export function proxy(request: NextRequest) {
         headers: { "Cache-Control": "no-store" },
       });
     }
-    return NextResponse.next();
+    return nextWithSurface(request, "workspace");
   }
 
   const configuredUsername = process.env.APP_ACCESS_USERNAME?.trim() || DEFAULT_USERNAME;
@@ -37,9 +40,15 @@ export function proxy(request: NextRequest) {
     });
   }
 
-  const response = NextResponse.next();
+  const response = nextWithSurface(request, "workspace");
   response.headers.set("Cache-Control", "private, no-store");
   return response;
+}
+
+function nextWithSurface(request: NextRequest, surface: "showcase" | "workspace") {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-ai-benchmark-surface", surface);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 function parseBasicCredentials(header: string | null) {
