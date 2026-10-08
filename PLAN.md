@@ -406,4 +406,4 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 
 2026-10-06 核验字段权限修复：JSON 规范化后确认真实失败项为核验模型改写 writingPlan.observationQuote，导致其不再逐字属于引用发现；第二次修复仍重复该问题。将内容核验契约缩小为三项文案和两项审核结果，服务端保留初稿已验证的 writingPlan、contentBrief、标签、截图及证据引用，再对合并结果执行原门禁。新增受保护字段 strict Schema 回归；295/295 tests、typecheck、build 与 diff check 通过，无 migration。
 
-2026-10-08 公开只读工作台：移除普通页面读取的密码要求，不增加独立首页；访客直接浏览真实项目、产品、报告与文章。所有非 GET/HEAD、Server Actions、`/api`、创建项目、项目设置、全局设置与内部 Demo 继续要求管理员 Basic Auth；`/admin` 提供显式登录入口，页面显示只读状态。Proxy 覆盖访问标记并设置 no-store/Vary，生产密码缺失时写入 fail closed。296/296 tests、typecheck、build 与 diff check 通过，无 migration。
+2026-10-08 公开只读工作台：移除普通页面读取的密码要求，不增加独立首页；访客直接浏览真实项目、产品、报告与文章。访客界面隐藏创建、重命名、删除、恢复和设置入口，已删除产品列表仅管理员可读。所有非 GET/HEAD、Server Actions、`/api`、创建项目、项目设置、全局设置与内部 Demo 继续要求管理员 Basic Auth；`/admin` 提供显式登录入口，页面显示只读状态。Proxy 覆盖访问标记并设置 no-store/Vary，生产密码缺失时写入 fail closed。297/297 tests、typecheck、build 与 diff check 通过，无 migration。

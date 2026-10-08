@@ -7,6 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { WorkspaceAccessProvider } from "@/components/workspace-access";
 
 const nav = [
   { label: "我的测评", href: "/projects", icon: LayoutDashboard },
@@ -69,7 +70,8 @@ export function AppShell({ children, recentProject, readOnly }: { children: Reac
   );
 
   return (
-    <div className="min-h-screen md:flex">
+    <WorkspaceAccessProvider readOnly={readOnly}>
+    <div className="min-h-screen md:flex" data-workspace-access={readOnly ? "read-only" : "admin"}>
       <div className="fixed inset-y-0 left-0 z-40 hidden md:block">{sidebar}</div>
       {mobileOpen && <div className="fixed inset-0 z-50 flex md:hidden"><div className="absolute inset-0 bg-slate-950/20" onClick={() => setMobileOpen(false)} /> <div className="relative">{sidebar}</div></div>}
       <header className="sticky top-0 z-30 flex h-14 items-center border-b bg-white/90 px-4 backdrop-blur md:hidden">
@@ -81,5 +83,6 @@ export function AppShell({ children, recentProject, readOnly }: { children: Reac
         {children}
       </main>
     </div>
+    </WorkspaceAccessProvider>
   );
 }

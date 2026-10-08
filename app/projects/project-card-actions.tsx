@@ -18,14 +18,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useWorkspaceReadOnly } from "@/components/workspace-access";
 
 export function ProjectCardActions({ projectId, projectName }: { projectId: string; projectName: string }) {
+  const readOnly = useWorkspaceReadOnly();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [name, setName] = useState(projectName);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  if (readOnly) return null;
 
   function handleRename(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

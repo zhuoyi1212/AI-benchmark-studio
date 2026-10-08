@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProductLogo } from "@/components/product-logo";
 import { ProjectCardActions } from "@/app/projects/project-card-actions";
+import { AdminOnly } from "@/components/workspace-access";
 import { listProjectSummaries } from "@/lib/services/projects.service";
 import type { ProjectStatus } from "@/lib/types/database";
 
@@ -24,7 +25,7 @@ export default async function ProjectsPage() {
 
   return (
     <div className="page-shell">
-      <PageHeader title="AI 产品测评" description="设计可复现的测试方案，公平比较 AI 产品，并沉淀完整测评证据。" action={<Button asChild><Link href="/projects/new"><Plus className="h-4 w-4" />新建测评</Link></Button>} />
+      <PageHeader title="AI 产品测评" description="设计可复现的测试方案，公平比较 AI 产品，并沉淀完整测评证据。" action={<AdminOnly><Button asChild><Link href="/projects/new"><Plus className="h-4 w-4" />新建测评</Link></Button></AdminOnly>} />
       <section className="grid gap-3 sm:grid-cols-3">
         <MetricCard icon={Clock3} label="进行中" value={activeCount} />
         <MetricCard icon={CheckCircle2} label="已完成" value={completedCount} />
@@ -34,7 +35,7 @@ export default async function ProjectsPage() {
         <div className="mb-4 flex items-center justify-between"><h2 className="section-title">最近测评项目</h2><span className="text-xs text-muted-foreground">共 {projects.length} 个项目</span></div>
         {projects.length === 0 ? (
           <Card className="grid min-h-64 place-items-center p-8 text-center shadow-none">
-            <div><span className="mx-auto grid h-11 w-11 place-items-center rounded-lg border bg-slate-50 text-muted-foreground"><FolderPlus className="h-5 w-5" /></span><h3 className="mt-4 text-sm font-semibold">还没有测评项目</h3><p className="mt-1.5 text-xs text-muted-foreground">添加 1–3 个产品，建立你的第一个真实测评。</p><Button className="mt-5" size="sm" asChild><Link href="/projects/new">新建测评</Link></Button></div>
+            <div><span className="mx-auto grid h-11 w-11 place-items-center rounded-lg border bg-slate-50 text-muted-foreground"><FolderPlus className="h-5 w-5" /></span><h3 className="mt-4 text-sm font-semibold">还没有测评项目</h3><p className="mt-1.5 text-xs text-muted-foreground">添加 1–3 个产品，建立你的第一个真实测评。</p><AdminOnly><Button className="mt-5" size="sm" asChild><Link href="/projects/new">新建测评</Link></Button></AdminOnly></div>
           </Card>
         ) : projects.map((project) => (
           <Card key={project.id} className="group relative overflow-hidden shadow-none transition-colors hover:border-slate-300">
@@ -58,7 +59,7 @@ export default async function ProjectsPage() {
           </Card>
         ))}
       </section>
-      {projects.length > 0 && <section className="subtle-grid mt-8 flex items-center justify-between rounded-lg border border-dashed p-5"><div><p className="text-sm font-medium">准备比较新的 AI 产品？</p><p className="mt-1 text-xs text-muted-foreground">从 1–3 个产品开始，建立公平的测试框架。</p></div><Button variant="outline" size="sm" asChild><Link href="/projects/new">创建项目</Link></Button></section>}
+      {projects.length > 0 && <AdminOnly><section className="subtle-grid mt-8 flex items-center justify-between rounded-lg border border-dashed p-5"><div><p className="text-sm font-medium">准备比较新的 AI 产品？</p><p className="mt-1 text-xs text-muted-foreground">从 1–3 个产品开始，建立公平的测试框架。</p></div><Button variant="outline" size="sm" asChild><Link href="/projects/new">创建项目</Link></Button></section></AdminOnly>}
     </div>
   );
 }

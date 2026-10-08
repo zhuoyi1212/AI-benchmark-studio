@@ -66,7 +66,7 @@ npm run dev
 
 ## Vercel 公开只读与管理员保护
 
-普通访客无需密码即可浏览项目、产品与测评内容。写操作与内部入口继续使用管理员门禁，包括 Server Actions、Route Handlers、创建测评、项目设置、全局设置和内部 Demo。页面会显示“只读浏览”，管理员通过 `/admin` 登录后恢复完整操作能力。
+普通访客无需密码即可浏览项目、产品与测评内容。访客界面隐藏创建、重命名、删除、恢复和设置入口，已删除产品列表也仅对管理员开放。写操作与内部入口继续使用管理员门禁，包括 Server Actions、Route Handlers、创建测评、项目设置、全局设置和内部 Demo。页面会显示“只读浏览”，管理员通过 `/admin` 登录后恢复完整操作能力。
 
 在 Vercel Project Settings → Environment Variables 中配置：
 

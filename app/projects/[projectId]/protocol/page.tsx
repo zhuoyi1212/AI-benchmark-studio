@@ -9,6 +9,7 @@ import { WorkflowSteps } from "@/components/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AdminOnly } from "@/components/workspace-access";
 import { AutoPrepareQuickProtocol, GenerateProtocolAction } from "@/app/projects/[projectId]/protocol/protocol-actions";
 import { ProtocolView } from "@/app/projects/[projectId]/protocol/protocol-view";
 import { getProjectMode } from "@/lib/project-mode";
@@ -56,7 +57,7 @@ async function ProtocolPage({ params }: ProtocolPageProps) {
         eyebrow={`项目 / ${research.project.name}`}
         title={displayedProtocol?.title ?? "Test Protocol"}
         description={displayedProtocol ? `Protocol v${displayedProtocol.version} · 来源 ResearchRun ${completedResearch?.researchRunId === displayedProtocol.researchRunId ? `v${completedResearch.version}` : displayedProtocol.researchRunId}` : projectMode === "single" ? "根据项目目标与产品调研，生成可复现、可留证的真实体验方案。" : "根据项目目标、结构化产品调研与可比性结论，生成公平、可复现的测试方案。"}
-        action={<div className="flex items-center gap-2"><Badge variant="neutral">{research.project.evaluationMode === "quick" ? "快速模式" : "专业模式"}</Badge><Button variant="outline" size="sm" asChild><Link href={`/projects/${projectId}/settings`}><Settings2 className="h-3.5 w-3.5" />项目设置</Link></Button>{displayedProtocol && <Badge variant={displayedProtocol.status === "locked" ? "success" : "warning"}>{displayedProtocol.status === "locked" ? <LockKeyhole className="h-3 w-3" /> : <FileText className="h-3 w-3" />}{displayedProtocol.status === "locked" ? "已锁定" : "草稿"}</Badge>}</div>}
+        action={<div className="flex items-center gap-2"><Badge variant="neutral">{research.project.evaluationMode === "quick" ? "快速模式" : "专业模式"}</Badge><AdminOnly><Button variant="outline" size="sm" asChild><Link href={`/projects/${projectId}/settings`}><Settings2 className="h-3.5 w-3.5" />项目设置</Link></Button></AdminOnly>{displayedProtocol && <Badge variant={displayedProtocol.status === "locked" ? "success" : "warning"}>{displayedProtocol.status === "locked" ? <LockKeyhole className="h-3 w-3" /> : <FileText className="h-3 w-3" />}{displayedProtocol.status === "locked" ? "已锁定" : "草稿"}</Badge>}</div>}
       />
 
       {versionCount > 1 && <p className="mb-5 text-xs text-muted-foreground">已保留 {versionCount} 个 Protocol 版本；当前展示最新版本，历史锁定版本未被覆盖。</p>}

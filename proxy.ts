@@ -50,6 +50,7 @@ function isPublicReadRequest(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (pathname.startsWith("/api/")) return false;
   if (pathname === "/admin" || pathname.startsWith("/settings") || pathname.startsWith("/benchmark")) return false;
+  if (pathname === "/products" && request.nextUrl.searchParams.get("view") === "deleted") return false;
   if (pathname === "/projects/new" || pathname.startsWith("/projects/demo")) return false;
   if (/^\/projects\/[^/]+\/settings(?:\/|$)/.test(pathname)) return false;
   return true;

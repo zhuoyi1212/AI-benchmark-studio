@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
 import { getProductLibraryDetail } from '@/lib/services/product-library.service';
 import { withPageReads } from '@/lib/supabase/read-scope';
+import { AdminOnly } from '@/components/workspace-access';
 
 async function ProductDetailPage({ params }: { params: Promise<{ productId: string }> }) {
   await connection();
@@ -16,7 +17,7 @@ async function ProductDetailPage({ params }: { params: Promise<{ productId: stri
   const hasOutputs = outputs.reports.length > 0 || outputs.articles.length > 0;
   return <div className="page-shell max-w-5xl">
     <Link href="/products" className="mb-6 inline-flex text-xs text-muted-foreground">返回产品库</Link>
-    <PageHeader title={product.name} description={product.latestSnapshot?.positioning ?? '每次测评独立保存，资料在这里持续积累。'} action={<Link href={`/projects/new?productId=${product.id}`} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">开始新测评</Link>} />
+    <PageHeader title={product.name} description={product.latestSnapshot?.positioning ?? '每次测评独立保存，资料在这里持续积累。'} action={<AdminOnly><Link href={`/projects/new?productId=${product.id}`} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">开始新测评</Link></AdminOnly>} />
     <div className="mb-6 flex flex-wrap gap-3 text-xs text-muted-foreground"><span>{product.projects.length} 次测评</span><span>{snapshots.length} 个调研版本</span>{product.officialUrl && <a href={product.officialUrl} target="_blank" rel="noreferrer" className="text-blue-700">产品官网 ↗</a>}</div>
     <nav aria-label="产品资料" className="mb-8 flex gap-6 border-b pb-3 text-sm"><a href="#research">调研资料</a><a href="#evaluations">测评记录</a><a href="#outputs">内容产出</a></nav>
     <section id="research" className="scroll-mt-8"><h2 className="mb-4 text-lg font-semibold">调研资料</h2>

@@ -6,12 +6,15 @@ import { useRouter } from "next/navigation";
 import { setProductArchivedAction } from "@/app/products/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useWorkspaceReadOnly } from "@/components/workspace-access";
 
 export function ProductActions({ productId, productName, archived = false }: { productId: string; productName: string; archived?: boolean }) {
+  const readOnly = useWorkspaceReadOnly();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  if (readOnly) return null;
   function submit() {
     setError(null);
     startTransition(async () => {
