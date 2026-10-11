@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { after } from 'node:test';
-import { mkdtemp, readFile, writeFile, rm, readdir } from 'node:fs/promises';
+import * as fsPromises from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,12 +120,16 @@ test('all vision requests failing can still use subtitle or completed transcript
   await assert.rejects(service({ vision: fail, asr: null }).analyze({ artifactId: prepared.artifactId, sizeBytes: 100, url: 'https://fixture.invalid' }), error => error.code === 'no_evidence');
 });
 test('ffprobe cannot start: actionable runtime failure, no fake analysis, temp files cleaned', async t => {
-  const before = (await readdir(tmpdir())).filter(n => n.startsWith('benchmark-media-'));
+  const ownedDirectories = [];
+  const isolated = createLoader(root, { 'node:fs/promises': { ...fsPromises,
+    mkdtemp: async prefix => { const path = await mkdtemp(prefix); ownedDirectories.push(path); return path; },
+  } })('@/lib/media/video-preprocessor').localVideoPreprocessor;
   t.mock.method(globalThis, 'fetch', async () => new Response(withAudio));
   const previous = process.env.FFPROBE_PATH; process.env.FFPROBE_PATH = join(directory, 'missing-binary');
-  try { await assert.rejects(localVideoPreprocessor.preprocess(source(withAudio)), error => error.code === 'runtime_unavailable'); }
+  try { await assert.rejects(isolated.preprocess(source(withAudio)), error => error.code === 'runtime_unavailable'); }
   finally { if (previous) process.env.FFPROBE_PATH = previous; else delete process.env.FFPROBE_PATH; }
-  assert.deepEqual((await readdir(tmpdir())).filter(n => n.startsWith('benchmark-media-')), before);
+  assert.equal(ownedDirectories.length, 1);
+  for (const path of ownedDirectories) await assert.rejects(fsPromises.stat(path), { code: 'ENOENT' });
 });
 test('corrupt MP4 and source integrity mismatch fail without retained temp files', async t => {
   const bytes = Buffer.from('not an MP4'); t.mock.method(globalThis, 'fetch', async () => new Response(bytes));

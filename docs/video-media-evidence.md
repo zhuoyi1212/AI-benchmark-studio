@@ -69,6 +69,8 @@ MVP 资源边界：文件最多 50 MiB；Storage 下载最多 120 秒，与最�
 
 标准 Functions 部署还受函数包总体积、内存、临时磁盘和执行时间限制。二进制大小检查不是函数包完整体积证明，必须结合远端 build 与 runtime 诊断。长视频、多视频并发、高分辨率或大文件应把 VideoPreprocessor 实现迁至独立 Node/容器工作端；上层 Evidence/Evaluator 接口无需改变。
 
+本次部署 `dpl_ALuzC36YWunMcoMXsqapEYfDsggk` 已 READY 并切换公开 sand 域名，代码提交 `dfbb519`。远端 Linux x64 安装实际执行 FFmpeg 7.0.2 与 FFprobe N-66595，二进制分别 79,826,272 / 78,926,144 bytes，Next 生产构建与函数上传成功。无凭据工作台200、创建/媒体自检401已验证。部署后函数的管理员抽帧/提音自检尚未取得结果：现有 APP_ACCESS_PASSWORD 属于不可读取的 Vercel Secret，本机无副本，已请求用户从保存密码的浏览器返回 `/api/media/runtime` JSON。不能把 build 验证冒充部署后函数运行验证。
+
 官方参考：[Functions limits](https://vercel.com/docs/functions/limitations)、[Function runtime](https://vercel.com/docs/functions/runtimes/node-js)、[Private Storage](https://supabase.com/docs/guides/storage/buckets/fundamentals)。
 
 ## 验证与已知限制
