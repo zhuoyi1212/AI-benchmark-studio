@@ -420,3 +420,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-11 Claude 内容方案第一迭代：在不修改 Protocol/Blind/Judge/确认 Findings 的范围内重构 Publish。选题与 Story Brief 以读者问题和实际证据分量为起点，写作者使用原始细节；审核只读、问题可定位，有问题才定向修订，最终独立审核实际保存全文。保留 structured output 与现有集中模型配置；标题含产品名且可独立版本化刷新。视频改为 native video_url，新增一次视频细节读取后再用文本策划/核验，避免视觉模型同时承担复杂文章策划。成功阶段继续沿用 quick_job_steps，保存兼容 Brief、初审、原稿/最终稿与4–6阶段审计；无数据库 migration、不覆盖历史。
 
 验证：319/319 tests、typecheck、build、diff check、全仓边界审计通过。真实 Supabase/Storage 完整 E2E Run mv3n6vs8-5085083a 通过，3个夹具项目已软删除；后台恢复 E2E Run mv3nd97o-3320e54c 通过，服务重启后已成功阶段不重复生成，修订失败后仅修订阶段重试，夹具归档。隔离 AI 响应不冒充真实产品结论。用户授权的万彩AI真实本地对照未取得可验收的新旧样稿对：原链结构失败，新版视频调用出现智谱1210媒体解析错误；本机HEAD验证同一47MB视频200且MIME正确。不能据此宣布文章质量提升或达到方案65%盲评目标；尚需供应商视频稳定性及多项目人工偏好评测。此轮为下游增量，不重新认证全部 Acceptance Criteria；上游读者问题、测试者记录、Findings拆分与换模型留待后续。
+
+2026-10-11 线上发布补充：实现提交3f816d4；Vercel production dpl_GCrSxBbqEc6VVjuYbXVYTG4Vr1ji READY，已验证并promote。alias确认公开sand域名指向该版本；无凭据工作台200、创建入口401，真实浏览器确认4个历史项目与只读标记。没有重生成或覆盖历史文章；真实视频对照的供应商解析限制仍保留在验证记录。

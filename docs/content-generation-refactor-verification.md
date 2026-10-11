@@ -39,4 +39,12 @@ Claude 方案的下游第一迭代：读者问题 → Story Brief → 原始细�
 
 本轮是内容链下游增量验收，不是对全项目全部 Acceptance Criteria 的重新认证。原始测试不足、没有真实作者感受及未测试核心承诺仍然是素材缺口，提示词不能凭空补齐。
 
-线上部署状态及提交号在交付时补充。用户需要重新生成新文章才能看到新规则；历史文章保留原文。
+## 线上发布
+
+- 实现提交：`3f816d407076c7bcae133f1d1b28e74196bafe19`。
+- Vercel 部署：`dpl_GCrSxBbqEc6VVjuYbXVYTG4Vr1ji`，production / READY；云端元数据确认项目、分支、提交一致。
+- 暂存生产部署的 `/projects` 返回 200，并显示只读标记；`/projects/new` 返回 401。
+- 已 promote；平台 alias 列表确认 `ai-benchmark-studio-sand.vercel.app` 指向新部署。
+- 公开域名 `/projects` 无凭据访问 200；真实浏览器显示工作台、4个历史项目及只读标记。没有触发线上 AI 生成或修改用户文章。
+
+用户需要重新生成新文章才能看到新规则；历史文章保留原文。上述视频媒体解析限制仍未解除。
