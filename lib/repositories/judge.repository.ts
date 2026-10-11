@@ -56,6 +56,12 @@ export const judgeRepository = {
     return data.signedUrl;
   },
 
+  async redactVideoEvidence(judgeRunId: string, testCaseId: string, content: string): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc("redact_video_judge_evidence", { p_judge_run_id: judgeRunId, p_test_case_id: testCaseId, p_content: content });
+    if (error) throwRepositoryError("judge.redactVideoEvidence", error);
+    return data;
+  },
+
   async completeCase(judgeCaseRunId: string, scores: JudgeCaseScoreOutput[], usage: AIUsage): Promise<void> {
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const { error } = await getSupabaseServerClient().rpc("complete_judge_case_run", {

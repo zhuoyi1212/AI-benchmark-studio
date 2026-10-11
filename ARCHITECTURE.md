@@ -384,3 +384,8 @@ Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择
 Brief 关联事实和 Artifact ID，服务校验引用及共同任务比较准入；写作者读取原始文本、PDF 抽取文本和 Brief 中的视觉细节。视频在本次下游传输使用 video_url，并将当前任务及其材料与视频放在同一个 user 消息，避免嵌入测试 Prompt 被误当任务；修复请求移动而非重复原视频消息。此前 Judge/Findings 传输及历史评分不在本轮改变范围内。错误日志仅增加媒体数量，不记录 URL 或原始视频。
 
 publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，成功保存原稿、实际最终稿、四项质量与六项保真、阶段路由/版本/输入签名/usage。Repository 的既有完成 RPC 原子写入；无新表、无 migration。历史 writingPlan、contentBrief、editorialPlan 仍可读取；重生成创建新版本。成功阶段沿用 quick_job_steps，失败不能 ready 或回退 Mock。配图段落按最终正文锚定句由程序定位。
+
+
+## 视频媒体证据架构（2026-10-11）
+
+按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。

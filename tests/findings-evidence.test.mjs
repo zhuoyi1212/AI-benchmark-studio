@@ -47,6 +47,7 @@ function serviceFixture(artifacts, overrides={}) {
     '@/lib/services/test-execution.service':{getTestExecutionWorkspace:async()=>testWorkspace},
     '@/lib/services/research.service':{getResearchWorkspace:async()=>({completedResult:{products:[]}})},
     '@/lib/services/human-review.service':{getHumanReviewWorkspace:async()=>({status:'revealed'})},
+    "@/lib/media/video-evidence": { buildVideoEvidence: async source => ({ artifactId: source.artifactId, frames: [{ timestamp: 0, visibleText: ["fixture frame"] }], warnings: ["speech_transcription_unavailable"] }), mediaEvidenceText: evidence => "MediaEvidence: " + JSON.stringify(evidence) },
     ...overrides,
   })('@/lib/services/findings.service');
 }
@@ -55,12 +56,14 @@ const pdfArtifact={id:'pdf-original',fileName:'fixture.pdf',fileType:'applicatio
 const imageArtifact={id:'screenshot-original',fileName:'fixture.png',fileType:'image/png',fileUrl:'https://fixture.invalid/image'};
 const videoArtifact={id:'video-original',fileName:'fixture.mp4',fileType:'video/mp4',fileUrl:'https://fixture.invalid/video'};
 
-test('video evidence is sent without an accompanying screenshot', async () => {
+test('video evidence becomes MediaEvidence and can share original screenshots', async () => {
   const content=await serviceFixture([imageArtifact,videoArtifact]).buildRawFindingsEvidenceContent('project');
-  assert.equal(content.filter(part=>part.type==='image_url').length,0);
-  assert.deepEqual(content.filter(part=>part.type==='file_url').map(part=>part.file_url.url),[videoArtifact.fileUrl]);
+  assert.equal(content.filter(part=>part.type==='image_url').length,1);
+  assert.equal(content.some(part=>part.type==='file_url'||part.type==='video_url'),false);
+  assert.ok(content.some(part=>part.text?.includes('MediaEvidence:')));
   assert.match(content[0].text,/"selectedFamily":"video"/);
-  assert.doesNotMatch(JSON.stringify(content),/screenshot-original/);
+  assert.match(JSON.stringify(content),/screenshot-original/);
+  assert.doesNotMatch(JSON.stringify(content),/fixture.invalid\/video/);
 });
 
 test('mixed PDF and screenshots contain all PDF pages with original IDs and no file_url', async t => {

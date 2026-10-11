@@ -9,8 +9,9 @@ const nextConfig: NextConfig = {
     // Server Actions already invalidate affected routes after every write.
     staleTimes: { dynamic: 120 },
   },
-  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas"],
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "ffmpeg-static", "@ffprobe-installer/ffprobe"],
   outputFileTracingIncludes: {
+    "/*": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/@ffprobe-installer/linux-x64/ffprobe", "./node_modules/@ffprobe-installer/darwin-arm64/ffprobe", "./node_modules/@ffprobe-installer/darwin-x64/ffprobe"],
     "/api/cron/quick-workflow": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*", "./node_modules/pdfjs-dist/wasm/**/*"],
     "/projects/*": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*", "./node_modules/pdfjs-dist/wasm/**/*"],
   },

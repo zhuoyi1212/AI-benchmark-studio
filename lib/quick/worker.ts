@@ -36,7 +36,8 @@ export async function runQuickWorker(projectId?: string, maxJobs = 8) {
         await quickJobsRepository.finish(job, 'completed', outcome.result ?? null, null, outcome.next);
       } catch (error) {
         if (error instanceof QuickYield) {
-          await quickJobsRepository.finish(job, 'queued', { continuation: true });
+          const retryEpoch = job.result && typeof job.result === 'object' && !Array.isArray(job.result) ? job.result.retryEpoch : undefined;
+          await quickJobsRepository.finish(job, 'queued', { continuation: true, ...(typeof retryEpoch === 'string' ? { retryEpoch } : {}) });
           return;
         }
         const message = error instanceof Error ? error.message : '后台任务失败，请重试当前阶段。';

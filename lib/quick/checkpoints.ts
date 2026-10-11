@@ -5,7 +5,7 @@ import { createInputSignature } from '@/lib/signatures';
 import type { Json } from '@/lib/types/database';
 import type { QuickJob } from './types';
 
-export const quickExecution = new AsyncLocalStorage<{ job: QuickJob; retryable: boolean; aiCalls: number }>();
+export const quickExecution = new AsyncLocalStorage<{ job: QuickJob; retryable: boolean; aiCalls: number; mediaPreparations?: number }>();
 
 // Only immutable Storage objects lose their expiring URL token in cache identities.
 function stableInput(input: unknown): string {
@@ -21,7 +21,7 @@ export async function checkpoint<T>(name: string, input: unknown, execute: () =>
   const key = `${name}:${createInputSignature(stableInput(input))}`;
   const saved = await quickJobsRepository.readStep(scope.job.id, key);
   if (saved !== undefined) return saved as T;
-  if (scope.job.kind === 'publish' && scope.aiCalls >= 1) throw new QuickYield();
+  if (['publish', 'evaluate', 'findings'].includes(scope.job.kind) && scope.aiCalls >= 1) throw new QuickYield();
   scope.aiCalls += 1;
   const result = await execute();
   await quickJobsRepository.saveStep(scope.job, key, JSON.parse(JSON.stringify(result)) as Json);

@@ -422,3 +422,11 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 验证：319/319 tests、typecheck、build、diff check、全仓边界审计通过。真实 Supabase/Storage 完整 E2E Run mv3n6vs8-5085083a 通过，3个夹具项目已软删除；后台恢复 E2E Run mv3nd97o-3320e54c 通过，服务重启后已成功阶段不重复生成，修订失败后仅修订阶段重试，夹具归档。隔离 AI 响应不冒充真实产品结论。用户授权的万彩AI真实本地对照未取得可验收的新旧样稿对：原链结构失败，新版视频调用出现智谱1210媒体解析错误；本机HEAD验证同一47MB视频200且MIME正确。不能据此宣布文章质量提升或达到方案65%盲评目标；尚需供应商视频稳定性及多项目人工偏好评测。此轮为下游增量，不重新认证全部 Acceptance Criteria；上游读者问题、测试者记录、Findings拆分与换模型留待后续。
 
 2026-10-11 线上发布补充：实现提交3f816d4；Vercel production dpl_GCrSxBbqEc6VVjuYbXVYTG4Vr1ji READY，已验证并promote。alias确认公开sand域名指向该版本；无凭据工作台200、创建入口401，真实浏览器确认4个历史项目与只读标记。没有重生成或覆盖历史文章；真实视频对照的供应商解析限制仍保留在验证记录。
+
+2026-10-11 视频媒体证据架构：先诊断上传/Judge/Findings/Publish 调用链，确认上传成功后的 native MP4 请求受智谱 1210 阻断。新增可迁移 VideoPreprocessor，以 FFprobe 获取元数据、FFmpeg 抽最多12帧 JPEG、提取16kHz单声道音频和原生字幕；独立 Vision/ASR 接口汇总严格 MediaEvidence，评分与文章只消费可追溯证据。ASR 尚无配置，明确 unavailable，不猜测声音。无音轨/字幕、ASR失败、部分Vision失败继续；没有任何有效证据才拒绝评价。Router 拦截 native MP4；不跨厂商静默 fallback，不生成替代评分。
+
+持久化私有预处理/成功转录/完整证据缓存，部分失败证据限10分钟窗口，显式retry使用独立epoch；quick_job_steps只保存结构化观察和独立失败记录，缓存中断仍可续跑。每次快速后台调用最多解码一个新视频、执行一个新AI阶段。新增 service-role-only 视频身份脱敏 RPC，原Artifact与不可变历史评分保留；视频Judge验证引用属于当前Sample。两个非破坏性migration已应用，无新核心表；第二个隔离保留E2E项目，避免生产Cron抢占本地夹具。新增部署postinstall二进制检查、Node tracing及管理员媒体runtime自检。
+
+验证：343/343 tests通过（原319项保留，新增24项），覆盖真实FFmpeg音频/无音频/无字幕/原生字幕、ASR异常/超时、Vision部分/全部失败、损坏/超大/超长视频、二进制失败、缓存故障、多视频续跑与显式重试。lint为0 errors、26条现有warnings；最终typecheck、build、diff check通过。真实数据库事务回滚验证脱敏、权限及Artifact引用保留通过，安全检查无WARNING/ERROR，仅原有10条server-only RLS INFO。完整原流程E2E Run mv3y6lci-9cd4e427通过，3个夹具归档；视频E2E Run mv3zk0ps-2199f501通过8阶段，坏批次/坏帧后成功、nativeVideoRequests=0、Evaluator收到匿名文本、写作5阶段各一次，夹具归档。AI fixture仅验证流程，不冒充真实产品结论。
+
+用户授权的真实万彩AI约46.9MB/103.817秒视频：源SHA验证、实际抽12帧，真实智谱返回5个有效观察，其余失败/超时保留warnings，未阻断证据产出；真实DeepSeek基于证据完成9项严格引用评价。输出只在本地保存，不覆盖原测评或文章；ASR不可用、稀疏采样项保持未知，不能据此宣称连续动画/配音或文章质量已验证。资源限制50MiB、下载120秒/解码60秒、音频最多300秒；长视频/大文件应迁独立工作端。详见docs/video-media-evidence.md。本轮为媒体架构增量，不重新认证全部M0–M15 Acceptance Criteria。

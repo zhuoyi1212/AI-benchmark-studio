@@ -399,3 +399,8 @@ MVP 只提供：
 新文章保存规范版本、提纲、内容简报、润色前后文案、四阶段调用追溯及六项保真结果。旧文章与上游实验保持原版；重新生成沿用新 PublishPack 版本。详见规范中的重试上限及审计边界，不承诺模型审稿等同人工验收。
 
 已完成文章支持单独更换标题。标题任务只读取已核验正文、当前标题、渠道和核心观点，不改正文、标签、互动句或证据关系；新标题须与当前标题不同、6–28 字、具体清楚且有真实钩子，禁止标题党和正文无依据数字。每次更换创建新的 immutable PublishPack 版本，并保存 route、输入签名、usage 与前后标题。
+
+
+## 视频媒体证据架构（2026-10-11）
+
+按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。

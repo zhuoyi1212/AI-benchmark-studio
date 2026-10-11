@@ -122,3 +122,8 @@
 
 
 2026-10-11 Claude 内容方案第一迭代：用户授权按附带方案重构，并允许万彩AI视频/确认发现作本地新旧链路对照。先完成下游：读者问题与证据分量策划 Story Brief、原始细节写作、只读初审、有问题才定向修订、独立只读最终复核。取消强制 writingPlan 结构和无条件整体润色，不改已确认实验、Blind、Protocol Lock、人工执行、immutable AI Score 或 append-only Review。继续 structured JSON 和既有集中模型配置；纯文本创作、换模型、上游读者问题、测试者记录表单及 Findings 拆分留待后续评测。所有新生成标题含产品名；标题刷新继续独立创建版本。视频下游修正为 native video_url，先一次视觉细节提取，再由文本模型策划/写作/审核；不拆上游已确认 Findings。此决定优先于旧版冲突的 Publish 结构、审核越权和润色要求。
+
+
+## 视频媒体证据架构（2026-10-11）
+
+按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。

@@ -71,7 +71,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   judge_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "judge.v1",
+    promptVersion: "judge.v2-media-evidence",
     reasoning: "high",
     timeoutMs: judgeTextTimeoutMs,
     maxAttempts: judgeTaskMaxAttempts,
@@ -80,11 +80,20 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   judge_multimodal: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "judge.v1",
+    promptVersion: "judge.v2-media-evidence",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: judgeTaskMaxAttempts,
     model: (models) => models.zhipuVisionModel,
+  },
+  judge_video_evidence: {
+    provider: "deepseek",
+    capability: "structured_text",
+    promptVersion: "judge-video.v1-media-evidence",
+    reasoning: "high",
+    timeoutMs: reasoningHeavyTimeoutMs,
+    maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.deepSeekReasoningModel,
   },
   result_analysis: {
     provider: "deepseek",
@@ -98,7 +107,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   findings: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "findings.v3-single-media-family",
+    promptVersion: "findings.v4-media-evidence",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -175,6 +184,15 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
+    model: (models) => models.zhipuVisionModel,
+  },
+  video_frame_analysis: {
+    provider: "zhipu",
+    capability: "multimodal",
+    promptVersion: "video-frames.v1-evidence",
+    reasoning: "standard",
+    timeoutMs: 30_000,
+    maxAttempts: 1,
     model: (models) => models.zhipuVisionModel,
   },
   ocr: {

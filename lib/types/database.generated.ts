@@ -2055,6 +2055,10 @@ export type Database = {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
+      redact_video_judge_evidence: {
+        Args: { p_judge_run_id: string; p_test_case_id: string; p_content: string }
+        Returns: string
+      }
       get_judge_case_inputs: {
         Args: { p_judge_run_id: string; p_test_case_id: string }
         Returns: {

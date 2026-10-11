@@ -28,7 +28,7 @@ export async function postProviderJson(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(options.timeoutMs),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs)]) : AbortSignal.timeout(options.timeoutMs),
       cache: "no-store",
     });
   } catch (error) {

@@ -25,9 +25,21 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
   request: StructuredTaskRequest<Schema>,
 ): Promise<StructuredTaskResult<z.infer<Schema>>> {
   const route = resolveAITaskRoute(task);
-  await request.beforeExecute?.(route);
+  for (const message of request.messages) {
+    if (!Array.isArray(message.content)) continue;
+    if (message.content.some(part => part.type === "video_url" || part.type === "file_url" && /\.(mp4|mov|webm)(?:\?|$)/i.test(part.file_url.url))) throw new AIValidationError(task, "videoRequiresMediaEvidence");
+    if (task === "judge_video_evidence" && message.content.some(part => part.type !== "text")) throw new AIValidationError(task, "videoEvaluatorRequiresStructuredEvidence");
+  }
+  let prepared = false;
   const result = await checkpoint(request.schemaName, { route, schema: z.toJSONSchema(request.schema, { target: "draft-7" }), messages: request.messages, maxTokens: request.maxTokens },
-    () => executeStructuredAITask(task, { ...request, beforeExecute: undefined }));
+    async () => {
+      await request.beforeExecute?.(route);
+      prepared = true;
+      return executeStructuredAITask(task, { ...request, beforeExecute: undefined });
+    });
+  // Cached results still need the current run's persistence metadata. A budget
+  // yield, however, must not mark a not-yet-executed stage as running.
+  if (!prepared) await request.beforeExecute?.(route);
   return { ...result, data: request.schema.parse(result.data) };
 }
 
@@ -64,7 +76,7 @@ async function executeStructuredAITask<Schema extends z.ZodType>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs });
+      const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs, signal: request.signal });
       await request.onResponse?.({ route, attempt, reasoning: attemptReasoning, messages: attemptMessages, content: response.content, requestId: response.requestId, usage: response.usage });
       let json: unknown;
       try {
@@ -318,6 +330,10 @@ export function selectJudgeTaskForCase(testCaseId: string, artifacts: JudgeArtif
   if (artifacts.some((artifact) => artifact.testCaseId !== testCaseId)) {
     throw new AIValidationError("judge", "singleTestCaseArtifactSet");
   }
+  // Only the video-evidence service may build this case's request. Screenshots
+  // become separately traced observations first; no MP4 or image reaches this evaluator.
+  if (artifacts.some(artifact => artifact.mimeType.startsWith("video/"))
+    && artifacts.every(artifact => isTextArtifactMimeType(artifact.mimeType) || artifact.mimeType.startsWith("video/") || artifact.mimeType.startsWith("image/"))) return "judge_video_evidence";
   return artifacts.every((artifact) => isTextArtifactMimeType(artifact.mimeType)) ? "judge_text" : "judge_multimodal";
 }
 

@@ -17,9 +17,9 @@ function action(errorCode) {
     '@/lib/services/quick-workflow.service':{}, '@/lib/quick/dispatch':{},
     '@/lib/project-mode':{isEvaluationMode:value=>['quick','professional'].includes(value)},
   };
-  const module={exports:{}};
-  new Function('require','module','exports',code)(name=>{assert.ok(name in dependencies,name);return dependencies[name];},module,module.exports);
-  return {submit:form=>module.exports.createProjectAction({message:null},form),records};
+  const fixtureModule={exports:{}};
+  new Function('require','module','exports',code)(name=>{assert.ok(name in dependencies,name);return dependencies[name];},fixtureModule,fixtureModule.exports);
+  return {submit:form=>fixtureModule.exports.createProjectAction({message:null},form),records};
 }
 function form(products){const result=new FormData();result.set('name','Repeated product');result.set('intent','New scenario');result.set('evaluationMode','professional');for(const product of products){result.append('productId',product.id??'');result.append('productName',product.name);result.append('productWebsite',product.url??'');}return result;}
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

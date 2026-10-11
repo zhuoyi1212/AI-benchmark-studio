@@ -8,6 +8,7 @@ export const aiTaskTypes = [
   "protocol_professional",
   "judge_text",
   "judge_multimodal",
+  "judge_video_evidence",
   "result_analysis",
   "findings",
   "report",
@@ -18,6 +19,7 @@ export const aiTaskTypes = [
   "community_post_evidence_check_text",
   "community_post_evidence_check",
   "screenshot_understanding",
+  "video_frame_analysis",
   "ocr",
 ] as const;
 
@@ -67,6 +69,7 @@ export type AIUsage = {
 };
 
 export type AIProviderRequestContext = {
+  signal?: AbortSignal;
   task: AITaskType;
   attempt: number;
   timeoutMs: number;
@@ -115,6 +118,7 @@ export type OCRResult = {
 };
 
 export type StructuredTaskRequest<Schema extends ZodType> = {
+  signal?: AbortSignal;
   schema: Schema;
   schemaName: string;
   messages: AIMessage[];

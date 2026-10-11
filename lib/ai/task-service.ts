@@ -246,6 +246,7 @@ export const aiTaskService = {
   factCheckTextCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check_text", request),
   factCheckCommunityPost: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("community_post_evidence_check", request),
   understandScreenshots: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("screenshot_understanding", request),
+  analyzeVideoFrames: <Schema extends ZodType>(request: StructuredTaskRequest<Schema>) => runStructuredAITask("video_frame_analysis", request),
   extractArtifactText: (request: OCRRequest) => runOCR(request),
 } satisfies Record<string, (...args: never[]) => unknown>;
 

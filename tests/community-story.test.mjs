@@ -23,29 +23,26 @@ test('writer receives actual raw details and a validated brief, not just finding
   assert.equal(input.storyBrief.readerQuestion, h.state.saved.storyBrief.readerQuestion);
   assert.deepEqual(h.state.rawOptions.testCaseIds, [id]);
   assert.deepEqual(h.state.rawOptions.artifactIds, [id]);
-  assert.equal(h.state.rawOptions.nativeVideo, true);
+  assert.equal(Object.hasOwn(h.state.rawOptions, "nativeVideo"), false);
 });
 
-test('native video is read once, then its concrete details reach the text planner, writer and reviews', async () => {
-  const h = harness({ raw: [{ type: 'text', text: rawEvidence + `\nartifactId: ${id}; MIME: video/mp4` }, { type: 'video_url', video_url: { url: 'https://fixture.invalid/video.mp4' } }] });
+test('preprocessed video details reach the text planner, writer and reviews without MP4 input', async () => {
+  const h = harness({ raw: rawEvidence + '\nMediaEvidence: 视频画面显示写下项目的3个硬数字，并提前约15分钟沟通。transcript.status=unavailable' });
   await h.run();
-  assert.equal(h.state.saved.generationTrace.length, 5);
-  assert.equal(h.state.saved.generationTrace[0].stage, 'evidence_read');
-  assert.equal(h.state.calls[0].schemaName, 'PublicationVideoObservations');
-  const evidence = h.state.calls[0].messages.at(-1).content;
-  assert.equal(evidence.filter(p => p.type === 'video_url').length, 1);
-  assert.equal(evidence.filter(p => p.type === 'text').length, 1);
-  for (const call of h.state.calls.slice(1)) {
+  assert.equal(h.state.saved.generationTrace.length, 4);
+  assert.equal(h.state.calls[0].schemaName, 'CommunityStoryBrief');
+  for (const call of h.state.calls) {
     assert.ok(call.messages.every(m => typeof m.content === 'string'));
     assert.match(JSON.stringify(call.messages), /视频画面显示/);
+    assert.doesNotMatch(JSON.stringify(call.messages), /video_url|file_url/);
   }
-  assert.equal(h.state.usage.inputTokens, 50);
+  assert.equal(h.state.usage.inputTokens, 40);
 });
 
-test('failed or incomplete video reading cannot proceed to writing or save a ready article', async () => {
-  const h = harness({ raw: [{ type: 'text', text: `artifactId: ${id}; MIME: video/mp4` }, { type: 'video_url', video_url: { url: 'https://fixture.invalid/raw.mp4' } }], mutate: (stage, value) => stage === 'PublicationVideoObservations' ? { observations: [] } : value });
-  await assert.rejects(h.run(), /读取视频细节/);
-  assert.equal(h.state.calls.length, 1);
+test('unprocessed native video cannot bypass MediaEvidence or reach an article model', async () => {
+  const h = harness({ raw: [{ type: 'text', text: `artifactId: ${id}; MIME: video/mp4` }, { type: 'video_url', video_url: { url: 'https://fixture.invalid/raw.mp4' } }] });
+  await assert.rejects(h.run(), /MediaEvidence/);
+  assert.equal(h.state.calls.length, 0);
   assert.equal(h.state.saved, null);
 });
 

@@ -11,6 +11,9 @@ import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/ju
 import { findingsRepository } from "@/lib/repositories/findings.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createInputSignature } from "@/lib/signatures";
+import { buildVideoEvidence, mediaEvidenceText } from "@/lib/media/video-evidence";
+import { MediaProcessingError, mediaPolicyVersion, videoEvaluationRules } from "@/lib/media/media-evidence";
+import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
@@ -115,7 +118,9 @@ export async function generateExperienceFindings(projectId: string): Promise<str
   let findingsId: string | null = null;
 
   try {
-    findingsId = await findingsRepository.begin(projectId, test.protocol.id, snapshot, inputSignature);
+    const scope = quickExecution.getStore();
+    const active = scope?.job.kind === "findings" ? (await findingsRepository.list(projectId, test.protocol.id)).find(row => row.status === "pending" && row.created_at >= scope.job.created_at && row.input_signature === inputSignature) : null;
+    findingsId = active?.id ?? await findingsRepository.begin(projectId, test.protocol.id, snapshot, inputSignature);
     const persisted = (await findingsRepository.list(projectId, test.protocol.id)).find((row) => row.id === findingsId);
     if (!persisted) throw new RepositoryError("findings.requirePersisted", { message: "Findings not found" });
     if (persisted.status === "completed") return persisted.id;
@@ -138,6 +143,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
             "若问题可能来自测试环境、输入文件或证据缺失，要明确写进 limitation，不能直接归因为产品能力。",
             "Research 只作为产品定位背景，不能覆盖真实 Artifact。",
             "输出简体中文。finding id 使用简短的英文小写 slug。",
+            videoEvaluationRules,
           ].join("\n"),
         },
         { role: "user", content },
@@ -152,6 +158,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
     await findingsRepository.complete(persisted.id, normalized, result.usage);
     return persisted.id;
   } catch (error) {
+    if (error instanceof QuickYield) throw error;
     if (error instanceof AIProviderError) {
       console.error("[FindingsProviderError]", {
         provider: error.provider,
@@ -189,7 +196,7 @@ async function readHumanReview(projectId: string) {
 
 export async function buildRawFindingsEvidenceContent(
   projectId: string,
-  options: { preferPdfText?: boolean; nativeVideo?: boolean; testCaseIds?: string[]; artifactIds?: string[] } = {},
+  options: { preferPdfText?: boolean; testCaseIds?: string[]; artifactIds?: string[] } = {},
 ): Promise<AIMessageContent> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
@@ -297,6 +304,7 @@ function buildSnapshot(
 ): Json {
   return JSON.parse(JSON.stringify({
     evidenceTransport,
+    mediaPolicyVersion,
     project: { id: test.project.id, name: test.project.name },
     protocol: {
       id: test.protocol.id,
@@ -341,7 +349,7 @@ function buildSnapshot(
 async function buildArtifactContent(
   test: TestExecutionWorkspace,
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
-  options: { preferPdfText?: boolean; nativeVideo?: boolean } = {},
+  options: { preferPdfText?: boolean } = {},
   evidenceTransport?: FindingsEvidenceTransport,
 ): Promise<AIMessageContent> {
   const artifacts = test.testRuns.flatMap((run) => run.artifacts);
@@ -383,6 +391,7 @@ async function buildArtifactContent(
         })),
       },
       evidenceTransport,
+      mediaPolicyVersion,
     }),
   }];
 
@@ -392,6 +401,7 @@ async function buildArtifactContent(
     if (!product || !testCase) throw new FindingsExecutionError("TestRun 与当前测试计划不一致。");
 
     const hasTextArtifact = run.artifacts.some((artifact) => textMimeTypes.has(normalizeMimeType(artifact.fileType)));
+    const hasVideoArtifact = run.artifacts.some((artifact) => normalizeMimeType(artifact.fileType).startsWith("video/"));
     for (const artifact of run.artifacts) {
       const mimeType = normalizeMimeType(artifact.fileType);
       if (mimeType === "application/pdf" && hasTextArtifact) {
@@ -416,7 +426,7 @@ async function buildArtifactContent(
           content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
         }
       } else if (mimeType.startsWith("image/")) {
-        if (hasTextArtifact) {
+        if (hasTextArtifact && !hasVideoArtifact) {
           console.info("[FindingsEvidence] Image omitted because this TestRun has a text Artifact", {
             testRunId: run.id,
             artifactId: artifact.id,
@@ -443,8 +453,9 @@ async function buildArtifactContent(
       } else if (mimeType === "application/pdf") {
         console.info("[FindingsEvidence] PDF retained as native file evidence", { testRunId: run.id, artifactId: artifact.id });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
-      } else if (mimeType.startsWith("video/") && options.nativeVideo) {
-        content.push({ type: "video_url", video_url: { url: artifact.fileUrl } });
+      } else if (mimeType.startsWith("video/")) {
+        const evidence = await buildVideoEvidence({ artifactId: artifact.id, url: artifact.fileUrl, sizeBytes: artifact.sizeBytes, sha256: artifact.sha256 }, { prompt: testCase.prompt, objective: testCase.objective, auxiliaryEvidenceAvailable: hasTextArtifact || run.artifacts.some(a => normalizeMimeType(a.fileType).startsWith("image/")) });
+        content.push({ type: "text", text: mediaEvidenceText(evidence) });
       } else {
         console.info("[FindingsEvidence] Artifact retained as native file evidence", { testRunId: run.id, artifactId: artifact.id, mimeType });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
@@ -604,6 +615,7 @@ function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return `Findings validation failed: ${error.schemaName}`;
   if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIProviderError) {
@@ -627,6 +639,7 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIValidationError) return "AI 提炼的 Findings 未通过真实证据引用校验，请重试。";
   if (error instanceof AIProviderError) {

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 
 const expectedAuthorization = "Bearer e2e-local-provider-boundary";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
+const videoEvidence = process.env.E2E_VIDEO_FIXTURE === "1";
 
 export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys = {}, failOnceTask } = {}) {
   const requests = [];
@@ -44,8 +45,17 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
         return send(response, 200, planned.body);
       }
       const provider = request.url.startsWith("/zhipu/") ? "zhipu" : "deepseek";
-      const trackedRequest = { task: schemaName, provider, multimodal };
+      const parts = body.messages.flatMap(m => Array.isArray(m.content) ? m.content : []);
+      const nativeVideo = parts.some(p => p.type === "video_url" || p.type === "file_url" && /\.mp4/.test(p.file_url.url));
+      if (videoEvidence && nativeVideo) throw new Error("Video fixture reached provider as raw MP4");
+      if (videoEvidence && schemaName === "JudgeCaseScores" && (parts.some(p => p.type !== "text") || JSON.stringify(body.messages).includes(process.env.E2E_VIDEO_IDENTITY))) throw new Error("Video evaluator received binary or real identity");
+      const trackedRequest = { task: schemaName, provider, multimodal, nativeVideo };
       requests.push(trackedRequest);
+      if (videoEvidence && schemaName === "VideoFrameObservations") {
+        const timestamps = parts.filter(p => p.type === "text" && p.text.startsWith("timestamp: ")).map(p => Number(p.text.slice(11)));
+        if (timestamps.length > 1 || timestamps.includes(0)) return send(response, 400, { error: { message: "Injected optional bad frame" } });
+        return send(response, 200, createCompletionResponse({ frames: timestamps.map(timestamp => ({ timestamp, sceneDescription: "E2E blue synthetic fixture", visibleText: [process.env.E2E_VIDEO_IDENTITY], productMention: [process.env.E2E_VIDEO_IDENTITY], uiElement: [], obviousIssue: null, relevanceToInput: "Synthetic video fixture only" })) }));
+      }
       if (schemaName === failOnceTask && !injectedFailure) {
         injectedFailure = true;
         return send(response, 400, { error: { message: "Injected isolated E2E failure" } });
@@ -73,6 +83,8 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
     baseUrl: `http://127.0.0.1:${address.port}`,
     stats: () => ({
       total: requests.length,
+      nativeVideoRequests: requests.filter(r => r.nativeVideo).length,
+      videoEvaluatorProviders: requests.filter(r => r.task === "JudgeCaseScores").map(r => r.provider),
       taskCounts: Object.fromEntries([...Map.groupBy(requests, (item) => item.task)].map(([task, items]) => [task, items.length])),
       realAiTaskCounts: Object.fromEntries([...Map.groupBy(requests.filter((item) => item.realAi), (item) => item.task)].map(([task, items]) => [task, items.length])),
       multimodalJudgeRequests: requests.filter((item) => item.task === "JudgeCaseScores" && item.multimodal).length,
@@ -169,7 +181,7 @@ function buildStructuredOutput(schemaName, messages) {
         prompt: `请根据给定目标完成第 ${index + 1} 个标准化任务，并直接输出最终结果。`,
         inputDescription: null,
         inputArtifacts: [],
-        expectedOutputTypes: [textOnlyEvidence ? "text" : "image"],
+        expectedOutputTypes: [videoEvidence ? "video" : textOnlyEvidence ? "text" : "image"],
         evidenceRequirements: [textOnlyEvidence ? "上传未经编辑的完整原始文本结果" : "上传未经裁剪或后期编辑的完整原始截图"],
         observationFocus: ["任务完成度", "信息结构", "视觉可读性"],
         executionRules: ["使用默认设置", "仅生成一次", "不人工美化"],

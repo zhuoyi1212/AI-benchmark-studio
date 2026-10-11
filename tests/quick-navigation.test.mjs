@@ -9,14 +9,14 @@ const ui = new Proxy({}, { get: (_, key) => String(key) });
 async function load(path, dependencies) {
   const source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const module = { exports: {} };
+  const fixtureModule = { exports: {} };
   new Function('require', 'module', 'exports', code)(name => {
     if (name in dependencies) return dependencies[name];
     if (name === 'react/jsx-runtime') return jsx;
     if (name === 'lucide-react' || name.startsWith('@/components/')) return ui;
     throw new Error(`Unexpected import: ${name}`);
-  }, module, module.exports);
-  return module.exports;
+  }, fixtureModule, fixtureModule.exports);
+  return fixtureModule.exports;
 }
 function nodes(value) {
   if (Array.isArray(value)) return value.flatMap(nodes);

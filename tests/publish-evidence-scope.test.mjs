@@ -19,6 +19,7 @@ function evidenceLoader({ video = false } = {}) {
     '@/lib/services/test-execution.service': { getTestExecutionWorkspace: async () => workspace },
     '@/lib/services/research.service': { getResearchWorkspace: async () => ({ completedResult: { products: [] } }) },
     '@/lib/ai/task-service': { aiTaskService: {} },
+    '@/lib/media/video-evidence': { buildVideoEvidence: async source => ({ artifactId: source.artifactId, frames: [{ timestamp: 0, visibleText: ['fixture'] }] }), mediaEvidenceText: evidence => 'MediaEvidence: ' + JSON.stringify(evidence) },
   });
 }
 
@@ -37,12 +38,11 @@ test('selected raw evidence excludes other tasks and refuses missing source arti
   } finally { globalThis.fetch = oldFetch; }
 });
 
-test('Publish sends native video and excludes auxiliary images without changing upstream transport', async () => {
+test('Publish receives scoped MediaEvidence and original screenshots, with no native video path', async () => {
   const service = evidenceLoader({ video: true })('@/lib/services/findings.service');
-  const options = { testCaseIds: [one], artifactIds: [one, two] };
-  const current = await service.buildRawFindingsEvidenceContent(one, { ...options, nativeVideo: true });
-  assert.equal(current.filter(p => p.type === 'video_url').length, 1);
-  assert.equal(current.some(p => p.type === 'file_url' || p.type === 'image_url'), false);
-  const legacy = await service.buildRawFindingsEvidenceContent(one, options);
-  assert.equal(legacy.filter(p => p.type === 'file_url').length, 1);
+  const raw = await service.buildRawFindingsEvidenceContent(one, { testCaseIds: [one], artifactIds: [one, two] });
+  assert.equal(raw.some(p => p.type === 'video_url' || p.type === 'file_url'), false);
+  assert.equal(raw.filter(p => p.type === 'image_url').length, 1);
+  assert.ok(raw.some(p => p.text?.includes('MediaEvidence:')));
+  assert.doesNotMatch(JSON.stringify(raw), /不该发送|nativeVideo/);
 });

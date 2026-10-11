@@ -12,12 +12,12 @@ module.exports = function createLoader(root, overrides = {}) {
     let file = specifier.startsWith('@/') ? path.join(root, specifier.slice(2)) : path.resolve(path.dirname(parent), specifier);
     if (!file.endsWith('.ts') && !file.endsWith('.tsx')) file += '.ts';
     if (cache.has(file)) return cache.get(file).exports;
-    const module = { exports: {} };
-    cache.set(file, module);
-    const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+    const tsModule = { exports: {} };
+    cache.set(file, tsModule);
+    const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const localRequire = name => load(name, file);
     localRequire.resolve = createRequire(file).resolve;
-    new Function('require', 'module', 'exports', '__filename', '__dirname', code)(localRequire, module, module.exports, file, path.dirname(file));
-    return module.exports;
+    new Function('require', 'module', 'exports', '__filename', '__dirname', code)(localRequire, tsModule, tsModule.exports, file, path.dirname(file));
+    return tsModule.exports;
   };
 };
