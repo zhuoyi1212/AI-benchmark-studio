@@ -189,14 +189,22 @@ async function readHumanReview(projectId: string) {
 
 export async function buildRawFindingsEvidenceContent(
   projectId: string,
-  options: { preferPdfText?: boolean } = {},
+  options: { preferPdfText?: boolean; nativeVideo?: boolean; testCaseIds?: string[]; artifactIds?: string[] } = {},
 ): Promise<AIMessageContent> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
     getResearchWorkspace(projectId),
   ]);
   if (!test || !research?.completedResult) throw new FindingsExecutionError("无法读取当前真实测试证据。");
-  const evidence = selectFindingsEvidence(test);
+  const scoped: TestExecutionWorkspace = {
+    ...test,
+    protocol: { ...test.protocol, testCases: test.protocol.testCases.filter(c => !options.testCaseIds || options.testCaseIds.includes(c.id)) },
+    testRuns: test.testRuns.filter(r => !options.testCaseIds || options.testCaseIds.includes(r.testCaseId)).map(r => ({
+      ...r, artifacts: r.artifacts.filter(a => !options.artifactIds || options.artifactIds.includes(a.id)),
+    })),
+  };
+  if (!scoped.testRuns.length || scoped.testRuns.some(r => !r.artifacts.length)) throw new FindingsExecutionError("所选内容缺少当前来源的原始证据。");
+  const evidence = selectFindingsEvidence(scoped);
   return buildArtifactContent(evidence.test, research.completedResult, options, evidence.transport);
 }
 
@@ -333,7 +341,7 @@ function buildSnapshot(
 async function buildArtifactContent(
   test: TestExecutionWorkspace,
   research: NonNullable<Awaited<ReturnType<typeof getResearchWorkspace>>>["completedResult"],
-  options: { preferPdfText?: boolean } = {},
+  options: { preferPdfText?: boolean; nativeVideo?: boolean } = {},
   evidenceTransport?: FindingsEvidenceTransport,
 ): Promise<AIMessageContent> {
   const artifacts = test.testRuns.flatMap((run) => run.artifacts);
@@ -435,6 +443,8 @@ async function buildArtifactContent(
       } else if (mimeType === "application/pdf") {
         console.info("[FindingsEvidence] PDF retained as native file evidence", { testRunId: run.id, artifactId: artifact.id });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
+      } else if (mimeType.startsWith("video/") && options.nativeVideo) {
+        content.push({ type: "video_url", video_url: { url: artifact.fileUrl } });
       } else {
         console.info("[FindingsEvidence] Artifact retained as native file evidence", { testRunId: run.id, artifactId: artifact.id, mimeType });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });

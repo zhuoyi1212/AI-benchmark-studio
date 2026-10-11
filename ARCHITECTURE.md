@@ -375,3 +375,12 @@ Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择
 `community-content-policy.ts` 集中维护生成、模板、内容核验、语言编辑、最终审核规则及确定性门禁。PublishService 从选题覆盖的 Findings/专业观察投影 factLedger，保留证据ID与任务关联，不传 Report全文/数值评分。初稿 schema 必需 writingPlan；ReviewedCommunityPost 同原始 Artifact 做内容核验；HumanizedCommunityPost 使用 strict 三字段 Schema；EvidenceCheckedCommunityPost 仅返回质量/六项保真/图片关联，程序合并实际审核文案。
 
 同一原始 Artifact 读取助手用于两类来源；图片/PDF混合路由仍按实际内容模态选择。复用 Router 和 quick_job_steps；新增阶段名称不新增任务队列，Prompt/Schema/输入参与签名，旧检查点不能误当新规范结果。publish_packs.community_post 保存 writingPlan/contentPolicyVersion/contentBrief/languagePass/styleEdit/stylePreservation/generationTrace，旧字段可选保证历史可读。此次补齐仓储曾遗漏的 contentBrief/languagePass 保存。没有新增表或客户端权限。
+
+
+### Reader Story 下游链路（2026-10-11）
+
+此版替代旧 Publish 强制模板与无条件润色流程，保留 AI Task Service → Router → Provider。人工确认 Findings 或专业证据投影后，选题以读者问题为起点；服务限定所选任务及来源 Artifact，再执行 Story Brief → 四字段初稿 → 只读初审 → 按需三字段修订 → 独立最终只读审核。正常为四阶段、修订为五阶段，选题另计；视频先增加一个 evidence_read 阶段。文本策划复用 content_discovery；图片/文件的策划与复核明确使用视觉路由；视频仅由视觉路由先抽取 details，随后文本路由进行策划/审稿。正文和定向修订模型配置不变。
+
+Brief 关联事实和 Artifact ID，服务校验引用及共同任务比较准入；写作者读取原始文本、PDF 抽取文本和 Brief 中的视觉细节。视频在本次下游传输使用 video_url，并将当前任务及其材料与视频放在同一个 user 消息，避免嵌入测试 Prompt 被误当任务；修复请求移动而非重复原视频消息。此前 Judge/Findings 传输及历史评分不在本轮改变范围内。错误日志仅增加媒体数量，不记录 URL 或原始视频。
+
+publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，成功保存原稿、实际最终稿、四项质量与六项保真、阶段路由/版本/输入签名/usage。Repository 的既有完成 RPC 原子写入；无新表、无 migration。历史 writingPlan、contentBrief、editorialPlan 仍可读取；重生成创建新版本。成功阶段沿用 quick_job_steps，失败不能 ready 或回退 Mock。配图段落按最终正文锚定句由程序定位。

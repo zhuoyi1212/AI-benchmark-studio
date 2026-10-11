@@ -26,10 +26,10 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /findings:[\s\S]*provider: "zhipu"[\s\S]*capability: "multimodal"/);
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
-  assert.match(config, /community_post:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post\.v6-evidence-plan"[\s\S]*deepSeekWritingModel/);
-  assert.match(config, /community_post_humanize:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post-humanize\.v2-copy-only"[\s\S]*deepSeekWritingModel/);
-  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v3-content-policy-vision"[\s\S]*reasoning: "standard"[\s\S]*maxAttempts: structuredTaskMaxAttempts/);
-  assert.match(config, /community_post_evidence_check_text:[\s\S]*provider: "deepseek"[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-evidence-check\.v3-content-policy-text"/);
+  assert.match(config, /community_post:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post\.v7-story"[\s\S]*deepSeekWritingModel/);
+  assert.match(config, /community_post_humanize:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post-humanize\.v3-targeted"[\s\S]*deepSeekWritingModel/);
+  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v4-readonly-vision"[\s\S]*reasoning: "standard"[\s\S]*maxAttempts: structuredTaskMaxAttempts/);
+  assert.match(config, /community_post_evidence_check_text:[\s\S]*provider: "deepseek"[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-evidence-check\.v4-readonly-text"/);
   assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);

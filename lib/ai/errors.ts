@@ -41,6 +41,7 @@ export type AIProviderErrorDetails = {
   requestTextCount?: number;
   requestImageCount?: number;
   requestFileCount?: number;
+  requestVideoCount?: number;
 };
 
 export class AIProviderError extends Error {
@@ -64,6 +65,7 @@ export class AIProviderError extends Error {
   readonly requestTextCount: number;
   readonly requestImageCount: number;
   readonly requestFileCount: number;
+  readonly requestVideoCount: number;
 
   constructor(message: string, details: AIProviderErrorDetails) {
     super(message);
@@ -88,6 +90,7 @@ export class AIProviderError extends Error {
     this.requestTextCount = details.requestTextCount ?? 0;
     this.requestImageCount = details.requestImageCount ?? 0;
     this.requestFileCount = details.requestFileCount ?? 0;
+    this.requestVideoCount = details.requestVideoCount ?? 0;
   }
 }
 

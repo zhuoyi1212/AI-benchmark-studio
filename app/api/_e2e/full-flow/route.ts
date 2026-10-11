@@ -51,6 +51,9 @@ export async function POST(request: Request) {
       runId,
       stage,
       error: error instanceof Error ? `${error.name}: ${error.message}` : "Unknown E2E failure",
+      databaseCode: error instanceof Error && 'code' in error ? error.code : undefined,
+      databaseDetail: error instanceof Error && error.cause && typeof error.cause === 'object' && 'message' in error.cause
+        ? String(error.cause.message).replace(/https?:\/\/[^\s]+/g, '[URL redacted]').slice(0, 500) : undefined,
     };
   }
 
@@ -71,7 +74,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const projectId = await createProject({
     name: `[E2E] Single Product Flow ${runId}`,
     intent: "验证单产品体验从真实研究、证据评分到社区内容的完整数据链。",
-    products: [{ name: `E2E Experience Product ${runId}`, officialUrl: `https://${runId}.single-e2e.example.com` }],
+    products: [{ name: `验证工具${runId.slice(-8)}`, officialUrl: `https://${runId}.single-e2e.example.com` }],
   });
   projectIds.push(projectId);
 
@@ -194,7 +197,11 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const quickPublishPack = requireValue(quickPublish.pack, "Completed Quick Publish pack missing");
   assert(quickPublish.sourceType === "findings" && quickPublishPack.status === "ready", "Quick Findings Publish did not complete");
   const quickPublishPost = requireValue(quickPublishPack.post, "Completed Quick Publish post missing");
-  assert(quickPublishPost.body.includes("真实体验"), "Quick Publish copy must use Findings experience semantics");
+  assert(quickPublishPost.storyBrief?.supportingPoints.some(point => point.role === "main"), "Quick Publish must persist the evidence-bound Story Brief");
+  assert(quickPublishPost.draftReview?.issues.length === 1, "Quick Publish must persist the actionable read-only review");
+  assert(quickPublishPost.body === quickPublishPost.styleEdit?.edited.body && quickPublishPost.styleEdit.changed, "Quick Publish must persist the revised copy that was audited");
+  assert(quickPublishPost.generationTrace?.length === 5, "Quick Publish must record all five stages when revision was needed");
+  assert(quickPublishPost.storyBrief?.supportingPoints.every(point => point.findingIds.every(id => generatedFindings.findings.some(finding => finding.id === id))), "Story Brief must only reference confirmed findings");
   assert(quickPublishPost.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Quick Publish must only reference current Artifacts");
   assert(!textOnlyEvidence || quickPublishPost.screenshotRecommendations.length === 0, "Text-only Quick Publish must not fabricate screenshot recommendations");
 

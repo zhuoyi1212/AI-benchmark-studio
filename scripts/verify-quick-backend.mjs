@@ -6,7 +6,7 @@ import { startE2EProviderMock } from './e2e-provider-mock.mjs';
 
 const token = randomUUID(), runId = `${Date.now().toString(36)}-${randomUUID().slice(0,8)}`;
 const recovery = process.env.E2E_QUICK_RECOVERY === '1';
-const provider = await startE2EProviderMock({ failOnceTask: recovery ? 'HumanizedCommunityPost' : undefined });
+const provider = await startE2EProviderMock({ failOnceTask: recovery ? 'CommunityPostRevision' : undefined });
 const socket = createServer(); await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
 const port = socket.address().port; await new Promise(resolve => socket.close(resolve));
 const origin = `http://127.0.0.1:${port}`;
@@ -68,7 +68,7 @@ try {
   }
   const complete = await until(state=>state.publish?.status==='ready' && state.jobs.some(job=>job.kind==='report' && job.status==='completed'));
   for (const kind of ['research','protocol','evaluate','findings','discovery','publish','analysis','report']) assert.equal(complete.jobs.filter(job=>job.kind===kind).length,1,kind);
-  for (const task of ['CommunityPostDraft','ReviewedCommunityPost','HumanizedCommunityPost','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'HumanizedCommunityPost' ? 2 : 1,task);
+  for (const task of ['CommunityStoryBrief','CommunityPostDraft','CommunityPostReview','CommunityPostRevision','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'CommunityPostRevision' ? 2 : 1,task);
   const html = await (await fetch(`${origin}/projects/${projectId}/quick`)).text();
   assert.ok(html.includes('快速模式'));
   console.log(JSON.stringify({ ok:true, recovery, projectId, runId, stages:complete.jobs.map(job=>job.kind), publishVersion:complete.publish.version, providerCalls:provider.stats().taskCounts }));
@@ -77,6 +77,7 @@ try {
     await pause(180000);
   }
 } finally {
+  console.log("Provider verification summary:", provider.stats());
   if (projectId) console.log('Cleanup:', await call('cleanup'));
   process.kill(-child.pid,'SIGTERM'); await provider.close();
 }

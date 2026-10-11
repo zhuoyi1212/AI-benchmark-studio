@@ -46,7 +46,7 @@ test("allows evidence-backed text-only posts without fabricated screenshots", ()
   assert.match(schema, /screenshotRecommendations: z\.array\(screenshotRecommendationSchema\)\.max\(9\)/);
   assert.match(service, /withAvailableImageCount/);
   assert.doesNotMatch(service, /没有可用的原始截图，不能生成/);
-  assert.match(service, /没有图片时必须返回空数组/);
+  assert.match(service, /normalizeScreenshotRecommendations/);
   assert.match(textOnlyMigration, /imageCount'\)::integer not between 0 and 9/);
   assert.match(textOnlyMigration, /jsonb_array_length\(p_recommendations\) not between 0 and 9/);
   assert.doesNotMatch(textOnlyMigration, /must retain at least one screenshot/);
@@ -60,11 +60,11 @@ test("plans community content, humanizes the draft, and fact-checks the final po
   assert.match(schema, /languagePassSchema/);
   assert.match(schema, /factCheckSchema/);
   assert.match(service, /CommunityPostDraft/);
-  assert.match(service, /HumanizedCommunityPost/);
+  assert.match(service, /CommunityPostRevision/);
   assert.match(service, /EvidenceCheckedCommunityPost/);
-  assert.match(service, /polishRules/);
-  assert.match(service, /contentReviewRules/);
-  assert.match(service, /finalAuditRules/);
+  assert.match(service, /targetedRevisionRules/);
+  assert.match(service, /storyReviewRules/);
+  assert.match(service, /storyFinalAuditRules/);
   assert.match(service, /chooseWritingTemplate/);
   assert.match(editor, /写作风格/);
   assert.match(editor, /文章结构/);
@@ -75,14 +75,14 @@ test("plans community content, humanizes the draft, and fact-checks the final po
 
 test("keeps community writing grounded in confirmed Findings instead of score-first summaries", () => {
   assert.match(service, /humanConfirmedFindings/);
-  assert.match(service, /事实判断以 humanConfirmedFindings 为主/);
-  assert.match(service, /不引入排名或数值评分/);
-  assert.match(service, /不得创造体验、数据、竞品对比或未测试能力/);
+  assert.match(service, /storyWritingRules/);
+  assert.match(service, /storyBriefRules/);
+  assert.match(service, /originalDetails/);
   assert.match(service, /publicationReviewPassed/);
   assert.match(service, /不能从缺少过程记录推断产品行为/);
-  assert.match(service, /reviewedPublicationSchema/);
-  assert.match(service, /communityContentReviewSchema/);
-  assert.match(service, /reviewedPublicationSchema\.parse\(\{ \.\.\.draftResult\.data, \.\.\.reviewedResult\.data \}\)/);
+  assert.match(service, /storyBriefSchema/);
+  assert.match(service, /storyReviewSchema/);
+  assert.match(service, /draftReview: reviewedResult.data/);
   assert.match(service, /atLeastOneEvidenceGroundedIdea/);
 });
 

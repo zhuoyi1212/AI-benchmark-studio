@@ -415,3 +415,8 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-09 提示词重构上下文：新增 `docs/ai-prompt-refactor-context.md`，为外部模型解释产品目标、单/多产品与快/专业模式、完整证据工作流、快速后台接力、14 个 AI 阶段职责、模型路由、不可改变的产品边界、当前内容质量问题、评测矩阵和分阶段重构顺序，并附可直接交给新模型的任务说明。新增文档契约测试，确保完整流程和核心边界不会从交接材料中遗漏。305/305 tests、typecheck、build 与 diff check 通过。
 
 2026-10-09 Claude 提示词重构三文件包：保留 `docs/ai-prompt-inventory.md` 作为完整生产提示词，新增精简的 `docs/prompt-refactor-project-flow.md` 与 `docs/prompt-refactor-final-goal.md`。流程文件只说明产品如何从调研、人工实测和证据分析走到社区文章；目标文件邀请外部模型重新设计阶段和提示词，描述读者价值、内容质量与事实可信目标，不预设固定文章模板或塞入详细工程约束。新增三文件契约测试。307/307 tests、typecheck、build 与 diff check 通过。
+
+
+2026-10-11 Claude 内容方案第一迭代：在不修改 Protocol/Blind/Judge/确认 Findings 的范围内重构 Publish。选题与 Story Brief 以读者问题和实际证据分量为起点，写作者使用原始细节；审核只读、问题可定位，有问题才定向修订，最终独立审核实际保存全文。保留 structured output 与现有集中模型配置；标题含产品名且可独立版本化刷新。视频改为 native video_url，新增一次视频细节读取后再用文本策划/核验，避免视觉模型同时承担复杂文章策划。成功阶段继续沿用 quick_job_steps，保存兼容 Brief、初审、原稿/最终稿与4–6阶段审计；无数据库 migration、不覆盖历史。
+
+验证：319/319 tests、typecheck、build、diff check、全仓边界审计通过。真实 Supabase/Storage 完整 E2E Run mv3n6vs8-5085083a 通过，3个夹具项目已软删除；后台恢复 E2E Run mv3nd97o-3320e54c 通过，服务重启后已成功阶段不重复生成，修订失败后仅修订阶段重试，夹具归档。隔离 AI 响应不冒充真实产品结论。用户授权的万彩AI真实本地对照未取得可验收的新旧样稿对：原链结构失败，新版视频调用出现智谱1210媒体解析错误；本机HEAD验证同一47MB视频200且MIME正确。不能据此宣布文章质量提升或达到方案65%盲评目标；尚需供应商视频稳定性及多项目人工偏好评测。此轮为下游增量，不重新认证全部 Acceptance Criteria；上游读者问题、测试者记录、Findings拆分与换模型留待后续。

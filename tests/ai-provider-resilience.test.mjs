@@ -79,7 +79,7 @@ test("performs one bounded JSON or schema repair retry with safe validation issu
   assert.match(router, /category: "invalid_json"/);
   assert.match(router, /Previous response was not valid JSON/);
   assert.match(router, /Correct the previous output to satisfy these validation issues/);
-  assert.match(router, /Keep the protocol content unchanged where possible/);
+  assert.match(router, /Keep content unchanged except where the validation issues require a correction/);
   assert.match(router, /role: "assistant", content: previousContent/);
   assert.match(router, /attempt < maxAttempts/);
   assert.match(router, /attemptReasoning = route\.repairReasoning/);

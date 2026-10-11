@@ -29,7 +29,8 @@ export type AIReasoningMode = "standard" | "high";
 export type AITextContent = { type: "text"; text: string };
 export type AIImageContent = { type: "image_url"; image_url: { url: string } };
 export type AIFileContent = { type: "file_url"; file_url: { url: string } };
-export type AIMessageContent = string | Array<AITextContent | AIImageContent | AIFileContent>;
+export type AIVideoContent = { type: "video_url"; video_url: { url: string } };
+export type AIMessageContent = string | Array<AITextContent | AIImageContent | AIFileContent | AIVideoContent>;
 
 export type AIMessage = {
   role: "system" | "user" | "assistant";

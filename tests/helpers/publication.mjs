@@ -13,7 +13,7 @@ export const idea = { id: 'idea-1', title: '准备清单具体到数字和时间
 export const review = { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] };
 export const preservation = { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] };
 export const draft = {
-  title: idea.title, body: `这次测试关注老板提出预算紧张时如何准备加薪沟通。${findings[0].observation}准备材料和约时间有了明确要求，但本次没有验证实际沟通效果。`,
+  title: '沟通工具样本：准备清单具体到数字和时间', body: `这次测试关注老板提出预算紧张时如何准备加薪沟通。${findings[0].observation}准备材料和约时间有了明确要求，但本次没有验证实际沟通效果。`,
   tags: ['沟通'], interactionQuestion: '', screenshotRecommendations: [],
   contentBrief: { coreViewpoint: idea.insight, opening: '先说任务', supportingPoints: [{ finding: findings[0].observation, userMeaning: findings[0].impact }], ending: '只限本次回答', voice: '自然具体', avoidPhrases: [] },
   writingPlan: { template: 'single_scene', scopeNotes: quick.latest.effectiveOutput.limitations, sections: [{ heading: idea.title, sourceIds: [findings[0].id], observationQuote: findings[0].observation, judgment: idea.insight }] },
@@ -26,18 +26,21 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   const invoke = async options => {
     state.calls.push(options);
     await options.beforeExecute?.(route);
-    const input = JSON.parse(options.messages.find(m => m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('{')).content);
+    const json = options.messages.find(m => m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('{'));
+    const input = json ? JSON.parse(json.content) : {};
     let value;
-    if (options.schemaName === 'CommunityPostDraft') {
-      value = structuredClone(draft);
-      value.writingPlan.template = input.template;
-      value.writingPlan.scopeNotes = input.scopeNotes;
-      value.writingPlan.sections[0].sourceIds = [input.factLedger[0].id];
-      value.writingPlan.sections[0].observationQuote = input.factLedger[0].observation;
-    } else if (options.schemaName === 'ReviewedCommunityPost') {
-      value = { title: input.draft.title, body: input.draft.body, interactionQuestion: input.draft.interactionQuestion, articleReview: review, factCheck: { status: 'passed', revisedClaimCount: 0, notes: [] } };
-    } else if (options.schemaName === 'HumanizedCommunityPost') {
-      value = input.draft;
+    if (options.schemaName === 'PublicationVideoObservations') {
+      value = { observations: ['视频画面显示写下项目的3个硬数字，并提前约15分钟沟通。'] };
+    } else if (options.schemaName === 'CommunityStoryBrief') {
+      value = { readerQuestion: '如何准备预算紧张时的加薪沟通？', targetReader: '准备沟通加薪的人', spine: idea.insight,
+        supportingPoints: [{ claim: idea.insight, readerValue: findings[0].impact, findingIds: [input.factLedger[0].id], evidenceArtifactIds: [id], detail: findings[0].observation, role: 'main' }],
+        corePromiseGaps: ['实际沟通结果未测'], scope: '只限本次建议', ending: '可用作准备清单，不保证沟通结果', avoidClaims: [], comparison: false };
+    } else if (options.schemaName === 'CommunityPostDraft') {
+      value = { title: draft.title, body: draft.body, tags: draft.tags, interactionQuestion: draft.interactionQuestion };
+    } else if (options.schemaName === 'CommunityPostReview') {
+      value = { articleReview: review, issues: [] };
+    } else if (options.schemaName === 'CommunityPostRevision') {
+      value = { ...input.draft, body: input.draft.body + '这份清单可以用来准备沟通。' };
     } else if (options.schemaName === 'EvidenceCheckedCommunityPost') {
       value = { articleReview: review, stylePreservation: preservation, screenshotRecommendations: [] };
     } else throw new Error(options.schemaName);
@@ -56,13 +59,13 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   const overrides = {
     '@/lib/quick/checkpoints': { quickExecution: { getStore: () => undefined }, QuickYield: class extends Error {}, checkpoint: async (_name, _input, execute) => execute() },
     '@/lib/repositories/publish.repository': { publishRepository: repo },
-    '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => professional ? null : workspace, buildRawFindingsEvidenceContent: async () => { state.rawReads++; return raw; } },
+    '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => professional ? null : workspace, buildRawFindingsEvidenceContent: async (_id, options) => { state.rawOptions = options; state.rawReads++; return raw; } },
     '@/lib/services/research.service': { getResearchWorkspace: async () => ({ completedResult: { products: [] } }) },
     '@/lib/services/report.service': { getReportWorkspace: professional ? async () => ({ projectName: '验证', projectIntent: '验证', report: { id, status: 'completed', content: { secretReport: 'DO NOT SEND' } }, resultAnalysisId: id, ranking: [{ productId: id, productName: '样本', score: 8 }], protocol: { testCases: quick.testCases }, evidence: [], analysis: { limitations: ['只测一次'] } }) : forbid },
     '@/lib/repositories/result-analysis.repository': { resultAnalysisRepository: { getById: professional ? async () => ({ input_snapshot: { products: [{ productId: id, productName: '样本', scores: [{ testCaseId: id, rubricDimensionId: id, finalScore: 8, evidence: [findings[0].observation], reason: findings[0].impact }], artifacts: [{ artifactId: id, testCaseId: id }] }] } }) : forbid } },
     '@/lib/ai/schemas/result-analysis.schemas': { resultAnalysisInputSchema: { parse: value => value } },
   };
-  if (!realAI) overrides['@/lib/ai/task-service'] = { aiTaskService: { generateCommunityPost: invoke, humanizeCommunityPost: invoke, factCheckTextCommunityPost: invoke, factCheckCommunityPost: invoke } };
+  if (!realAI) overrides['@/lib/ai/task-service'] = { aiTaskService: { discoverContentIdeas: invoke, generateCommunityPost: invoke, humanizeCommunityPost: invoke, factCheckTextCommunityPost: invoke, factCheckCommunityPost: invoke } };
   const load = createLoader(fileURLToPath(new URL('../..', import.meta.url)), overrides);
   return { state, load, run: (settings = config) => load('@/lib/services/publish.service').generateCommunityPost(id, { ideaId: idea.id, config: settings }) };
 }

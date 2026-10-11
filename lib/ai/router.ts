@@ -195,6 +195,7 @@ function logAIProviderError(error: AIProviderError, reasoning: AIAttemptPerforma
     requestTextCount: error.requestTextCount,
     requestImageCount: error.requestImageCount,
     requestFileCount: error.requestFileCount,
+    requestVideoCount: error.requestVideoCount,
     retryable: error.retryable,
     willRetry: retryDelayMs !== null,
     retryDelayMs,
@@ -288,17 +289,23 @@ function buildProviderRetryMessages(messages: AIMessage[], error: AIProviderErro
 
 function buildRepairMessages(messages: AIMessage[], previousContent: string, error: AIValidationError, validationRepairInstruction?: string): AIMessage[] {
   const repairInstruction = error.category === "invalid_json"
-    ? "Previous response was not valid JSON. Return one complete valid JSON object only. No Markdown fences or explanatory prose."
+    ? ["Previous response was not valid JSON. Return one complete valid JSON object only. No Markdown fences or explanatory prose.", validationRepairInstruction].filter(Boolean).join("\n")
     : [
-        "Correct the previous output to satisfy these validation issues. Keep the protocol content unchanged where possible.",
+        "Correct the previous output to satisfy these validation issues. Keep content unchanged except where the validation issues require a correction.",
         ...error.issues.map((issue) => `- ${issue.path}: ${issue.code}: ${issue.message}`),
         validationRepairInstruction,
         "Return exactly one complete JSON object only.",
       ].filter(Boolean).join("\n");
+  const videoMessage = messages.find(message => message.role === "user" && Array.isArray(message.content) && message.content.some(part => part.type === "video_url"));
+  // Native video must accompany the active user turn on repair as well. Move
+  // the original evidence turn instead of duplicating its video URLs.
+  const repairContent = videoMessage && Array.isArray(videoMessage.content)
+    ? [...videoMessage.content.filter(part => part.type !== "text"), { type: "text" as const, text: videoMessage.content.filter(part => part.type === "text").map(part => part.text).join("\n") + "\n" + repairInstruction }]
+    : repairInstruction;
   return [
-    ...messages,
+    ...messages.filter(message => message !== videoMessage),
     { role: "assistant", content: previousContent },
-    { role: "user", content: repairInstruction },
+    { role: "user", content: repairContent },
   ];
 }
 

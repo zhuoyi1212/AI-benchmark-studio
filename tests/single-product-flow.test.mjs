@@ -55,5 +55,5 @@ test("quick Publish uses confirmed Findings and real image artifacts instead of 
   assert.match(publish, /getExperienceFindingsWorkspace/);
   assert.match(publish, /quick\.artifacts/);
   assert.match(publish, /mimeType\.startsWith\("image\/"\)/);
-  assert.match(publish, /事实判断以 humanConfirmedFindings 为主/);
+  assert.match(publish, /storyBriefRules/);
 });

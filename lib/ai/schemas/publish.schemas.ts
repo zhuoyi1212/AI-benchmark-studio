@@ -183,7 +183,7 @@ export const articleReviewSchema = z.object({
 });
 
 export const publishGenerationTraceSchema = z.array(z.object({
-  stage: z.enum(["planning", "writing", "content_check", "style_edit", "fact_check"]),
+  stage: z.enum(["evidence_read", "planning", "writing", "content_check", "style_edit", "fact_check"]),
   provider: z.enum(["zhipu", "deepseek"]),
   model: text,
   promptVersion: text,
@@ -194,7 +194,7 @@ export const publishGenerationTraceSchema = z.array(z.object({
     latencyMs: z.number(),
     estimatedCost: z.number().nullable(),
   }),
-})).max(4);
+})).max(6);
 
 export const communityStyleEditSchema = z.object({
   title: text.max(240),
@@ -242,12 +242,46 @@ export const writingPlanSchema = z.object({
 });
 export type WritingPlan = z.infer<typeof writingPlanSchema>;
 
+export const storyBriefSchema = z.object({
+  readerQuestion: text.max(600),
+  targetReader: text.max(400),
+  spine: text.max(1200),
+  supportingPoints: z.array(z.object({
+    claim: text.max(1200),
+    readerValue: text.max(800),
+    findingIds: z.array(text.max(160)).min(1).max(12),
+    evidenceArtifactIds: z.array(z.string().uuid()).min(1).max(36),
+    detail: text.max(2400),
+    role: z.enum(["main", "support", "caveat"]),
+  }).strict()).min(1).max(8),
+  corePromiseGaps: z.array(text.max(800)).max(8),
+  scope: text.max(1200),
+  ending: text.max(1200),
+  avoidClaims: z.array(text.max(800)).max(8),
+  comparison: z.boolean(),
+}).strict();
+export type StoryBrief = z.infer<typeof storyBriefSchema>;
+
+export const storyDraftSchema = communityStyleEditSchema.safeExtend({ tags: z.array(text.max(40)).min(1).max(12) });
+export const storyReviewSchema = z.object({
+  articleReview: articleReviewSchema,
+  issues: z.array(z.object({
+    field: z.enum(["title", "body", "interactionQuestion"]),
+    quote: text.max(1200).nullable(),
+    kind: z.enum(["fact", "weight", "scope", "structure", "language"]),
+    reason: text.max(800),
+    instruction: text.max(1200),
+  }).strict()).max(8),
+}).strict();
+
 export const communityPostContentSchema = z.object({
   title: text.max(240),
   body: text.max(12_000),
   tags: z.array(text.max(40)).min(1).max(12),
   interactionQuestion: z.string().trim().max(600),
   contentBrief: contentBriefSchema.optional(),
+  storyBrief: storyBriefSchema.optional(),
+  draftReview: storyReviewSchema.optional(),
   languagePass: languagePassSchema.optional(),
   editorialPlan: editorialPlanSchema.optional(),
   factCheck: factCheckSchema.optional(),

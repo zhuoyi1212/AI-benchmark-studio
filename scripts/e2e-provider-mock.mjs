@@ -315,43 +315,23 @@ function buildStructuredOutput(schemaName, messages) {
       ],
     };
   }
+  if (schemaName === "CommunityStoryBrief") {
+    const input = findJsonMessage(messages, v => v.selectedIdea && v.factLedger);
+    const f = input.factLedger[0];
+    return { readerQuestion: input.selectedIdea.angle, targetReader: "考虑使用该工具的人", spine: input.selectedIdea.insight,
+      supportingPoints: [{ claim: input.selectedIdea.insight, readerValue: f.interpretation, findingIds: [f.id], evidenceArtifactIds: f.evidenceArtifactIds, detail: f.observation, role: "main" }],
+      corePromiseGaps: [], scope: "只限当前任务", ending: "可用来完成这项任务，使用前仍应核对结果", avoidClaims: [], comparison: false };
+  }
   if (schemaName === "CommunityPostDraft") {
-    const input = findJsonMessage(messages, (value) => value.selectedIdea && value.config && value.sourceType);
-    const idea = input.selectedIdea;
-    const findings = input.factLedger ?? [];
-    const observation = findings[0]?.observation ?? idea.insight;
-    return {
-      title: idea.title,
-      writingPlan: { template: input.template, scopeNotes: input.scopeNotes ?? [], sections: [{ heading: idea.title, sourceIds: [findings[0].id], observationQuote: observation, judgment: idea.insight }] },
-      body: [
-        `本次测试先聚焦一个具体问题：${idea.angle}。测试把这一要求写入锁定的用例，并逐项检查产品有没有走到可核对的结果，因此这里讨论的是任务执行过程，而不是产品页面列出的功能数量。`,
-        `${observation} 对应的原始输出已保存在本次测试记录和证据材料中，读者可以回到同一任务的截图或输出核实这条描述，也能区分哪些信息来自测试，哪些仍需进一步判断。`,
-        "从真实体验看，任务能够推进会减少重复操作；不过，如果结果缺少背景或细节，用户仍需要检查原始证据材料，再决定是否继续编辑或采用。完成任务不等于所有内容都可以直接采信。",
-        "所以这次观察只适用于当前版本、既定测试方案和这组条件，不代表同类产品的整体能力，也不能外推到其他任务。你在选择工具时，会先看它能否交付结果，还是先看结果是否方便验证？",
-      ].join("\n\n"),
-      tags: ["AI产品", "真实体验", "产品观察"],
-      interactionQuestion: "你更在意 AI 少让你操作几步，还是更在意结果方便核对？",
-      screenshotRecommendations: [],
-      contentBrief: {
-        coreViewpoint: idea.insight,
-        opening: "先从这次真实测试里最明显的一件事讲起。",
-        supportingPoints: [
-          { finding: observation, userMeaning: "用户能直接看到任务有没有推进到可核对的结果。" },
-          { finding: "结果仍需要回到原始证据确认。", userMeaning: "省掉操作不等于省掉判断。" },
-        ],
-        ending: "最后只给当前测试范围内的使用判断。",
-        voice: "第一人称、短句、具体，不写成测评报告。",
-        avoidPhrases: ["总体而言", "值得注意的是", "综上所述"],
-      },
-    };
+    const input = findJsonMessage(messages, v => v.selectedIdea && v.config && v.sourceType);
+    return { title: `${input.products[0].name}：任务输出可以核对`, body: `我用${input.products[0].name}处理这项任务。${input.factLedger[0].observation}这份输出可以作为整理材料的起点，实际采用前仍要核对具体内容。`, tags: ["AI工具"], interactionQuestion: "" };
   }
-  if (schemaName === "ReviewedCommunityPost") {
-    const input = findJsonMessage(messages, value => value.source && value.draft);
-    return { ...input.draft, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: "passed", revisedClaimCount: 0, notes: [] } };
+  if (schemaName === "CommunityPostReview") {
+    return { articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: false, issues: ["缺少结尾建议"] }, issues: [{ field: "body", quote: null, kind: "structure", reason: "缺少结尾建议", instruction: "增加有依据的使用建议" }] };
   }
-  if (schemaName === "HumanizedCommunityPost") {
-    const input = findJsonMessage(messages, value => value.config && value.draft);
-    return { title: input.draft.title, body: input.draft.body, interactionQuestion: input.draft.interactionQuestion };
+  if (schemaName === "CommunityPostRevision") {
+    const input = findJsonMessage(messages, v => v.config && v.draft);
+    return { ...input.draft, body: input.draft.body + "可以先用同样的任务试一次，再决定是否继续使用。" };
   }
   if (schemaName === "EvidenceCheckedCommunityPost") {
     return {

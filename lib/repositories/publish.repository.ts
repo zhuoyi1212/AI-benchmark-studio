@@ -49,6 +49,8 @@ export const publishRepository = {
         body: post.body,
         tags: post.tags,
         interactionQuestion: post.interactionQuestion,
+        ...(post.storyBrief ? { storyBrief: post.storyBrief } : {}),
+        ...(post.draftReview ? { draftReview: post.draftReview } : {}),
         ...(post.contentBrief ? { contentBrief: post.contentBrief } : {}),
         ...(post.languagePass ? { languagePass: post.languagePass } : {}),
         ...(post.writingPlan ? { writingPlan: post.writingPlan } : {}),

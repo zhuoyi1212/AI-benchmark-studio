@@ -70,15 +70,15 @@ test('old posts and configs remain readable without new editorial fields', () =>
 });
 test('generation and final raw Artifact fact-check both retain expression rules', async () => {
   const service = await readFile(new URL('../lib/services/publish.service.ts', import.meta.url), 'utf8');
-  assert.match(service, /buildRawFindingsEvidenceContent\(projectId, \{ preferPdfText: true \}\)/);
+  assert.match(service, /buildRawFindingsEvidenceContent\(projectId, \{[\s\S]*preferPdfText: true/);
   assert.match(service, /factCheckTextCommunityPost/);
   assert.match(service, /requiresVision/);
-  assert.match(service, /schema: styleSchema/);
+  assert.match(service, /schema: communityStyleEditSchema/);
   assert.match(service, /schema: publicationAuditSchema/);
   assert.match(service, /normalizeScreenshotRecommendations/);
   assert.doesNotMatch(service, /expectedHeadings|isQuickLayoutOnlyIssue/);
   assert.match(service, /communityExpressionIssues\(post, config, confirmedFindings\)/);
-  assert.match(service, /学校网站失败/);
+  assert.match(service, /source.artifactIds/);
   const repository = await readFile(new URL('../lib/repositories/publish.repository.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(repository, /judge_scores|final_score|human_review_events/);
   assert.match(repository, /editorialPlan: post.editorialPlan/);
@@ -89,7 +89,7 @@ test('Quick Publish reaches ready only after initial content review and final st
   const h = harness();
   await h.run({ ...config, personalRatingEnabled: true, imageCount: 0 });
   assert.equal(h.state.failure, null);
-  assert.deepEqual(h.state.calls.map(call => call.schemaName), ['CommunityPostDraft', 'ReviewedCommunityPost', 'HumanizedCommunityPost', 'EvidenceCheckedCommunityPost']);
+  assert.deepEqual(h.state.calls.map(call => call.schemaName), ['CommunityStoryBrief', 'CommunityPostDraft', 'CommunityPostReview', 'EvidenceCheckedCommunityPost']);
   assert.equal(h.state.config.personalRatingEnabled, true);
   assert.equal(h.state.saved.factCheck.status, 'passed');
   assert.equal(h.state.usage.inputTokens, 40);

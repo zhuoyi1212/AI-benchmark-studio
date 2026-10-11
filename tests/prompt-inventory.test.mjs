@@ -17,8 +17,8 @@ test("documents shared structured-output and repair prompts", () => {
   assert.match(inventory, /Correct the previous output to satisfy these validation issues/);
 });
 
-test("separates the four community article stages and title refresh", () => {
-  for (const heading of ["提纲与初稿请求", "初稿内容核验", "语言润色", "最终保真检查", "单独刷新标题"]) {
+test("documents Story Brief, conditional revision and title refresh", () => {
+  for (const heading of ["Story Brief", "提纲与初稿请求", "初稿内容核验", "语言润色", "最终保真检查", "单独刷新标题"]) {
     assert.match(inventory, new RegExp(`### 9\\.\\d+ ${heading}`));
   }
 });
