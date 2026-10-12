@@ -1,4 +1,5 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -68,6 +69,10 @@ export class FindingsExecutionError extends Error {
 }
 
 export async function getExperienceFindingsWorkspace(projectId: string): Promise<ExperienceFindingsWorkspace | null> {
+  return memoPageRead(`findings:${projectId}`, () => readExperienceFindingsWorkspace(projectId));
+}
+
+async function readExperienceFindingsWorkspace(projectId: string): Promise<ExperienceFindingsWorkspace | null> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
     getResearchWorkspace(projectId),

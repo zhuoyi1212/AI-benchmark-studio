@@ -64,7 +64,7 @@ export class ReportGenerationError extends Error {
 export async function getReportWorkspace(projectId: string): Promise<ReportWorkspace | null> {
   const source = await getCurrentSource(projectId);
   if (!source) return null;
-  const reports = await reportRepository.listByAnalysis(source.analysisRow.id);
+  const reports = await reportRepository.listByAnalysis(source.analysisRow.id, 1);
   const latest = reports[0] ?? null;
   const [evidence, research] = await Promise.all([
     latest ? getEvidence(latest.id, source.input) : Promise.resolve([]),

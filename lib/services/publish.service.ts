@@ -78,7 +78,7 @@ export class PublishExecutionError extends Error {
 export async function getPublishWorkspace(projectId: string): Promise<PublishWorkspace | null> {
   const source = await getPublishSource(projectId);
   if (!source) return null;
-  const packs = await listPacks(source);
+  const packs = await listPacks(source, 1);
   const latest = packs[0] ?? null;
   const links = latest?.status === "ready" ? await publishRepository.listArtifacts(latest.id) : [];
   const ideas = latest ? parseIdeas(latest.content_ideas) : [];
@@ -552,10 +552,10 @@ async function beginPack(projectId: string, source: PublishSource) {
     : publishRepository.beginFromReport(projectId, source.reportId);
 }
 
-async function listPacks(source: PublishSource) {
+async function listPacks(source: PublishSource, limit?: number) {
   return source.kind === "findings"
-    ? publishRepository.listByFindings(source.findingsId)
-    : publishRepository.listByReport(source.reportId);
+    ? publishRepository.listByFindings(source.findingsId, limit)
+    : publishRepository.listByReport(source.reportId, limit);
 }
 
 function assertIdeas(ideas: ContentIdea[], source: PublishSource) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -40,3 +40,13 @@ try {
   assert.ok(result, 'Media bundle returned no verification result');
   console.info('[media] isolated function bundle verified', JSON.parse(result.slice('MEDIA_BUNDLE_RESULT '.length)));
 } finally { await rm(directory, { recursive: true, force: true }); }
+
+if (process.env.VERCEL) {
+  for (const page of ['projects', 'products']) {
+    const path = resolve(root, process.env.AI_BENCHMARK_NEXT_DIST_DIR || '.next', `server/app/${page}/page.js.nft.json`);
+    const files = JSON.parse(await readFile(path, 'utf8')).files;
+    assert.ok(!files.some(file => /\/(?:ffmpeg|ffprobe)$/.test(file)), `${page} catalog must not package video executables`);
+    const sizes = await Promise.all(files.map(file => stat(resolve(dirname(path), file))));
+    console.info('[reads] lightweight catalog bundle', { page, files: files.length, MiB: Math.round(sizes.reduce((sum, entry) => sum + entry.size, 0) / 1048576) });
+  }
+}

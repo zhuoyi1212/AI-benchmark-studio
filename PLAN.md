@@ -436,3 +436,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-12 媒体自检500修复：用户已通过浏览器认证，但服务器在模块初始化时缺少 @ffprobe-installer/linux-x64/package.json，GET handler未执行。Vercel最近30分钟hnd1 Node24日志明确MODULE_NOT_FOUND；本地隔离旧Next trace也复现Darwin对应包缺元数据。补齐平台包manifest的tracing，将native包延迟加载至媒体操作的可捕获边界；不改变管理员认证或数据/模型流程。新增按Next实际nft清单重建隔离函数包并调用编译GET的构建门禁，检查真实抽帧与16kHz单声道音频，不依赖开发node_modules或凭据。新本地bundle返回ok/1帧/mono16kHz；344/344 tests、lint0errors/26既有warnings、typecheck、build、diff check通过。发布结果随后补充；不覆盖历史测评。
 
 发布验收：实现7135c18，部署dpl_4RviTd5EgHXjJUEMvDATH249BA6f已READY并promote，公开sand alias绑定确认。Vercel Linux x64构建中的隔离GET实际验证ok/1帧/mono16kHz；用户Chrome原标签页重新加载同一正式URL，实际返回ok:true/linux/x64/Node24.21.0/decodedFrames1/audioHz16000/audioChannels1，hnd1函数日志记录probe/抽帧/提音，无此前MODULE_NOT_FOUND。截图/private/tmp/media-runtime-fixed.png。管理员验证已完成，没有取得/更改密码、弱化认证、调用AI或重生成历史结果。全仓审计392文件/74真实边界通过。本轮为部署打包修复，未重新验收全部M0–M15。
+
+2026-10-12 历史读取优化：线上基线首次列表14.43秒、快速页6.64秒、报告8.33秒。确认目录函数被全局媒体tracing和本地poller编译图拖重；历史评分读完整调研链、多模块重复工作台构造、只看最新但下载全部版本。Vercel编译隔离本地poller，目录不包含视频二进制、约3MiB；真实Cron/本地worker和详情写操作仍保留媒体能力。锁定测试/Blind使用轻量当前协议上下文，身份guard仍先于Sample；页面render内工作台复用，失败重试、Actions/worker/不同访客均不共享缓存。最新文章/报告/分析仅取倒序第一条，历史默认读取及Final Score签名不变。
+
+验证：350/350 tests、lint0errors/26既有warnings，最终typecheck/生产模式build/diff check通过。完整DB/Storage E2E Run mv4oky0b-c1537eb2通过，40个隔离模型请求，3夹具软删除；首次E2E在创建任何项目之前遭本机TLS重置，重试通过。报告只读请求27→22，健康连接样本4.37→2.34秒，响应80,273→58,908 bytes；文章版本响应45,763→18,310 bytes，TLS重置样本不冒充速度效果。详见docs/history-loading-performance.md；无migration，不改历史或AI/评分规则，增量验收不代表全M0–M15重认证。生产发布测量随后补充。

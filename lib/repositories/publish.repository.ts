@@ -92,13 +92,15 @@ export const publishRepository = {
     const { error } = await getSupabaseServerClient().rpc("fail_publish_pack", { p_publish_pack_id: packId, p_error_message: errorMessage });
     if (error) throwRepositoryError("publish.fail", error);
   },
-  async listByReport(reportId: string): Promise<PublishPackRow[]> {
-    const { data, error } = await getSupabaseServerClient().from("publish_packs").select(packColumns).eq("report_id", reportId).order("version", { ascending: false });
+  async listByReport(reportId: string, limit?: number): Promise<PublishPackRow[]> {
+    const query = getSupabaseServerClient().from("publish_packs").select(packColumns).eq("report_id", reportId).order("version", { ascending: false });
+    const { data, error } = await (limit === undefined ? query : query.limit(limit));
     if (error) throwRepositoryError("publish.listByReport", error);
     return data;
   },
-  async listByFindings(findingsId: string): Promise<PublishPackRow[]> {
-    const { data, error } = await getSupabaseServerClient().from("publish_packs").select(packColumns).eq("findings_id", findingsId).order("version", { ascending: false });
+  async listByFindings(findingsId: string, limit?: number): Promise<PublishPackRow[]> {
+    const query = getSupabaseServerClient().from("publish_packs").select(packColumns).eq("findings_id", findingsId).order("version", { ascending: false });
+    const { data, error } = await (limit === undefined ? query : query.limit(limit));
     if (error) throwRepositoryError("publish.listByFindings", error);
     return data;
   },

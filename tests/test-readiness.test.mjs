@@ -17,7 +17,9 @@ function load({ project = { evaluation_mode: 'quick' }, protocols = [{ id: 'curr
       listRuns: async id => { calls.push(['runs', id]); return runs; },
       listArtifacts: async ids => { calls.push(['artifacts', ids]); return artifacts; },
     } },
-    '@/lib/services/protocols.service': { getProtocolWorkspace: () => { throw new Error('Readiness must not load research or signed downloads'); } },
+    '@/lib/supabase/read-scope': { memoPageRead: (_key, read) => read() },
+    '@/lib/services/projects.service': { getProjectSummary: () => { throw new Error('Readiness must not load display data'); } },
+    '@/lib/services/protocols.service': { getLockedProtocolContext: () => { throw new Error('Readiness must not load signed downloads'); } },
   };
   const code = ts.transpileModule(readFileSync(new URL('../lib/services/test-execution.service.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};

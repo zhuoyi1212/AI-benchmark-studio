@@ -76,3 +76,24 @@ test('HTTP failures and rejected reads may be retried within the same page', asy
   })();
   assert.equal(requests, 3);
 });
+
+test('composed workspace reads share signed artifacts only within a single render', async () => {
+  const { withPageReads, memoPageRead } = load(); let count = 0;
+  const read = () => memoPageRead('workspace:project', async () => ({ generation: ++count, signedUrl: 'fixture' }));
+  const render = withPageReads(async () => {
+    const [a, b] = await Promise.all([read(), read()]); assert.equal(a, b);
+    return a.generation;
+  });
+  assert.deepEqual(await Promise.all([render(), render()]), [1, 2]);
+  assert.equal(await render(), 3);
+  assert.equal((await read()).generation, 4); assert.equal((await read()).generation, 5);
+});
+
+test('failed workspace reads can retry and different projects never reuse a result', async () => {
+  const { withPageReads, memoPageRead } = load(); let count = 0;
+  await withPageReads(async () => {
+    const read = () => memoPageRead('workspace:a', async () => { if (++count === 1) throw new Error('offline'); return 'a'; });
+    await assert.rejects(read(), /offline/); assert.equal(await read(), 'a'); assert.equal(await read(), 'a');
+    assert.equal(await memoPageRead('workspace:b', async () => 'b'), 'b'); assert.equal(count, 2);
+  })();
+});

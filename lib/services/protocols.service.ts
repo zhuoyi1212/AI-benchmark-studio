@@ -1,4 +1,6 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
+import { projectsRepository } from "@/lib/repositories/projects.repository";
 
 import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -92,6 +94,23 @@ export class ProtocolExecutionError extends Error {
 }
 
 export async function getProtocolWorkspace(projectId: string): Promise<ProtocolWorkspace | null> {
+  return memoPageRead(`protocol:${projectId}`, () => readProtocolWorkspace(projectId));
+}
+
+// A locked test/review only needs the stored protocol. Reading it must not rebuild
+// current product research, progress or reusable research snapshots.
+export async function getLockedProtocolContext(projectId: string) {
+  return memoPageRead(`locked-protocol:${projectId}`, async () => {
+    const [project, protocols] = await Promise.all([
+      projectsRepository.findActiveById(projectId), protocolsRepository.listByProject(projectId),
+    ]);
+    const row = protocols[0];
+    if (!project || !row || row.status !== "locked") return null;
+    return { project, protocol: await readProtocol(row) };
+  });
+}
+
+async function readProtocolWorkspace(projectId: string): Promise<ProtocolWorkspace | null> {
   const [research, current] = await Promise.all([
     getResearchWorkspace(projectId),
     protocolsRepository.listByProject(projectId).then(async (protocols) => ({

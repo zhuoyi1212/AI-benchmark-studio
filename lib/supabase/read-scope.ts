@@ -1,7 +1,7 @@
 import 'server-only';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-type ReadScope = { responses: Map<string, Promise<Response>>; requests: number; reused: number };
+type ReadScope = { responses: Map<string, Promise<Response>>; values: Map<string, Promise<unknown>>; requests: number; reused: number };
 const pageReads = new AsyncLocalStorage<ReadScope>();
 
 // Deliberately limited to a single server page render: never shared with actions,
@@ -9,7 +9,7 @@ const pageReads = new AsyncLocalStorage<ReadScope>();
 export function withPageReads<Args extends unknown[], Result>(render: (...args: Args) => Promise<Result>) {
   return async (...args: Args): Promise<Result> => {
     if (pageReads.getStore()) return render(...args);
-    const state: ReadScope = { responses: new Map(), requests: 0, reused: 0 };
+    const state: ReadScope = { responses: new Map(), values: new Map(), requests: 0, reused: 0 };
     const started = performance.now();
     try { return await pageReads.run(state, () => render(...args)); }
     finally {
@@ -18,6 +18,19 @@ export function withPageReads<Args extends unknown[], Result>(render: (...args: 
       });
     }
   };
+}
+
+// Read-only service composition, including signed downloads, can be reused inside
+// this render. Actions and workers have no scope and always execute fresh reads.
+export async function memoPageRead<T>(key: string, execute: () => Promise<T>): Promise<T> {
+  const scope = pageReads.getStore();
+  if (!scope) return execute();
+  const previous = scope.values.get(key);
+  if (previous) return previous as Promise<T>;
+  const pending = execute();
+  scope.values.set(key, pending);
+  try { return await pending; }
+  catch (error) { scope.values.delete(key); throw error; }
 }
 
 export async function fetchPageRead(input: RequestInfo | URL, init: RequestInit | undefined, execute: () => Promise<Response>) {

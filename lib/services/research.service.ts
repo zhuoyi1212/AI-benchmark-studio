@@ -1,4 +1,5 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
 
 import { z } from "zod";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -56,6 +57,10 @@ export class ResearchExecutionError extends Error {
 }
 
 export async function getResearchWorkspace(projectId: string): Promise<ResearchWorkspace | null> {
+  return memoPageRead(`research:${projectId}`, () => readResearchWorkspace(projectId));
+}
+
+async function readResearchWorkspace(projectId: string): Promise<ResearchWorkspace | null> {
   const [project, runs] = await Promise.all([getProjectSummary(projectId), researchRepository.listRuns(projectId)]);
   if (!project) return null;
   const completedRun = runs.find((run) => run.status === "completed") ?? null;

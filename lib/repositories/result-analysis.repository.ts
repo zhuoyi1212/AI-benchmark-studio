@@ -56,12 +56,13 @@ export const resultAnalysisRepository = {
     if (error) throwRepositoryError("resultAnalysis.fail", error);
   },
 
-  async listByReview(reviewSessionId: string): Promise<ResultAnalysisRow[]> {
-    const { data, error } = await getSupabaseServerClient()
+  async listByReview(reviewSessionId: string, limit?: number): Promise<ResultAnalysisRow[]> {
+    const query = getSupabaseServerClient()
       .from("result_analyses")
       .select(analysisColumns)
       .eq("review_session_id", reviewSessionId)
       .order("attempt", { ascending: false });
+    const { data, error } = await (limit === undefined ? query : query.limit(limit));
     if (error) throwRepositoryError("resultAnalysis.listByReview", error);
     return data;
   },
