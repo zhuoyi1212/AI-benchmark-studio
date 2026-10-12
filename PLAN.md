@@ -440,3 +440,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-12 历史读取优化：线上基线首次列表14.43秒、快速页6.64秒、报告8.33秒。确认目录函数被全局媒体tracing和本地poller编译图拖重；历史评分读完整调研链、多模块重复工作台构造、只看最新但下载全部版本。Vercel编译隔离本地poller，目录不包含视频二进制、约3MiB；真实Cron/本地worker和详情写操作仍保留媒体能力。锁定测试/Blind使用轻量当前协议上下文，身份guard仍先于Sample；页面render内工作台复用，失败重试、Actions/worker/不同访客均不共享缓存。最新文章/报告/分析仅取倒序第一条，历史默认读取及Final Score签名不变。
 
 验证：350/350 tests、lint0errors/26既有warnings，最终typecheck/生产模式build/diff check通过。完整DB/Storage E2E Run mv4oky0b-c1537eb2通过，40个隔离模型请求，3夹具软删除；首次E2E在创建任何项目之前遭本机TLS重置，重试通过。报告只读请求27→22，健康连接样本4.37→2.34秒，响应80,273→58,908 bytes；文章版本响应45,763→18,310 bytes，TLS重置样本不冒充速度效果。详见docs/history-loading-performance.md；无migration，不改历史或AI/评分规则，增量验收不代表全M0–M15重认证。生产发布测量随后补充。
+
+发布复测：d16fc33部署dpl_HwQ7hHQrWbM7Uj2Jqo1RWdXMBnLZ已READY/promote，sand alias确认。Linux目录3MiB/媒体自检通过，发布前工作台200且只读，首次完整HTML3.79秒。正式域名第一轮200：列表2.87秒、调研3.25秒、快速6.16秒、报告6.56秒、文章4.49秒；原4页标题一致。目录明显改善、详情仅部分改善，不宣称即点即开或每页都变快。第二轮在TLS握手前SSL_ERROR_SYSCALL/HTTP000约5秒失败，不作为后台读取速度样本；需保留网络波动限制。全仓审计395文件/74真实边界通过；历史评分、文章、Protocol与原始Artifact未改。
