@@ -21,7 +21,7 @@ export const draft = {
 export const rawEvidence = `合成验证夹具，不是真实产品测评。任务：老板强势、注重结果，如何在预算紧张时沟通加薪。回答：写下项目的3个硬数字，提前约15分钟沟通。没有真实用户情绪记录，也没有实际沟通结果。artifactId=${id}`;
 const route = { provider: 'deepseek', model: 'fixture', promptVersion: 'fixture-v1' };
 const usage = { inputTokens: 10, outputTokens: 20, latencyMs: 1, estimatedCost: null };
-export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick } = {}) {
+export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick, readyPack } = {}) {
   const state = { calls: [], saved: null, failure: null, rawReads: 0 };
   const invoke = async options => {
     state.calls.push(options);
@@ -43,6 +43,8 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
       value = { ...input.draft, body: input.draft.body + '这份清单可以用来准备沟通。' };
     } else if (options.schemaName === 'EvidenceCheckedCommunityPost') {
       value = { articleReview: review, stylePreservation: preservation, screenshotRecommendations: [] };
+    } else if (options.schemaName === 'CommunityPostTitle') {
+      value = { reviewSummary: { testPurpose: '加薪准备建议', mainResult: '准备材料与时间具体' }, title: '沟通工具样本加薪实测：准备建议具体' };
     } else throw new Error(options.schemaName);
     value = structuredClone(value);
     if (mutate) value = await mutate(options.schemaName, value, input) ?? value;
@@ -50,11 +52,16 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   };
   const forbid = () => { throw new Error('Unexpected professional source'); };
   const repo = {
-    listByFindings: async () => [{ id, status: 'draft', content_ideas: [idea] }],
+    listByFindings: async () => readyPack ? [readyPack] : [{ id, status: 'draft', content_ideas: [idea] }],
     listByReport: async () => [{ id, status: 'draft', content_ideas: [idea] }],
     startPost: async (_id, _idea, value) => { state.config = value; },
     complete: async (_id, value, cost) => { state.saved = value; state.usage = cost; },
     fail: async (_id, value) => { state.failure = value; },
+    listArtifacts: async () => [],
+    refreshTitle: async (sourceId, title, audit) => {
+      state.refreshed = { sourceId, title, audit };
+      return '22222222-2222-4222-8222-222222222222';
+    },
   };
   const overrides = {
     '@/lib/quick/checkpoints': { quickExecution: { getStore: () => undefined }, QuickYield: class extends Error {}, checkpoint: async (_name, _input, execute) => execute() },
@@ -65,7 +72,7 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
     '@/lib/repositories/result-analysis.repository': { resultAnalysisRepository: { getById: professional ? async () => ({ input_snapshot: { products: [{ productId: id, productName: '样本', scores: [{ testCaseId: id, rubricDimensionId: id, finalScore: 8, evidence: [findings[0].observation], reason: findings[0].impact }], artifacts: [{ artifactId: id, testCaseId: id }] }] } }) : forbid } },
     '@/lib/ai/schemas/result-analysis.schemas': { resultAnalysisInputSchema: { parse: value => value } },
   };
-  if (!realAI) overrides['@/lib/ai/task-service'] = { aiTaskService: { discoverContentIdeas: invoke, generateCommunityPost: invoke, humanizeCommunityPost: invoke, factCheckTextCommunityPost: invoke, factCheckCommunityPost: invoke } };
+  if (!realAI) overrides['@/lib/ai/task-service'] = { aiTaskService: { discoverContentIdeas: invoke, generateCommunityPost: invoke, generateCommunityPostTitle: invoke, humanizeCommunityPost: invoke, factCheckTextCommunityPost: invoke, factCheckCommunityPost: invoke } };
   const load = createLoader(fileURLToPath(new URL('../..', import.meta.url)), overrides);
   return { state, load, run: (settings = config) => load('@/lib/services/publish.service').generateCommunityPost(id, { ideaId: idea.id, config: settings }) };
 }

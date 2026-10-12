@@ -16,7 +16,7 @@ export const contentRules = [
   "每项判断明确对象、条件、观察与依据；数字、引语、操作、使用影响与感受不能补造。来源观察片段不等于产品原话，直接引语须核对原始回答。",
   "严格区分产品问题与测试边界：只测一次、只测一个场景、未留存过程、未测其他功能属于 scopeNotes，不是一般表现或产品缺点。",
   "没有真实发现的类别直接省略，不写‘缺点：无’‘不舒服的地方：没有’，不为凑优缺点补内容。",
-  "标题直接写具体发现；禁止‘好用的：’‘一般：’‘难用的：’等分类前缀及‘好用的功能’等空标题。好用/一般/难用只能用于内部整理材料。",
+  "标题概括产品、测试用途与主要结果；禁止‘好用的：’‘一般：’‘难用的：’等分类前缀及‘好用的功能’等空标题。好用/一般/难用只能用于内部整理材料。",
   "先说结论或场景，不强制第一人称；作者亲历和主观情绪须有测试者记录支持。任务角色的加薪、紧张等经历不属于作者。",
   "不从单次推断稳定性、通用性或机制，不将未验证建议写成实际收益；范围相同的限制集中说明一次，不删除不同限制。",
   "不能把建议中的数字写成足够条件：‘写下3个数字’不等于‘只需3个数字’或‘准备量缩到3个’；未说明的时间含义不能自行解释。未提供过程信息不等于没有留存过程。",
@@ -97,7 +97,7 @@ export function publicationCopyIssues(copy: CommunityStyleEdit): string[] {
 export function publicationTitleIssues(title: string, body: string, previousTitle?: string): string[] {
   const issues: string[] = [];
   const length = Array.from(title.trim()).length;
-  if (length < 6) issues.push("标题至少用 6 个字符说清具体发现");
+  if (length < 6) issues.push("标题至少用 6 个字符说清测评内容");
   if (length > 28) issues.push("标题不能超过 28 个字符");
   if (previousTitle && normalizeTitle(title) === normalizeTitle(previousTitle)) issues.push("新标题不能与当前标题相同");
   if (/(?:震惊|必看|封神|绝了|天花板|颠覆认知|看完就|后悔没|真相竟然)/i.test(title)) issues.push("标题不能使用夸张或诱导点击的词");

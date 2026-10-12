@@ -106,6 +106,10 @@ export const languagePassSchema = z.object({
 });
 
 export const communityPostTitleSchema = z.object({
+  reviewSummary: z.object({
+    testPurpose: text.max(160),
+    mainResult: text.max(240),
+  }).strict(),
   title: text.max(28),
 }).strict();
 

@@ -38,6 +38,8 @@ import {
   type WritingFact,
 } from "@/lib/community-content-policy";
 
+import { communityTitleRules, communityTitleRefreshRules } from "@/lib/community-title-policy";
+
 import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues } from "@/lib/community-story-policy";
 
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
@@ -140,6 +142,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
                 "你是社区内容策划编辑。选题只能建立在人工确认后的真实 Findings、测试计划、Research 背景和真实截图证据上。",
                 "不要重新评分，不要生成排名，也不要把专业评分当作选题中心。",
                 "先确定目标读者最想知道的问题，按实际影响和证据完整性选主线，不因为小问题显眼就把它当标题重点。",
+                communityTitleRules,
                 "不要机械复述所有 Findings；选题要有一个清晰主线，并保留证据实际覆盖范围。",
                 "relatedTestCaseIds 只能引用给定 testCases；relatedArtifactIds 只能引用 imageArtifacts。",
                 "UUID 和内部字段标识只能放入对应 ID 数组；严禁复制到 title、type、angle、insight、whyInteresting 或 supportingEvidence 等公开文案。",
@@ -147,6 +150,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
               ].join("\n")
             : [
                 "你是社区内容选题编辑。基于已完成的专业测评发现真正有信息增量的观点，不要把深度报告机械缩短。",
+                communityTitleRules,
                 "评分仅作为背景，优先使用真实 Case、Judge Evidence、人工复核与 Artifact 支撑具体观点。",
                 "不得创造实验数据；缺少过程日志不能推断产品默认行为或能力不足。",
                 "relatedArtifactIds 只能引用 imageArtifacts。输出简体中文。",
@@ -316,14 +320,14 @@ export async function refreshCommunityPostTitle(
   const titleInput = {
     channel: pack.config.channel,
     products: workspace.products.map(p => p.name),
-    storyBrief: pack.post.storyBrief,
-    currentTitle: pack.post.title,
+    avoidTitles: [pack.post.title],
     articleBody: pack.post.body,
-    centralIdea: pack.selectedIdea?.title ?? pack.selectedIdea?.angle ?? "",
     requirements: {
       length: "6-28 个 Unicode 字符",
       clear: true,
-      concreteHook: true,
+      summarizeReview: true,
+      includeTestPurpose: true,
+      prioritizeMainResult: true,
       preserveArticleMeaning: true,
       avoidClickbait: true,
       mustDifferFromCurrentTitle: true,
@@ -332,12 +336,7 @@ export async function refreshCommunityPostTitle(
   const messages: AIMessage[] = [
     {
       role: "system",
-      content: [
-        "你是中文社区文章标题编辑。只返回一个新标题，不改正文。",
-        "标题要让读者立刻知道产品、具体场景或核心发现，并用真实结果、矛盾或使用边界形成钩子。",
-        "先清楚，再有吸引力；不使用震惊、必看、封神、天花板等夸张词，不虚构数字、结果或未测试范围。",
-        "标题包含 products 中的产品名，与当前标题明显不同，6-28 个字符，输出简体中文。",
-      ].join("\n"),
+      content: communityTitleRefreshRules,
     },
     { role: "user", content: JSON.stringify(titleInput) },
   ];
@@ -356,7 +355,7 @@ export async function refreshCommunityPostTitle(
       schema,
       schemaName: "CommunityPostTitle",
       messages,
-      maxTokens: 300,
+      maxTokens: 600,
       maxAttempts: 2,
     });
     const refreshedAt = new Date().toISOString();

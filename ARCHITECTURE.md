@@ -389,3 +389,6 @@ publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，
 ## 视频媒体证据架构（2026-10-11）
 
 按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。
+
+
+2026-10-12 标题策略：lib/community-title-policy.ts 提供共享概括与审核规则，供选题发现、Story Brief、初稿、定向修订、独立审核和refreshCommunityPostTitle复用。标题刷新以articleBody为主、旧标题只作避免重复，旧Brief/选题不再发送，同一次结构化标题任务先输出用途/结果事实摘要再生成标题（至多两次尝试），服务仅保存标题与原有审计及现有immutable PublishPack RPC，不新增模型阶段或表。语义主次由提示词与原有文章审核判断；名称、长度、数字、重复/夸张等确定性校验保留，不用关键词黑名单猜任务是否重要。

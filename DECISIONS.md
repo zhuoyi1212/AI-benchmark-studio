@@ -127,3 +127,5 @@
 ## 视频媒体证据架构（2026-10-11）
 
 按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。
+
+2026-10-12 标题主次调整：按用户最新要求，以清楚概括测评内容优先于钩子。共享标题规则覆盖选题/策划/写作/修订/审核/标题刷新；刷新以已核验正文为事实与主次依据，不继承历史局部问题角度，不额外读取原始媒体。产品名和测试用途优先保留，主要结果须有证据；重大失败不掩盖，小摩擦不夸大。升版Prompt与内容规则；不换模型、不改正文流程、不加DB migration、不重写历史。

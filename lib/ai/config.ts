@@ -125,7 +125,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   content_discovery: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "content-discovery.v3-reader-story",
+    promptVersion: "content-discovery.v4-summary-title",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post.v7-story",
+    promptVersion: "community-post.v8-summary-title",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -144,7 +144,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_humanize: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-humanize.v3-targeted",
+    promptVersion: "community-post-humanize.v4-summary-title",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -153,7 +153,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_title: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-title.v2-reader-hook",
+    promptVersion: "community-post-title.v3-review-summary",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -162,7 +162,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v4-readonly-text",
+    promptVersion: "community-post-evidence-check.v5-summary-title-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -171,7 +171,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v4-readonly-vision",
+    promptVersion: "community-post-evidence-check.v5-summary-title-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
