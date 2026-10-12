@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -103,6 +104,10 @@ export class JudgeExecutionError extends Error {
 }
 
 export async function getJudgeReviewWorkspace(projectId: string): Promise<JudgeReviewWorkspace | null> {
+  return memoPageRead(`judge-review:${projectId}`, () => readJudgeReviewWorkspace(projectId));
+}
+
+async function readJudgeReviewWorkspace(projectId: string): Promise<JudgeReviewWorkspace | null> {
   const context = await loadJudgeContext(projectId);
   if (!context) return null;
   const runs = await judgeRepository.listRuns(context.protocolId);

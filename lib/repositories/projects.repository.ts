@@ -30,12 +30,14 @@ export const projectsRepository = {
     if (error) throwRepositoryError("projects.rename", error);
     return Boolean(data);
   },
-  async listActive(): Promise<ProjectRow[]> {
-    const { data, error } = await getSupabaseServerClient()
+  async listActive(limit?: number): Promise<ProjectRow[]> {
+    let query = getSupabaseServerClient()
       .from("projects")
       .select(projectListColumns)
       .is("deleted_at", null)
       .order("updated_at", { ascending: false });
+    if (limit) query = query.limit(limit);
+    const { data, error } = await query;
     if (error) throwRepositoryError("projects.listActive", error);
     return data;
   },

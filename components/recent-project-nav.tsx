@@ -8,7 +8,7 @@ export async function RecentProjectNav() {
   await connection();
   let project: ProjectSummary | undefined;
   try {
-    [project] = await listProjectSummaries();
+    [project] = await listProjectSummaries({ limit: 1 });
   } catch {
     return <SidebarLink href="/projects" label="项目列表暂不可用" />;
   }

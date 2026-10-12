@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { blindReviewRepository } from "@/lib/repositories/blind-review.repository";
 import { getProtocolWorkspace, getLockedProtocolContext } from "@/lib/services/protocols.service";
@@ -76,6 +77,10 @@ async function runSupabaseStep<T>(name: string, timeoutMs: number, run: () => Pr
 }
 
 export async function getBlindReviewWorkspace(projectId: string): Promise<BlindReviewWorkspace | null> {
+  return memoPageRead(`blind-review:${projectId}`, () => readBlindReviewWorkspace(projectId));
+}
+
+async function readBlindReviewWorkspace(projectId: string): Promise<BlindReviewWorkspace | null> {
   const context = await getLockedProtocolContext(projectId);
   const protocol = context?.protocol;
   if (!context || !protocol) return null;

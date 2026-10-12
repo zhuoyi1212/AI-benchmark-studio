@@ -21,7 +21,7 @@ test("keeps Mock modules outside every real project route and business service",
 });
 
 test("renders the recent project from the real Project service", () => {
-  assert.match(mainFlowSource, /listProjectSummaries\(\)/);
+  assert.match(mainFlowSource, /listProjectSummaries\(\{ limit: 1 \}\)/);
   assert.match(mainFlowSource, /getProjectHref\(project\.id, project\.status\)/);
   assert.doesNotMatch(mainFlowSource, /Mock workspace|前端演示模式|\/projects\/demo\/test/);
 });

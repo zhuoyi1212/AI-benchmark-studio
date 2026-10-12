@@ -317,7 +317,7 @@ async function mapTestRun(row: TestRunRow, artifactRows: TestArtifactRow[]): Pro
 }
 
 async function mapArtifact(row: TestArtifactRow): Promise<TestArtifact> {
-  const signedUrl = await testExecutionRepository.createSignedUrl(row.storage_path);
+  const signedUrl = await memoPageRead(`artifact-url:${row.storage_path}`, () => testExecutionRepository.createSignedUrl(row.storage_path));
   return {
     id: row.id,
     kind: row.kind,

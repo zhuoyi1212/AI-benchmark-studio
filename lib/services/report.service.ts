@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   generatedReportSchema,
@@ -244,7 +245,7 @@ async function getEvidence(reportId: string, input: ReportGenerationInput["exper
       testCaseId: relation.testCaseId,
       fileName: row.file_name,
       mimeType: row.mime_type,
-      fileUrl: await testExecutionRepository.createSignedUrl(row.storage_path),
+      fileUrl: await memoPageRead(`artifact-url:${row.storage_path}`, () => testExecutionRepository.createSignedUrl(row.storage_path)),
       caption: linkByArtifact.get(row.id)?.caption ?? null,
     };
   }));

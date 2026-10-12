@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { createHash } from "node:crypto";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -71,6 +72,10 @@ export class ResultAnalysisError extends Error {
 }
 
 export async function getResultsWorkspace(projectId: string): Promise<ResultsWorkspace | null> {
+  return memoPageRead(`results:${projectId}`, () => readResultsWorkspace(projectId));
+}
+
+async function readResultsWorkspace(projectId: string): Promise<ResultsWorkspace | null> {
   const review = await getHumanReviewWorkspace(projectId);
   if (!review || review.status !== "revealed" || !review.revealedMappings) return null;
   const finalScoreSignature = createFinalScoreSignature(review);
