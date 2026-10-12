@@ -86,3 +86,5 @@ ASR 尚未配置，这是明确的能力缺口；不能宣称已完成声音实�
 用户在管理员浏览器访问 `/api/media/runtime` 返回500。Vercel hnd1 Node24日志确认缺少 `@ffprobe-installer/linux-x64/package.json`：原 tracing 只补了可执行文件，而 installer 会动态 require 平台包的元数据；模块顶层初始化失败发生在 GET 的 try/catch 之前。构建机完整 node_modules 下的版本检查不能证明精简函数包可运行。
 
 现显式 trace Linux/macOS 平台包的二进制及 package.json；在媒体操作内部延迟加载 native 包，缺依赖也返回可处理的 runtime_unavailable，API 可给503 JSON，避免影响普通页面初始化。新增 `verify:media-bundle` 并接入 `npm run build`：按实际 `.nft.json` 在独立临时目录复制函数及依赖，隔离工作目录与凭据，直接调用编译后的 GET 完成真实抽帧/提音，最后清理。旧trace在本机复现同类缺元数据故障，新trace返回ok/1帧/16kHz/mono；新增缺包回归，344/344 tests、lint0 errors/26既有warnings、typecheck/build通过。Linux部署验证结果见PLAN发布补充。
+
+修复部署 `dpl_4RviTd5EgHXjJUEMvDATH249BA6f`（实现 `7135c18`）已READY/promote至sand域名。Linux隔离构建检查成功后，实际重新加载用户Chrome自检页也返回 `ok:true`、linux/x64、Node24.21.0、decodedFrames=1、audioHz=16000、audioChannels=1；hnd1函数日志确认执行probe/抽帧/提音。此前待验证的部署后管理员运行检查现已完成，不需要读回或更改密码，不写测试历史。成功截图：`/private/tmp/media-runtime-fixed.png`。ASR尚未接入的限制依旧存在，提取WAV成功不等于完成语音转录。
