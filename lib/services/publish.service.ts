@@ -14,6 +14,7 @@ import {
   contentIdeasOutputSchema,
   publishConfigSchema,
   selectedContentIdeaSchema,
+  manualPostEditSchema,
   type CommunityPostOutput,
   type ContentIdea,
   type PublishConfig,
@@ -32,6 +33,8 @@ import { buildRawFindingsEvidenceContent, getExperienceFindingsWorkspace } from 
 import { getReportWorkspace, type ReportEvidence } from "@/lib/services/report.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import type { Json, PublishPackRow } from "@/lib/types/database";
+import { quickJobsRepository } from "@/lib/repositories/quick-jobs.repository";
+import type { QuickJob } from "@/lib/quick/types";
 
 import {
   chooseWritingTemplate, publicationCopyIssues, unsupportedPublicationClaims, publicationReviewPassed, publicationTitleIssues,
@@ -48,6 +51,7 @@ export type PublishScreenshot = ReportEvidence & { productName: string; testCase
 type PublishSource = Awaited<ReturnType<typeof getPublishSource>> extends infer Source ? NonNullable<Source> : never;
 
 export type PublishWorkspace = {
+  regenerationJob?: Pick<QuickJob, 'status' | 'error_message' | 'stage'> | null;
   projectId: string;
   projectName: string;
   projectMode: ProjectMode;
@@ -100,6 +104,8 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
   }) : null;
 
   return {
+    regenerationJob: post?.regeneration && latest?.status !== 'ready'
+      ? await quickJobsRepository.get(projectId, post.regeneration.jobId) : null,
     projectId,
     projectName: source.projectName,
     projectMode: source.projectMode,
@@ -380,6 +386,61 @@ export async function refreshCommunityPostTitle(
   } catch (error) {
     throw new PublishExecutionError(`更换标题失败：${toUserFacingError(error)}`);
   }
+}
+
+export async function saveCommunityPostEdit(projectId: string, sourcePackId: string, input: unknown): Promise<string> {
+  const workspace = await getPublishWorkspace(projectId);
+  const pack = workspace?.pack;
+  if (!workspace || !pack?.post || pack.id !== sourcePackId || pack.status !== 'ready') {
+    throw new PublishExecutionError('文章版本已变化，请刷新页面后再保存。');
+  }
+  const parsed = manualPostEditSchema.safeParse(input);
+  if (!parsed.success) throw new PublishExecutionError('请填写标题、正文和标签；内容过长或配图格式无效。');
+  const { imageIds, ...copy } = parsed.data;
+  const allowed = new Set(workspace.screenshots.map(s => s.artifactId));
+  if (new Set(imageIds).size !== imageIds.length || imageIds.some(id => !allowed.has(id))) {
+    throw new PublishExecutionError('配图必须是当前测评的真实截图，且不能重复。');
+  }
+  const recommendations = imageIds.map((artifactId, index) => {
+    const original = pack.post!.screenshotRecommendations.find(s => s.artifactId === artifactId);
+    const supportsClaim = original?.supportsClaim && copy.body.includes(original.supportsClaim) ? original.supportsClaim : null;
+    const paragraphIndex = supportsClaim ? copy.body.split(/\n\s*\n/).findIndex(p => p.includes(supportsClaim)) : -1;
+    return { artifactId, order: index + 1, reason: '人工选择的原始测试截图', supportsClaim,
+      supportsParagraph: paragraphIndex >= 0 ? paragraphIndex + 1 : null };
+  });
+  if (!communityPostOutputSchema.safeParse({ ...pack.post, ...copy, screenshotRecommendations: recommendations }).success) {
+    throw new PublishExecutionError('文章格式无效，请移除内部标识或检查内容长度后再保存。');
+  }
+  try {
+    return await publishRepository.createRevision(projectId, pack.id, 'manual', copy as unknown as Json, recommendations as unknown as Json);
+  } catch {
+    throw new PublishExecutionError('保存未完成，文章可能已有新版本，请刷新核对后重试。你的输入仍保留在编辑器中。');
+  }
+}
+
+export async function enqueueCommunityPostRegeneration(projectId: string, sourcePackId: string): Promise<string> {
+  const workspace = await getPublishWorkspace(projectId);
+  const pack = workspace?.pack;
+  if (!pack?.post || pack.id !== sourcePackId || (pack.status !== 'ready' && workspace?.regenerationJob?.status !== 'failed')) {
+    throw new PublishExecutionError('文章版本已变化或仍在生成，请刷新页面后重试。');
+  }
+  try { return await publishRepository.createRevision(projectId, pack.id, 'regenerate'); }
+  catch { throw new PublishExecutionError('未能启动重新生成，请刷新页面核对任务状态后重试。'); }
+}
+
+export async function regeneratePreparedCommunityPost(projectId: string, packId: string): Promise<string> {
+  const workspace = await getPublishWorkspace(projectId);
+  const pack = workspace?.pack;
+  if (!pack || pack.id !== packId) throw new PublishExecutionError('文章或测评来源已变化，重新生成已停止。');
+  if (pack.status === 'ready') return pack.id;
+  if (!pack.post?.regeneration || !pack.selectedIdea || !['draft', 'generating'].includes(pack.status)) {
+    throw new PublishExecutionError('重新生成记录无效，请重试。');
+  }
+  return generateCommunityPost(projectId, {
+    ideaId: pack.selectedIdea.id,
+    customAngle: pack.selectedIdea.id === 'custom' ? pack.selectedIdea.angle : undefined,
+    config: pack.config,
+  });
 }
 
 function pickCopy(post: { title: string; body: string; interactionQuestion: string }) {

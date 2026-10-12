@@ -5,7 +5,9 @@ import { runBlindJudge } from "@/lib/services/judge.service";
 import { confirmExperienceFindings, generateExperienceFindings, getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { generateProtocol, getProtocolWorkspace, lockProtocol, ProtocolExecutionError } from "@/lib/services/protocols.service";
 import { createProject, softDeleteProject } from "@/lib/services/projects.service";
-import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace } from "@/lib/services/publish.service";
+import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace, saveCommunityPostEdit, enqueueCommunityPostRegeneration } from "@/lib/services/publish.service";
+import { runQuickWorker } from '@/lib/quick/worker';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
@@ -219,6 +221,29 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const publish = { ...quickPublish, pack: quickPublishPack };
 
   const routeChecks = await verifySingleRoutes(new URL(request.url).origin, projectId, report.report.content!.title, quickPublishPost.title);
+  // Exercise actual persistence and durable worker checkpoints using only this
+  // isolated fixture. No real project or live provider is involved.
+  const editedBody = quickPublishPost.body + '\n\n这段内容由测试者保存，用于验证重新打开后仍能读到修改。';
+  const editedId = await saveCommunityPostEdit(projectId, quickPublishPack.id, {
+    title: quickPublishPost.title, body: editedBody, tags: quickPublishPost.tags,
+    interactionQuestion: quickPublishPost.interactionQuestion,
+    imageIds: quickPublishPost.screenshotRecommendations.map(s => s.artifactId),
+  });
+  const reopened = requireValue(await getPublishWorkspace(projectId), 'Edited article disappeared');
+  assert(reopened.pack?.id === editedId && reopened.pack.post?.body === editedBody && reopened.pack.post.manualEdit?.aiReviewed === false, 'Manual edit did not persist as an explicitly human-authored version');
+  const { data: originalPack } = await getSupabaseServerClient().from('publish_packs').select('community_post').eq('id', quickPublishPack.id).single();
+  assert(originalPack?.community_post && typeof originalPack.community_post === 'object' && !Array.isArray(originalPack.community_post) && originalPack.community_post.body === quickPublishPost.body, 'Source version overwritten');
+  const reloadedPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/publish`);
+  assert(reloadedPage.ok && (await reloadedPage.text()).includes('这段内容由测试者保存'), 'Saved copy missing on a new page request');
+  const regeneratedId = await enqueueCommunityPostRegeneration(projectId, editedId);
+  for (let turn = 0; turn < 7; turn++) {
+    await runQuickWorker(projectId, 1);
+    const current = requireValue(await getPublishWorkspace(projectId), 'Regeneration workspace missing');
+    if (current.pack?.id === regeneratedId && current.pack.status === 'ready') break;
+  }
+  const regenerated = requireValue(await getPublishWorkspace(projectId), 'Regenerated article missing');
+  assert(regenerated.pack?.id === regeneratedId && regenerated.pack.status === 'ready' && !regenerated.pack.post?.manualEdit, 'Background regeneration did not finish or inherited stale human-edit audit');
+  assert(regenerated.pack.post?.generationTrace?.length === 5, 'Regeneration bypassed independent checks');
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,
@@ -237,6 +262,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     quickPublishReady: publish.pack?.status === "ready",
     publishScreenshotCount: publish.pack.post?.screenshotRecommendations.length ?? 0,
     routeChecks,
+    articleRevisionsVerified: true,
   };
 }
 

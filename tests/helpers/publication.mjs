@@ -21,7 +21,7 @@ export const draft = {
 export const rawEvidence = `合成验证夹具，不是真实产品测评。任务：老板强势、注重结果，如何在预算紧张时沟通加薪。回答：写下项目的3个硬数字，提前约15分钟沟通。没有真实用户情绪记录，也没有实际沟通结果。artifactId=${id}`;
 const route = { provider: 'deepseek', model: 'fixture', promptVersion: 'fixture-v1' };
 const usage = { inputTokens: 10, outputTokens: 20, latencyMs: 1, estimatedCost: null };
-export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick, readyPack } = {}) {
+export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick, readyPack, revisionFailure = false, regenerationJob = null } = {}) {
   const state = { calls: [], saved: null, failure: null, rawReads: 0 };
   const invoke = async options => {
     state.calls.push(options);
@@ -57,13 +57,22 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
     startPost: async (_id, _idea, value) => { state.config = value; },
     complete: async (_id, value, cost) => { state.saved = value; state.usage = cost; },
     fail: async (_id, value) => { state.failure = value; },
-    listArtifacts: async () => [],
+    listArtifacts: async () => (readyPack?.community_post?.screenshotRecommendations ?? []).map(s => ({
+      artifact_id: s.artifactId, reason: s.reason, supports_claim: s.supportsClaim,
+      supports_paragraph: s.supportsParagraph, display_order: s.order,
+    })),
     refreshTitle: async (sourceId, title, audit) => {
       state.refreshed = { sourceId, title, audit };
       return '22222222-2222-4222-8222-222222222222';
     },
+    createRevision: async (...args) => {
+      if (revisionFailure) throw new Error('DB failed');
+      state.revision = args;
+      return '22222222-2222-4222-8222-222222222222';
+    },
   };
   const overrides = {
+    '@/lib/repositories/quick-jobs.repository': { quickJobsRepository: { get: async () => regenerationJob } },
     '@/lib/quick/checkpoints': { quickExecution: { getStore: () => undefined }, QuickYield: class extends Error {}, checkpoint: async (_name, _input, execute) => execute() },
     '@/lib/repositories/publish.repository': { publishRepository: repo },
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => professional ? null : workspace, buildRawFindingsEvidenceContent: async (_id, options) => { state.rawOptions = options; state.rawReads++; return raw; } },

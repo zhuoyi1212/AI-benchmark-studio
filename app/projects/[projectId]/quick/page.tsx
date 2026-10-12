@@ -31,6 +31,7 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
   const protocol = protocolWorkspace?.protocol;
   if (!workflowState) notFound();
   const currentJobs = jobs.filter(job => {
+    if (job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) && job.payload.mode === 'regenerate') return false;
     if (['research','protocol'].includes(job.kind)) return !protocol;
     if (['evaluate','findings'].includes(job.kind)) return job.scope === protocol?.id;
     return true;

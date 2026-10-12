@@ -11,6 +11,14 @@ const packColumns = "id, project_id, report_id, findings_id, version, status, co
 const artifactColumns = "publish_pack_id, artifact_id, display_order, reason, supports_claim, supports_paragraph, created_at";
 
 export const publishRepository = {
+  async createRevision(projectId: string, sourcePackId: string, mode: 'manual' | 'regenerate', copy: Json = {}, recommendations: Json = []): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc('create_publish_revision', {
+      p_project_id: projectId, p_source_pack_id: sourcePackId, p_mode: mode,
+      p_copy: copy, p_recommendations: recommendations,
+    });
+    if (error) throwRepositoryError('publish.createRevision', error);
+    return data;
+  },
   async beginFromReport(projectId: string, reportId: string): Promise<string> {
     const { data, error } = await getSupabaseServerClient().rpc("begin_publish_pack", { p_project_id: projectId, p_report_id: reportId });
     if (error) throwRepositoryError("publish.beginFromReport", error);

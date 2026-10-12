@@ -296,7 +296,18 @@ export const communityPostContentSchema = z.object({
   writingPlan: writingPlanSchema.optional(),
   contentPolicyVersion: text.optional(),
   titleRefreshes: z.array(titleRefreshAuditSchema).max(20).optional(),
+  manualEdit: z.object({ sourcePackId: z.string().uuid(), savedAt: z.string().datetime({ offset: true }), aiReviewed: z.literal(false) }).optional(),
+  regeneration: z.object({ sourcePackId: z.string().uuid(), jobId: z.string().uuid(), requestedAt: z.string().datetime({ offset: true }) }).optional(),
 });
+
+export const manualPostEditSchema = z.object({
+  title: text.max(240),
+  body: text.max(12_000),
+  tags: z.array(text.max(40)).min(1).max(12),
+  interactionQuestion: z.string().trim().max(600),
+  imageIds: z.array(z.string().uuid()).max(9),
+}).strict();
+export type ManualPostEdit = z.infer<typeof manualPostEditSchema>;
 
 export const communityPostOutputSchema = communityPostContentSchema.extend({
   screenshotRecommendations: z.array(screenshotRecommendationSchema).max(9),

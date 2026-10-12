@@ -392,3 +392,6 @@ publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，
 
 
 2026-10-12 标题策略：lib/community-title-policy.ts 提供共享概括与审核规则，供选题发现、Story Brief、初稿、定向修订、独立审核和refreshCommunityPostTitle复用。标题刷新以articleBody为主、旧标题只作避免重复，旧Brief/选题不再发送，同一次结构化标题任务先输出用途/结果事实摘要再生成标题（至多两次尝试），服务仅保存标题与原有审计及现有immutable PublishPack RPC，不新增模型阶段或表。语义主次由提示词与原有文章审核判断；名称、长度、数字、重复/夸张等确定性校验保留，不用关键词黑名单猜任务是否重要。
+
+
+2026-10-12 文章版本编辑：Editor → authenticated Server Action → PublishService → PublishRepository.createRevision → create_publish_revision事务。服务从当前工作台校验sourcePackId、内容格式及图片权限；RPC锁定Project和源Findings/Report、核对最新版本后创建版本，不更新ready原稿。manualEdit仅记录来源、保存时间及aiReviewed=false，AI路由字段保留来源追溯，当前编辑稿不显示旧AI审核徽章。regenerate的PublishPack和quick_jobs同事务插入，payload绑定packId/sourcePackId/mode，worker按固定版本复用四至五阶段流程，hard restart保留generating继续；失败明确终止，新尝试新版本，完成不重跑分析/报告。response后唤醒一次，Cron/本地poller续跑，页面只读取状态。quick页将文章重生成交给Editor显示上一版及状态，避免全页遮挡。仅未完成regeneration读取一条job，不增加正常历史读取请求。

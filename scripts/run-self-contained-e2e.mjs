@@ -89,6 +89,7 @@ try {
     assert.equal(result.single.findingsConfirmed, true);
     assert.equal(result.single.quickPublishSourceType, "findings");
     assert.equal(result.single.quickPublishReady, true);
+    assert.equal(result.single.articleRevisionsVerified, true);
     assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
     assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
     if (textOnlyEvidence) assert.equal(result.single.publishScreenshotCount, 0);
@@ -116,10 +117,10 @@ try {
     } else {
       assert.equal(providerStats.taskCounts.ExperienceFindings, 1, "Quick Findings must run once");
       assert.equal(providerStats.taskCounts.ContentIdeas, 1, "Quick Content Discovery must run once");
-      assert.equal(providerStats.taskCounts.CommunityPostDraft, 1, "Quick Community Post must generate one initial draft");
-      assert.equal(providerStats.taskCounts.CommunityPostReview, 1, "Initial review must report actionable issues");
-      assert.equal(providerStats.taskCounts.CommunityPostRevision, 1, "Quick Community Post must run one targeted revision pass");
-      assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 1, "Quick Community Post must run one evidence check");
+      assert.equal(providerStats.taskCounts.CommunityPostDraft, 2, "Initial article and explicit regeneration must each generate one draft");
+      assert.equal(providerStats.taskCounts.CommunityPostReview, 2, "Initial review must report actionable issues");
+      assert.equal(providerStats.taskCounts.CommunityPostRevision, 2, "Quick Community Post must run one targeted revision pass");
+      assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 2, "Quick Community Post must run one evidence check");
     }
     if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
     else assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");

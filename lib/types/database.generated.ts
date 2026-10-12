@@ -2104,6 +2104,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_publish_revision: {
+        Args: { p_project_id: string; p_source_pack_id: string; p_mode: string; p_copy?: Json; p_recommendations?: Json }
+        Returns: string
+      }
       refresh_publish_pack_title: {
         Args: {
           p_input_signature: string

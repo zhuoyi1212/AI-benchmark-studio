@@ -5,7 +5,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import ts from 'typescript';
 import { z } from 'zod';
 
-function load(job, evaluation) {
+function load(job, evaluation, regeneration) {
   const finished = [];
   const quickExecution = new AsyncLocalStorage();
   class QuickYield extends Error {}
@@ -21,7 +21,7 @@ function load(job, evaluation) {
     '@/lib/services/protocols.service': {},
     '@/lib/services/quick-evaluation.service': { advanceQuickEvaluation: evaluation },
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => ({ latest: { id: job.payload.findingsId, humanConfirmedAt: 'confirmed' } }) },
-    '@/lib/services/publish.service': { getPublishWorkspace: async () => ({ pack: { ideas: [{ id: 'idea', recommended: true }] } }), generateCommunityPost: async () => { throw new QuickYield(); } },
+    '@/lib/services/publish.service': { getPublishWorkspace: async () => ({ pack: { ideas: [{ id: 'idea', recommended: true }] } }), generateCommunityPost: async () => { throw new QuickYield(); }, regeneratePreparedCommunityPost: regeneration },
     '@/lib/services/result-analysis.service': {}, '@/lib/services/report.service': {},
     '@/lib/ai/schemas/publish.schemas': { publishConfigSchema: z.object({}) },
     './checkpoints': { quickExecution, QuickYield },
@@ -40,6 +40,25 @@ test('anomalous blind scores stop for human review; normal scores enqueue findin
     assert.equal(worker.finished[0][1], 'completed');
     assert.deepEqual(worker.finished[0][4], next === 'findings' ? { kind: 'findings', scope: 'protocol' } : undefined);
   }
+});
+test('explicit article regeneration resumes its fixed pack without recovery writes or extra analysis jobs', async () => {
+  const packId = '11111111-1111-4111-8111-111111111111';
+  const calls = [];
+  const worker = load({ ...base, kind: 'publish', payload: { mode: 'regenerate', packId }, result: null }, undefined,
+    async (...args) => { calls.push(args); return packId; });
+  await worker.runQuickWorker('project', 1);
+  assert.deepEqual(calls, [['project', packId]]);
+  assert.equal(worker.finished[0][1], 'completed');
+  assert.deepEqual(worker.finished[0][2], { packId });
+  assert.equal(worker.finished[0][4], undefined);
+});
+
+test('failed regeneration exposes retry instead of automatically reusing a terminal pack', async () => {
+  const worker = load({ ...base, kind: 'publish', payload: { mode: 'regenerate', packId: '11111111-1111-4111-8111-111111111111' }, result: null }, undefined,
+    async () => { throw new Error('Regeneration failed'); });
+  await worker.runQuickWorker('project', 1);
+  assert.equal(worker.finished[0][1], 'failed');
+  assert.equal(worker.finished[0][3], 'Regeneration failed');
 });
 test('retryable errors requeue finitely, then expose a failed stage', async () => {
   for (const attempts of [1, 3]) {

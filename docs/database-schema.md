@@ -301,3 +301,8 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不增加表或改历史记录。`redact_video_judge_evidence(judge_run_id,test_case_id,content)` 为 security invoker、空 search_path，仅 service_role 可执行；验证 running JudgeRun、Locked Protocol 和所属 Case，限 2MB 文本，数据库内对本项目产品名、官网/域名脱敏，不返回真实身份或 Mapping。VideoEvidence derivative JSON 与预处理 JPEG/WAV base64 保存在既有私有 `benchmark-artifacts/media-cache/`，关联原 Artifact ID/hash/policy/context/router 签名；binary 不进入 PostgreSQL。快速媒体失败只写独立 quick_job_steps degraded 记录，不写 judge_scores。
 
 `20261011153000_isolate_quick_e2e_workers.sql` 保留 claim_quick_job 的签名、角色和 lease/锁语义，只让保留的 `[E2E]` 测试项目必须由指定 project_id 的工作端领取，避免生产 Cron 使用真实 Provider 执行测试夹具。没有改表、删除用户数据或覆盖历史。E2E poller 通过专用测试环境变量限定自己的项目；普通项目队列不受此过滤影响。
+
+
+### 2026-10-12 文章保存与后台重生成
+
+非破坏性migration `20261012082020_publish_editor_revisions.sql` 新增service-role-only、security invoker函数 `create_publish_revision(projectId, sourcePackId, mode, copy, recommendations)`，无新表。锁定Project及源Report/Findings并校验最新版本；manual从draft→generating→ready保存新文案/可选真实截图关联，旧ready保持immutable。JSON manualEdit包含sourcePackId/savedAt/aiReviewed=false，源AI追溯字段保留但不是本次模型调用。regenerate原子创建draft及quick_jobs，JSON regeneration含sourcePackId/jobId/requestedAt；job payload绑定新packId，成功后生成审计替换旧稿。失败/死worker retry创建下一版本，只有failed job可重试。claim_quick_job仅对显式publish/regenerate扩展专业项目，保留quick任务边界、项目串行、lease、SKIP LOCKED和E2E排除。Artifact来源/图片种类/FK/unique仍由现有trigger约束，保存后失效正文锚点置null。

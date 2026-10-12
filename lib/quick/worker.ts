@@ -8,7 +8,7 @@ import { executeProductResearch, getResearchWorkspace } from '@/lib/services/res
 import { generateProtocol } from '@/lib/services/protocols.service';
 import { advanceQuickEvaluation } from '@/lib/services/quick-evaluation.service';
 import { generateExperienceFindings, getExperienceFindingsWorkspace } from '@/lib/services/findings.service';
-import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace } from '@/lib/services/publish.service';
+import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace, regeneratePreparedCommunityPost } from '@/lib/services/publish.service';
 import { generateFinalResultAnalysis } from '@/lib/services/result-analysis.service';
 import { generateReport } from '@/lib/services/report.service';
 import { publishConfigSchema } from '@/lib/ai/schemas/publish.schemas';
@@ -42,7 +42,8 @@ export async function runQuickWorker(projectId?: string, maxJobs = 8) {
         }
         const message = error instanceof Error ? error.message : '后台任务失败，请重试当前阶段。';
         if (job.kind === 'research' || job.kind === 'protocol') await setQuickPreparationStatus(job.project_id, 'failed', message);
-        await quickJobsRepository.finish(job, scope.retryable && job.attempts < 3 ? 'queued' : 'failed', null, message);
+        const regeneration = job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) && job.payload.mode === 'regenerate';
+        await quickJobsRepository.finish(job, !regeneration && scope.retryable && job.attempts < 3 ? 'queued' : 'failed', null, message);
       }
     }); } finally { clearInterval(heartbeat); }
   }
@@ -80,6 +81,8 @@ async function executeJob(job: QuickJob): Promise<{ result?: Json; next?: NextQu
       return { next: { kind: 'publish', scope: job.scope, payload: { ...payload, packId: prepared?.pack?.id } as unknown as Json } };
     }
     case 'publish': {
+      const regeneration = z.object({ mode: z.literal('regenerate'), packId: z.string().uuid() }).safeParse(job.payload);
+      if (regeneration.success) return { result: { packId: await regeneratePreparedCommunityPost(projectId, regeneration.data.packId) } };
       const payload = writingPayload.parse(job.payload);
       await requireFindings(projectId, payload.findingsId);
       const workspace = await getPublishWorkspace(projectId);
@@ -113,6 +116,9 @@ async function requireFindings(projectId: string, findingsId: string) {
 
 // Only recover this worker's interrupted attempts, never an older experiment.
 async function recoverInterruptedRun(job: QuickJob) {
+  // A prepared revision has a fixed pack ID. Resume its saved stages rather
+  // than marking it terminal and silently creating a different version.
+  if (job.kind === 'publish' && job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) && job.payload.mode === 'regenerate') return;
   if (job.result && typeof job.result === 'object' && !Array.isArray(job.result) && job.result.continuation === true) return;
   const table = ({ research: 'research_runs', evaluate: 'judge_runs', findings: 'experience_findings', discovery: 'publish_packs', publish: 'publish_packs', analysis: 'result_analyses', report: 'reports' } as const)[job.kind as Exclude<QuickJob['kind'], 'protocol'>];
   if (!table) return;

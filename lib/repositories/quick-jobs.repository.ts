@@ -6,6 +6,11 @@ import type { Json } from '@/lib/types/database';
 import type { NextQuickJob, QuickJob } from '@/lib/quick/types';
 
 export const quickJobsRepository = {
+  async get(projectId: string, jobId: string): Promise<QuickJob | null> {
+    const { data, error } = await getSupabaseServerClient().from('quick_jobs').select('*').eq('project_id', projectId).eq('id', jobId).maybeSingle();
+    if (error) throwRepositoryError('quick.get', error);
+    return data ? data as QuickJob : null;
+  },
   async enqueue(projectId: string, next: NextQuickJob) {
     const { data, error } = await getSupabaseServerClient().rpc('enqueue_quick_job', {
       p_project_id: projectId, p_kind: next.kind, p_scope: next.scope, p_payload: next.payload ?? {},

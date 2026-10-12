@@ -129,3 +129,5 @@
 按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。
 
 2026-10-12 标题主次调整：按用户最新要求，以清楚概括测评内容优先于钩子。共享标题规则覆盖选题/策划/写作/修订/审核/标题刷新；刷新以已核验正文为事实与主次依据，不继承历史局部问题角度，不额外读取原始媒体。产品名和测试用途优先保留，主要结果须有证据；重大失败不掩盖，小摩擦不夸大。升版Prompt与内容规则；不换模型、不改正文流程、不加DB migration、不重写历史。
+
+2026-10-12 文章编辑持久化：用户明确要求正文可重生成，手动修改可保存。新增service-only原子create_publish_revision RPC，manual复制生成来源并创建新ready版本，记录manualEdit/aiReviewed=false；regenerate原子创建draft版本与固定packId的publish任务，复用队列、阶段检查点、AI路由和独立审核。专业项目仅显式文章重生成可使用此队列，其余任务保持quick-only，保留E2E隔离。旧稿不可变；人工文案不强行接受AI写作语义门禁，但保留长度/结构/内部ID/真实Artifact校验。去掉失效段落证据锚点，不制造替代截图。
