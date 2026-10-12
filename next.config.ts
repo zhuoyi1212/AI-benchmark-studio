@@ -11,7 +11,10 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "ffmpeg-static", "@ffprobe-installer/ffprobe"],
   outputFileTracingIncludes: {
-    "/*": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/@ffprobe-installer/linux-x64/ffprobe", "./node_modules/@ffprobe-installer/darwin-arm64/ffprobe", "./node_modules/@ffprobe-installer/darwin-x64/ffprobe"],
+    "/*": ["./node_modules/ffmpeg-static/ffmpeg", ...["linux-x64", "darwin-arm64", "darwin-x64"].flatMap(platform => [
+      `./node_modules/@ffprobe-installer/${platform}/ffprobe`,
+      `./node_modules/@ffprobe-installer/${platform}/package.json`,
+    ])],
     "/api/cron/quick-workflow": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*", "./node_modules/pdfjs-dist/wasm/**/*"],
     "/projects/*": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*", "./node_modules/pdfjs-dist/wasm/**/*"],
   },

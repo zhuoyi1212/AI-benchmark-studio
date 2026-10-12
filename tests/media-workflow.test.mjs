@@ -102,6 +102,17 @@ test('runtime diagnostic performs real encode, probe, JPEG extraction and mono W
   assert.match(result.versions.ffmpeg, /^ffmpeg version/); assert.doesNotMatch(JSON.stringify(result), /imagePath|data:|\/private\/|\.env/);
 });
 
+test('missing native package metadata cannot crash module loading and returns a controlled API failure', async () => {
+  const unavailable = new Proxy({}, { get() { throw new Error("Cannot find module '@ffprobe-installer/linux-x64/package.json'"); } });
+  const load = createLoader(root, { '@ffprobe-installer/ffprobe': unavailable });
+  const { mediaBinary } = load('@/lib/media/ffmpeg');
+  await assert.rejects(mediaBinary('ffprobe'), error => error.code === 'runtime_unavailable');
+  const route = load('@/app/api/media/runtime/route');
+  const response = await route.GET();
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { ok: false, error: 'FFmpeg/FFprobe runtime verification failed' });
+});
+
 test('production global workers cannot claim reserved E2E fixtures', async () => {
   const { readFile } = await import('node:fs/promises');
   const migration = await readFile(new URL('../supabase/migrations/20261011153000_isolate_quick_e2e_workers.sql', import.meta.url), 'utf8');

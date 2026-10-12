@@ -80,3 +80,9 @@ MVP 资源边界：文件最多 50 MiB；Storage 下载最多 120 秒，与最�
 端到端夹具使用真实 FFmpeg 与 Supabase/Storage，AI 响应明确来自隔离 Provider。生产全局 worker 排除保留名称 `[E2E]%`；测试 worker 必须显式选择自己的夹具项目，避免生产 Cron 抢占尚未发布代码的本地验证任务。
 
 ASR 尚未配置，这是明确的能力缺口；不能宣称已完成声音实测。关键帧采样不能替代完整时序/动画检测。缓存位于私有 bucket，当前不自动删除历史 derivative；未来需按 Artifact 保留策略增加清理/配额。模型对观察和证据的语义判断仍需人工复核，结构正确不等于事实绝对正确。没有引入跨厂商自动 fallback。
+
+## 2026-10-12 函数包初始化故障修复
+
+用户在管理员浏览器访问 `/api/media/runtime` 返回500。Vercel hnd1 Node24日志确认缺少 `@ffprobe-installer/linux-x64/package.json`：原 tracing 只补了可执行文件，而 installer 会动态 require 平台包的元数据；模块顶层初始化失败发生在 GET 的 try/catch 之前。构建机完整 node_modules 下的版本检查不能证明精简函数包可运行。
+
+现显式 trace Linux/macOS 平台包的二进制及 package.json；在媒体操作内部延迟加载 native 包，缺依赖也返回可处理的 runtime_unavailable，API 可给503 JSON，避免影响普通页面初始化。新增 `verify:media-bundle` 并接入 `npm run build`：按实际 `.nft.json` 在独立临时目录复制函数及依赖，隔离工作目录与凭据，直接调用编译后的 GET 完成真实抽帧/提音，最后清理。旧trace在本机复现同类缺元数据故障，新trace返回ok/1帧/16kHz/mono；新增缺包回归，344/344 tests、lint0 errors/26既有warnings、typecheck/build通过。Linux部署验证结果见PLAN发布补充。
