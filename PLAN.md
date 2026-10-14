@@ -458,3 +458,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 文章编辑发布验收：实现0b00501部署dpl_EgaYgHx9gdexYmUXTSiufGyBBDC7已READY/promote，sand公开alias绑定确认。Vercel Linux构建及隔离媒体自检通过，目录仍约3MiB。待发布与正式域名真实历史文章均返回编辑器且只读，公开页面不显示保存/重生成按钮；正式GET为200（完整HTML5.93秒），匿名POST为401。全仓审计399文件/74真实数据边界通过。未更改管理员密码、覆盖历史文章或重新调用真实测评模型。
 
 2026-10-14 当前方案测试进度修复：首页与最近项目共用的进度查询先按version倒序选择每个项目最新版Protocol，再批量读取这些Protocol的TestRuns。旧方案pending/完成记录均不参与当前进度，新草稿尚无测试项显示0/0；保留原uploaded/ready_for_review完成口径与历史记录。新增6项真实模块回归测试覆盖旧版待提交、旧版完成、多项目独立版本、当前草稿无Run、无方案/空列表及数据库失败。370/370 tests、typecheck、build（含媒体隔离bundle）、diff check通过；lint0errors/26既有warnings。修改后真实Service只读生产数据验证万彩AI首页与侧栏均为1/1、100%；不修改任何测试记录，无migration或AI调用。发布验收随后补充。
+
+进度发布验收：实现4411a9c部署dpl_FvbNjyDnbmrEYy4k7dEriujBxDmN已READY/promote，sand正式alias确认。待发布与正式/projects均实际返回万彩AI测试进度1/1、进度条width100%，保持公开只读；正式请求200。首次待发布请求在构建中返回平台占位页，READY后重新验证真实页面通过。全仓审计400文件/74真实边界通过；旧方案记录与用户测评内容均未改写。
