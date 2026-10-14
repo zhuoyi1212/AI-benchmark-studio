@@ -6,19 +6,21 @@ import { AdminOnly } from "@/components/workspace-access";
 
 export async function RecentProjectNav() {
   await connection();
-  let project: ProjectSummary | undefined;
+  let projects: ProjectSummary[];
   try {
-    [project] = await listProjectSummaries({ limit: 1 });
+    projects = await listProjectSummaries();
   } catch {
     return <SidebarLink href="/projects" label="项目列表暂不可用" />;
   }
-  if (!project) return <AdminOnly><SidebarLink href="/projects/new" label="创建第一个测评" /></AdminOnly>;
+  if (projects.length === 0) return <AdminOnly><SidebarLink href="/projects/new" label="创建第一个测评" /></AdminOnly>;
   return (
-    <Link href={project.evaluationMode === "quick" ? `/projects/${project.id}/quick` : getProjectHref(project.id, project.status)} className="group mt-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-950">
-      <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-      <span className="truncate">{project.name}</span>
-      <span className="ml-auto text-[10px] text-muted-foreground group-hover:text-slate-600">{project.progress.percent}%</span>
-    </Link>
+    <nav aria-label="最近项目">
+    {projects.map((project) => <Link key={project.id} href={project.evaluationMode === "quick" ? `/projects/${project.id}/quick` : getProjectHref(project.id, project.status)} className="group mt-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-950">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+      <span className="min-w-0 flex-1 truncate" title={project.name}>{project.name}</span>
+      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground group-hover:text-slate-600">{project.progress.percent}%</span>
+    </Link>)}
+    </nav>
   );
 }
 

@@ -35,7 +35,7 @@ export const projectsRepository = {
       .from("projects")
       .select(projectListColumns)
       .is("deleted_at", null)
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: false });
     if (limit) query = query.limit(limit);
     const { data, error } = await query;
     if (error) throwRepositoryError("projects.listActive", error);
