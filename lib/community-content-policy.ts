@@ -94,6 +94,9 @@ export function publicationCopyIssues(copy: CommunityStyleEdit): string[] {
   return issues;
 }
 
+// Only known empty phrases are gated; specific reader questions remain valid.
+const vagueTitleSummaryPattern = /(?:给了什么|提供了什么|带来了什么|表现如何|效果如何|体验如何|表现怎么样|效果怎么样|体验怎么样)/;
+
 export function publicationTitleIssues(title: string, body: string, previousTitle?: string): string[] {
   const issues: string[] = [];
   const length = Array.from(title.trim()).length;
@@ -101,6 +104,7 @@ export function publicationTitleIssues(title: string, body: string, previousTitl
   if (length > 28) issues.push("标题不能超过 28 个字符");
   if (previousTitle && normalizeTitle(title) === normalizeTitle(previousTitle)) issues.push("新标题不能与当前标题相同");
   if (/(?:震惊|必看|封神|绝了|天花板|颠覆认知|看完就|后悔没|真相竟然)/i.test(title)) issues.push("标题不能使用夸张或诱导点击的词");
+  if (vagueTitleSummaryPattern.test(title)) issues.push("标题不能用空泛提问，请概括测试用途与具体内容或结果");
   if ((title.match(/[!?！？]/g) ?? []).length > 1) issues.push("标题不能堆叠问号或感叹号");
   const bodyNumbers = new Set(body.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []);
   const unsupportedNumber = (title.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []).find((value) => !bodyNumbers.has(value));

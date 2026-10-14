@@ -464,3 +464,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-14 最近项目完整列表：侧栏取消limit1，渲染真实项目服务返回的全部可见项目；首页/侧栏统一按created_at倒序，旧项目编辑不会挤到新项目上方。列表支持滚动，顶部导航与底部入口不收缩，长名称可悬停查看，保留quick/professional状态对应的跳转、当前方案进度、只读与空/失败入口。新增4项真实SSR/Repository回归测试验证10项目完整渲染、顺序/跳转/百分比、访客/管理员空状态、创建时间排序与滚动区域；同步原Mock边界契约保留真实服务检查。374/374 tests、typecheck、build（含媒体隔离bundle）、diff check通过；lint0errors/26既有warnings。真实生产Service只读确认4个可见项目按创建时间降序为万彩AI、懂你AI、豆包 VS deepseek、秘塔AI搜索；无migration或AI调用。全仓审计400文件/74真实边界通过。发布结果随后补充。
 
 最近项目发布验收：实现9922b4e部署dpl_v6d3nVpvYtBLJ8pXsNX7cLCbRWUK已READY/promote，sand alias绑定确认。待发布与正式/projects均实际返回4个侧栏项目，ID顺序与真实Service创建时间倒序完全一致，滚动区域/只读标记存在，万彩AI1/1、100%保持；正式200。前两次CLI在创建部署前fetch失败，探测Node官方API连接恢复后上传成功；第三次CLI等待结束时网络断连，MCP独立确认同提交READY，未重复创建部署。正式首个TLS重置请求不作为成功样本，重试真实页面通过。全仓审计401文件/74真实边界通过；无数据改写、migration或模型调用。
+
+2026-10-14 标题具体摘要提示词：统一改写communityTitleRules/Review/Refresh，允许内容概括或结果概括，至少保留一个具体内容点/主要表现；明确不沿用readerQuestion、不以“给了什么/表现如何/效果如何”等空泛问句结尾，不用主题泛称或无标点名词堆叠，不把建议写成实际收益。覆盖Discovery、Brief、初稿、定向修订、初审/最终核验和独立换标题；六条Prompt及story policy升版，模型配置不变。程序门禁拦截已观察到的空泛短语，初稿转定向修订、最终稿仍不合格则明确失败，换标题的schema验证重试后才允许新版本保存；具体读者问题不因问号本身被拒绝。新增docs/community-title-generation.md全文，同步提示词清单与最终规范，无migration或历史回写。
+
+验证：378/378 tests（原374保留、新增4项）通过，覆盖空泛问句/具体问句、模型漏检后的标题定向修订保持正文、最终不合格拦截、标题刷新失败不保存与文档精确同步；lint0errors/26既有warnings，最终typecheck/build（媒体隔离bundle）/diff check通过。8次现有DeepSeek v4 flash真实标题调用只用四类合成文章、不外发用户材料、不写历史：首轮沟通标题仍偏主题泛称、总结标题名词堆叠，细化具体点/标点要求后，输出明确开场与清单、核心导出失败、要点/行动项/待确认问题、论点与因果保留，均通过结构和标题门禁。样本验证不代表所有未来语义输出必然理想，未知/建议与结果边界保留。新Prompt实际进入生产编译chunks；部署验收随后补充。

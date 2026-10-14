@@ -77,3 +77,60 @@ test('refresh still rejects unchanged titles, missing product names and unsuppor
     assert.equal(h.state.refreshed, undefined);
   }
 });
+
+test('empty title questions are blocked while concrete summaries and specific reader questions remain valid', async () => {
+  const { publicationTitleIssues } = await import('../lib/community-content-policy.ts');
+  for (const suffix of ['给了什么', '提供了什么', '带来了什么', '表现如何', '效果如何', '体验怎么样']) {
+    assert.ok(publicationTitleIssues(`懂你AI加薪实测：${suffix}`, '').some(issue => issue.includes('空泛提问')));
+  }
+  for (const title of [
+    '懂你AI加薪沟通实测：开场、预算回应与准备清单',
+    '懂你AI加薪沟通实测：话术具体，准备建议能落地',
+    '老板说预算紧张怎么谈加薪？懂你AI话术实测',
+  ]) assert.deepEqual(publicationTitleIssues(title, ''), []);
+});
+
+test('a vague initial title triggers targeted title revision even when the model review reports no issues', async () => {
+  const vague = '沟通工具样本加薪实测：强势老板给了什么';
+  const concrete = '沟通工具样本加薪实测：话术与准备清单';
+  const h = harness({ mutate(stage, value, input) {
+    if (stage === 'CommunityPostDraft') return { ...value, title: vague };
+    if (stage === 'CommunityPostRevision') {
+      assert.ok(input.review.deterministicIssues.some(issue => issue.includes('空泛提问')));
+      return { ...input.draft, title: concrete };
+    }
+    return value;
+  } });
+  await h.run();
+  assert.equal(h.state.saved.title, concrete);
+  assert.equal(h.state.saved.body, h.state.saved.styleEdit.original.body);
+  assert.equal(h.state.saved.draftReview.issues.length, 0);
+});
+
+test('independent final validation cannot publish a vague replacement after revision', async () => {
+  const h = harness({ mutate(stage, value, input) {
+    if (stage === 'CommunityPostDraft') return { ...value, title: '沟通工具样本加薪实测：给了什么' };
+    if (stage === 'CommunityPostRevision') return { ...input.draft, title: '沟通工具样本加薪实测：表现如何' };
+    return value;
+  } });
+  await assert.rejects(h.run());
+  assert.equal(h.state.saved, null);
+  assert.ok(h.state.failure);
+});
+
+test('title refresh rejects empty questions before creating a version and retains concrete-summary instructions', async () => {
+  const initial = harness(); await initial.run();
+  const readyPack = { id, version: 1, status: 'ready', content_ideas: [idea], selected_idea: idea, config, community_post: initial.state.saved };
+  const h = harness({ readyPack, mutate: (stage, value) => stage === 'CommunityPostTitle' ? { ...value, title: '沟通工具样本加薪实测：给了什么' } : value });
+  await assert.rejects(h.load('@/lib/services/publish.service').refreshCommunityPostTitle(id, id));
+  assert.equal(h.state.refreshed, undefined);
+  assert.equal(h.state.rawReads, 0);
+  const input = JSON.parse(h.state.calls[0].messages[1].content);
+  assert.equal(input.requirements.summarizeConcreteContent, true);
+  assert.equal(input.requirements.avoidVagueQuestions, true);
+  const prompt = h.state.calls[0].messages[0].content;
+  assert.match(prompt, /内容概括/); assert.match(prompt, /结果概括/);
+  assert.match(prompt, /给出加薪话术不等于加薪成功/);
+  const document = await readFile(new URL('../docs/community-title-generation.md', import.meta.url), 'utf8');
+  assert.ok(document.includes(prompt));
+});

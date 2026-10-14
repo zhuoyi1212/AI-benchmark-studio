@@ -332,6 +332,8 @@ export async function refreshCommunityPostTitle(
       length: "6-28 个 Unicode 字符",
       clear: true,
       summarizeReview: true,
+      summarizeConcreteContent: true,
+      avoidVagueQuestions: true,
       includeTestPurpose: true,
       prioritizeMainResult: true,
       preserveArticleMeaning: true,
