@@ -26,6 +26,15 @@ export type HumanReviewScore = {
   reviewFlags: Array<"low_confidence" | "evidence_risk" | "judge_conflict" | "parse_risk" | "fact_risk">;
 };
 
+export type HumanReviewAuditEntry = {
+  id: string;
+  judgeScoreId: string;
+  action: "override" | "revert";
+  score: number | null;
+  reason: string | null;
+  createdAt: string;
+};
+
 export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
   reviewSessionId: string;
   judgeRunId: string;
@@ -34,6 +43,7 @@ export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
   revealedAt: string | null;
   scores: HumanReviewScore[];
   summary: { total: number; adjusted: number; accepted: number; auditEvents: number; anomalies: number };
+  auditHistory?: HumanReviewAuditEntry[];
   revealedMappings: Array<{
     sampleId: string;
     sampleLabel: string;
@@ -134,6 +144,14 @@ async function readHumanReviewWorkspace(projectId: string): Promise<HumanReviewW
         auditEvents: events.length,
         anomalies: scores.filter((score) => score.reviewFlags.length > 0).length,
       },
+      auditHistory: events.map(event => ({
+        id: event.id,
+        judgeScoreId: event.judge_score_id,
+        action: event.action,
+        score: event.override_score,
+        reason: event.reason,
+        createdAt: event.created_at,
+      })),
       revealedMappings,
     };
   } catch (error) {

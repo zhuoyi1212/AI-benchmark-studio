@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 import { deriveWorkflowState } from '../lib/workflow-navigation-state.ts';
+import { selectQuickWorkspaceJobs } from '../lib/quick/workspace-jobs.ts';
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
 const ui = new Proxy({}, { get: (_, key) => String(key) });
@@ -79,7 +80,8 @@ test('running and failed quick pages retain navigation outside the hidden embedd
       '@/lib/services/quick-workflow.service': { getQuickWorkflowJobs: async () => [{ id: 'job', kind: 'publish', status }] },
       '@/lib/services/protocols.service': { getProtocolWorkspace: async () => ({ protocol: { id: 'protocol', status: 'locked' } }) },
       '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => state(true) },
-      '@/lib/services/findings.service': {}, '@/lib/services/human-review.service': {}, '@/lib/services/publish.service': {},
+      '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => null }, '@/lib/services/human-review.service': {}, '@/lib/services/publish.service': {},
+      '@/lib/quick/workspace-jobs': { selectQuickWorkspaceJobs },
       '@/lib/quick/types': { quickStageLabels: { publish: '生成文章' } },
       './action-button': ui, '../results/findings-editor': ui, '../publish/publish-editor': ui,
       '../review/human-review-panel': ui, '../test/page': ui,
