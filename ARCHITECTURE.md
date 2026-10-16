@@ -401,3 +401,5 @@ publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，
 2026-10-16 截图结构修复：多截图仍每批最多2张，用独立截图提示词明确根observations字符串数组、固定数量、字符串转义和禁止answer包装。Router的结构修复将原始图片/原生文件与标签按序移动到当前用户消息，附加修复指令，不重复发送同一批媒体；纯文本消息结构不变。同Provider至多两次请求，失败明确为截图JSON或字段错误，不省略截图、不补造观察、不修改历史实验或旧稿。集中截图Prompt升版，Schema/正文与评分门禁保持。
 
 2026-10-16 重新生成可靠性：Quick worker恢复前检查最新写作请求与目标packId；旧任务不能采用或标记更新版本。普通Publish也以有效lease持久化目标，当前failed合法重试创建新版本后先绑定再调用模型；不再以时间范围批量恢复Publish。重试入口与工作台过滤同步排除已被更新请求替代的旧任务。新终审在原有只读契约上要求每条阻断意见定位最终draft，理由与质量/保真问题一致；结构缺失之外要求逐字引文，无效定位进入既有同Provider有限修复。定向修订在返回时执行标题及已知无依据断言校验，保存前仍保留最终门禁。历史JSON继续可读，无新增migration。排查证据及限制见docs/regeneration-reliability-20261016.md。
+
+2026-10-16 真实回归补充：修订Schema同步执行communityExpressionIssues，避免修订新增报告套话后直到终稿才失败；语言错误包含实际触发短语。初审/终审和相应repair instruction共享locatedReviewOutputRules，明确根issues为六字段问题对象数组，嵌套articleReview.issues为字符串摘要数组。视觉修复仍保留原图，最多两次同Provider尝试，不合格对象不转换、不补造定位。修订/审核Prompt升版，无新增模型阶段或数据表。

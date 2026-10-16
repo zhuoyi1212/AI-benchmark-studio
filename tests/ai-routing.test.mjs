@@ -27,9 +27,9 @@ test("keeps all task routing in one provider-neutral config", () => {
   assert.match(config, /report:[\s\S]*provider: "zhipu"/);
   assert.match(config, /content_discovery:[\s\S]*provider: "deepseek"/);
   assert.match(config, /community_post:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post\.v10-author-perspective"[\s\S]*deepSeekWritingModel/);
-  assert.match(config, /community_post_humanize:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post-humanize\.v7-validated-revision"[\s\S]*deepSeekWritingModel/);
-  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v8-located-audit-vision"[\s\S]*reasoning: "standard"[\s\S]*maxAttempts: structuredTaskMaxAttempts/);
-  assert.match(config, /community_post_evidence_check_text:[\s\S]*provider: "deepseek"[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-evidence-check\.v8-located-audit-text"/);
+  assert.match(config, /community_post_humanize:[\s\S]*provider: "deepseek"[\s\S]*promptVersion: "community-post-humanize\.v8-shared-copy-gates"[\s\S]*deepSeekWritingModel/);
+  assert.match(config, /community_post_evidence_check:[\s\S]*capability: "multimodal"[\s\S]*promptVersion: "community-post-evidence-check\.v9-located-review-shape-vision"[\s\S]*reasoning: "standard"[\s\S]*maxAttempts: structuredTaskMaxAttempts/);
+  assert.match(config, /community_post_evidence_check_text:[\s\S]*provider: "deepseek"[\s\S]*capability: "structured_text"[\s\S]*promptVersion: "community-post-evidence-check\.v9-located-review-shape-text"/);
   assert.doesNotMatch(config, /community_post_(?:rewrite|critic):/);
   assert.match(config, /research:[\s\S]*reasoning: "standard"/);
   assert.match(config, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);

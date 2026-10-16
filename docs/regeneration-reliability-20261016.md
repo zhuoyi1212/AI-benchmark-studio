@@ -39,3 +39,13 @@
 不修改历史实验、AI评分、已确认Findings或原有ready文章；不改变Blind、人工测试、Human Review与Storage规则。本次没有新增表或migration，沿用`quick_jobs`、`quick_job_steps`、`publish_packs`及原Provider路由，只升级修订/审核Prompt与运行时校验。
 
 验证结果见PLAN.md当日Progress Log。自动测试与模拟模型E2E只证明已覆盖的程序行为，不能代替真实多项目生成成功率、审稿准确率或自然度评测。后续真实回归应分项目记录生成成功、误拦截、漏检、调用成本和人工采用结果。
+
+## 首轮真实回归补充
+
+用户授权发布4f953d5并使用三个项目现有材料真实验证。生产部署`dpl_2jFdWessekQZAzGXh4CiXuRHx6sY`构建及页面检查通过后切换域名；线上Cron日志确认新代码执行实际写作。
+
+- 腾讯元宝v7 `b1fdd8ff-8881-4a65-8e73-d315e3937229`成功ready，五阶段完成，历史ready文章及已确认Findings完整快照校验一致。
+- 懂你AI v8 `a8cf5034-018e-4692-b9c2-d66a6a2f50c5`修订新增“值得注意的是”，语义终审通过，但最终语言规则拦截。原即时修订校验没有包含communityExpressionIssues。补齐同一语言门禁，并在错误中指出实际套话，供同Provider有限修复使用。
+- 即梦v9 `42044e72-225e-4762-a04d-c3fa22f36756`四图读取成功；视觉初审两次把根issues返回为字符串数组，未遵守问题对象契约。补充初审/终审及修复指令的明确对象示例，区分根issues对象数组与articleReview.issues原因字符串数组，不从字符串补造引文或放宽Schema。
+
+两次失败都保留原记录，旧ready文章及Findings快照未改变。修订Prompt升至v8-shared-copy-gates，审核Prompt升至v9-located-review-shape，正文Provider/Model保持原配置。后续验证结果追加记录，不把这轮描述成三项目全部通过。

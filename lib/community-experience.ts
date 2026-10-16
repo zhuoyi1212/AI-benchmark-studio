@@ -33,7 +33,8 @@ export function communityExpressionIssues(post: CommunityPostOutput, config: Pub
   const issues: string[] = [];
   const plan = post.editorialPlan;
   const copy = [post.title, post.body, post.interactionQuestion, ...post.tags].join("\n");
-  if ((config.stylePreset === "真实体验" || config.stylePreset === "深度观察") && reportVoice.test(copy)) issues.push("删除报告腔，改为事实紧接具体判断");
+  const reportPhrase = copy.match(reportVoice)?.[0];
+  if ((config.stylePreset === "真实体验" || config.stylePreset === "深度观察") && reportPhrase) issues.push(`删除报告腔“${reportPhrase}”，改为事实紧接具体判断`);
   if (findings.length) {
     for (const [category, heading] of Object.entries({ good: "好用的功能", neutral: "体验一般的功能", problem: "不能用 / 用着难受的功能" })) {
       const points = category === "good" ? plan?.highlights : category === "neutral" ? plan?.neutralPoints : plan?.painPoints;

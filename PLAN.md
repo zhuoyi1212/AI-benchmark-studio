@@ -272,6 +272,8 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-16 发布与真实回归补充：按用户明确授权，4f953d5生产部署READY、候选页200后切换域名。腾讯元宝新v7成功，线上Cron日志确认新代码执行写作，旧ready与Findings完整快照一致。懂你AI v8修订新增“值得注意的是”但即时校验遗漏语言规则；即梦v9视觉初审两次返回根issues字符串数组。两次失败保留，不伪报成功。补齐修订的communityExpressionIssues并反馈实际触发短语，初审/终审/repair共享六字段问题对象示例，区分根与嵌套issues；不放宽事实门禁或补造缺失字段。427/427 tests、typecheck、build（媒体自检）、diff检查通过，lint0errors/26既有warnings；新增两项真实失败回归覆盖语言门禁与视觉修复保留图片。完整模拟模型E2E及后续真实重试仍在执行，结果完成后追加；未经验证不宣称三项目全部通过。既有用户作品集与简历改动保持原状。
+
 2026-10-16 多项目重新生成可靠性修复：只读核对线上文章、任务和阶段输出，确认腾讯元宝旧普通Publish任务绑定v1却处理v5，并在重试中额外创建v6；终审还把只在Brief的“可核对后引用”当作最终正文问题。增加写作任务新旧及packId隔离，去掉Publish按时间批量恢复，合法failed重试的新版本先经有效lease绑定；旧任务重试入口和全页遮挡同步拦截。新终审逐条定位最终draft，阻断理由与定位一致，定位失败仍只使用既有同Provider有限修复；定向修订即时校验标题及无依据断言，避免换同义词后到终审才失败。缩窄“容易”行为规则，修复懂你AI“容易踩的坑”误拦截，继续保留百分比、收益和机制等事实门禁。新增排查记录docs/regeneration-reliability-20261016.md，升级修订/审核Prompt与清单；无migration、不修改真实历史实验/Findings/ready文章、不发送现有项目材料给模型。425/425 tests、typecheck、build（含FFmpeg隔离媒体自检）、diff检查通过；lint 0 errors/26条既有warnings。完整真实Supabase/Storage E2E（模拟模型）7页200、45次请求、3/3临时项目软删除；E2E_QUICK_RECOVERY=1验证失败后服务重启、仅修订重跑、其余策划/初稿/初审/终审各一次、最终ready v2及后置报告完成，验证项目已归档。Blind/Human Review/immutable AI Score/Storage/Mock边界未改，完整流程继续检查。已覆盖程序回归，不宣称全产品Acceptance Criteria重新认证或真实多项目模型成功率达标；生产尚未发布此增量，真实内容回归待明确授权。既有用户作品集编辑、模板删除与未跟踪简历资料保持原状。
 
 2026-09-08 Final Language Follow-up：最终写作 / Safe Rewrite 共享自然连贯规则，删除重复模板指令；仅给写作包补充 anchor 对应原任务背景（600字上限），增加任务转述与亲历边界、审核备注和连贯性审查。原上游不动。真实生成 v30 人工发现对象偷换，排除交付；v31–v33 被拦截，尚无可交付的新自动正文。Mac 锁屏，视觉验证未完成；不得将此项记为生成验收通过。保留混合工作区，未提交此前未归属改动。

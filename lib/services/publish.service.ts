@@ -44,7 +44,7 @@ import {
 
 import { communityTitleRules, communityTitleRefreshRules } from "@/lib/community-title-policy";
 
-import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues } from "@/lib/community-story-policy";
+import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues, locatedReviewOutputRules } from "@/lib/community-story-policy";
 import { authorPerspectiveRules, hasAuthorPerspective } from '@/lib/author-perspective';
 
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
@@ -264,7 +264,7 @@ export async function generateCommunityPost(
         if (!publicationReviewPassed(review.articleReview) && !review.issues.length) context.addIssue({ code: "custom", message: "审核不通过时必须说明需修订的问题" });
       }),
       schemaName: "CommunityPostReview", messages: reviewMessages, maxTokens: 3_000, maxAttempts: 2,
-      validationRepairInstruction: "Return articleReview and issues at the root, not an answer wrapper. Close every JSON string with an ASCII double quote. Escape any double quotes inside strings. Do not wrap the object in a string or append backticks.",
+      validationRepairInstruction: locatedReviewOutputRules + "\nReturn articleReview and issues at the root. Root issues MUST be objects with field, quote, kind, reason, instruction; NEVER strings. Only articleReview.issues contains strings. Close and escape every JSON string correctly.",
     });
     // Deterministic copy gates also become targeted issues rather than blanket rewriting.
     const copyIssues = [...publicationCopyIssues(original), ...publicationTitleIssues(original.title, original.body), ...unsupportedPublicationClaims(original, claimFacts, postInput.scopeNotes), ...communityExpressionIssues({ ...draftResult.data, screenshotRecommendations: [] }, config, confirmedFindings)];
@@ -282,7 +282,8 @@ export async function generateCommunityPost(
         { role: "user", content: JSON.stringify({ ...writingSource, review: revisionReview, draft: original }) },
       ];
       const revisionSchema = communityStyleEditSchema.superRefine((copy, context) => {
-        const remaining = [...publicationCopyIssues(copy), ...unsupportedPublicationClaims(copy, claimFacts, postInput.scopeNotes)];
+        const remaining = [...publicationCopyIssues(copy), ...unsupportedPublicationClaims(copy, claimFacts, postInput.scopeNotes),
+          ...communityExpressionIssues({ ...draftResult.data, ...copy, screenshotRecommendations: [] }, config, confirmedFindings)];
         if (!source.products.some(p => copy.title.includes(p.name))) remaining.push('标题需要写清产品名');
         if (unsupportedProcessInference.test(copy.body)) remaining.push('不能从缺少过程记录推断产品行为');
         for (const message of remaining) context.addIssue({ code: 'custom', message });
@@ -297,7 +298,7 @@ export async function generateCommunityPost(
     stage = "最终保真检查";
     const auditMessages = publicationMessages(storyFinalAuditRules, { source: postInput, storyBrief, review: revisionReview, originalDraft: original, draft: finalCopy }, rawEvidence);
     const checkedResult = await factCheck({ schema: locatedPublicationAuditSchema(finalCopy), schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 3_000, maxAttempts: 2,
-      validationRepairInstruction: 'Audit only draft, the final copy. Every blocking reason in articleReview.issues or stylePreservation.issues must have a matching issues entry with the identical reason and an exact quote from draft[field]. Never quote storyBrief, originalDraft or review as final copy. Return empty issue arrays when there is no unresolved problem. Do not approve an actual error to satisfy the schema.' });
+      validationRepairInstruction: locatedReviewOutputRules + '\nAudit only draft, the final copy. Every blocking reason in articleReview.issues or stylePreservation.issues must have a matching issues entry with the identical reason and an exact quote from draft[field]. Never quote storyBrief, originalDraft or review as final copy. Return empty issue arrays when there is no unresolved problem. Do not approve an actual error to satisfy the schema.' });
     const preservation = checkedResult.data.stylePreservation;
     if (!publicationReviewPassed(checkedResult.data.articleReview) || preservation.issues.length ||
       !preservation.facts || !preservation.scope || !preservation.stance || !preservation.experience || !preservation.advice || !preservation.evidence) {
@@ -799,6 +800,7 @@ function toUserFacingError(error: unknown) {
       ? '截图识别返回了无效 JSON，自动修复仍未成功，请重试。'
       : '截图识别结果的条数或字段格式不正确，自动修复仍未成功，请重试。';
     if (error.category === 'schema_validation' && error.schemaName === 'EvidenceCheckedCommunityPost') return '最终审稿意见未能有效定位到最终稿，自动校验修复仍未成功，请重试。';
+    if (error.category === 'schema_validation' && error.schemaName === 'CommunityPostReview') return '初审返回的问题列表格式或原文定位不正确，自动修复仍未成功，请重试。';
     if (error.category === 'schema_validation' && error.schemaName === 'CommunityPostRevision') {
       const issue = error.issues.find(item => item.code === 'custom')?.message;
       return issue ? `修订仍未解决：${issue.slice(0, 240)}。请重试。` : '修订稿格式未通过校验，自动修复仍未成功，请重试。';
