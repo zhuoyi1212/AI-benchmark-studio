@@ -43,8 +43,11 @@ export async function enqueueQuickWriting(projectId: string, findingsId: string,
   }
   const jobs = await quickJobsRepository.list(projectId);
   const prior = [...jobs].reverse().find(job => job.kind === 'publish');
-  const previous = z.object({ config: publishConfigSchema }).safeParse(prior?.payload);
-  const selected = publishConfigSchema.parse(config ?? (previous.success ? previous.data.config : {
+  const previous = z.object({ config: publishConfigSchema, findingsId: z.string().optional() }).safeParse(prior?.payload);
+  // Reuse formatting preferences across Findings, but keep author judgments with their source.
+  const previousConfig = previous.success ? { ...previous.data.config } : undefined;
+  if (previousConfig && previous.success && previous.data.findingsId !== findingsId) delete previousConfig.authorPerspective;
+  const selected = publishConfigSchema.parse(config ?? (previousConfig ?? {
     ...defaultPublishConfig, structure: '自由结构', length: '250–500 字，材料少则缩短', imageCount: 3,
   }));
   const scope = createInputSignature({ findingsId, findings: findings.latest.effectiveOutput, config: selected });

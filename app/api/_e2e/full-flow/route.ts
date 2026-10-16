@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { isDeepStrictEqual } from 'node:util';
 import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
@@ -172,9 +173,11 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(workflowBeforeConfirmation.stages.results.accessible, "Quick Findings must be accessible after Blind Review");
 
   const generatedFindings = requireValue(findings.latest?.effectiveOutput, "Generated Findings output missing");
-  await confirmExperienceFindings(projectId, findingsId, generatedFindings);
+  const authorPerspective = { goal: '整理这次测试里可以复用的建议', focus: '建议有没有给到具体步骤', tradeoff: '可以接受表达普通，不能接受没有依据的承诺', verdict: '把回答当准备清单，实际效果还要自己验证' };
+  await confirmExperienceFindings(projectId, findingsId, { ...generatedFindings, authorPerspective });
   findings = requireValue(await getExperienceFindingsWorkspace(projectId), "Confirmed Quick Findings workspace missing");
   assert(findings.latest?.id === findingsId && findings.latest.humanConfirmedAt, "Quick Findings confirmation was not persisted");
+  assert(findings.latest.effectiveOutput?.authorPerspective?.focus === authorPerspective.focus && !('authorPerspective' in (findings.latest.aiOutput ?? {})), 'Author perspective must persist only as human input');
   const workflowAfterConfirmation = requireValue(await getProjectWorkflowState(projectId), "Workflow state missing after Findings confirmation");
   assert(workflowAfterConfirmation.stages.results.completed, "Confirmed Findings did not complete the Results stage");
   assert(workflowAfterConfirmation.stages.publish.accessible, "Confirmed Findings did not unlock Publish");
@@ -198,6 +201,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   quickPublish = requireValue(await getPublishWorkspace(projectId), "Completed Quick Publish workspace missing");
   const quickPublishPack = requireValue(quickPublish.pack, "Completed Quick Publish pack missing");
   assert(quickPublish.sourceType === "findings" && quickPublishPack.status === "ready", "Quick Findings Publish did not complete");
+  assert(quickPublishPack.config.authorPerspective?.tradeoff === authorPerspective.tradeoff, 'Writing did not inherit confirmed author perspective');
   const quickPublishPost = requireValue(quickPublishPack.post, "Completed Quick Publish post missing");
   assert(quickPublishPost.storyBrief?.supportingPoints.some(point => point.role === "main"), "Quick Publish must persist the evidence-bound Story Brief");
   assert(quickPublishPost.draftReview?.issues.length === 1, "Quick Publish must persist the actionable read-only review");
@@ -235,7 +239,14 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(originalPack?.community_post && typeof originalPack.community_post === 'object' && !Array.isArray(originalPack.community_post) && originalPack.community_post.body === quickPublishPost.body, 'Source version overwritten');
   const reloadedPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/publish`);
   assert(reloadedPage.ok && (await reloadedPage.text()).includes('这段内容由测试者保存'), 'Saved copy missing on a new page request');
-  const regeneratedId = await enqueueCommunityPostRegeneration(projectId, editedId);
+  for (const invalid of [{ authorPerspective: { focus: 12 } }, { authorPerspective: { verdict: '长'.repeat(601) } }, { authorPerspective: { model: 'override' } }, { body: '不能借作者判断重写正文' }]) {
+    const { error } = await getSupabaseServerClient().rpc('create_publish_revision', { p_project_id: projectId, p_source_pack_id: editedId, p_mode: 'regenerate', p_copy: invalid });
+    assert(error, 'Database accepted invalid author input');
+    const unchanged = requireValue(await getPublishWorkspace(projectId), 'Invalid regeneration damaged source');
+    assert(unchanged.pack?.id === editedId && unchanged.pack.status === 'ready', 'Invalid author input created a partial revision');
+  }
+  const revisedPerspective = { ...authorPerspective, verdict: '我更愿意先把具体步骤整理好，再决定是否复用这份建议' };
+  const regeneratedId = await enqueueCommunityPostRegeneration(projectId, editedId, revisedPerspective);
   for (let turn = 0; turn < 7; turn++) {
     await runQuickWorker(projectId, 1);
     const current = requireValue(await getPublishWorkspace(projectId), 'Regeneration workspace missing');
@@ -244,6 +255,9 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const regenerated = requireValue(await getPublishWorkspace(projectId), 'Regenerated article missing');
   assert(regenerated.pack?.id === regeneratedId && regenerated.pack.status === 'ready' && !regenerated.pack.post?.manualEdit, 'Background regeneration did not finish or inherited stale human-edit audit');
   assert(regenerated.pack.post?.generationTrace?.length === 5, 'Regeneration bypassed independent checks');
+  assert(regenerated.pack.config.authorPerspective?.verdict === revisedPerspective.verdict, 'Regeneration lost the new author perspective');
+  const { data: priorCopy } = await getSupabaseServerClient().from('publish_packs').select('config,community_post').eq('id', editedId).single();
+  assert(priorCopy?.config && typeof priorCopy.config === 'object' && !Array.isArray(priorCopy.config) && isDeepStrictEqual(priorCopy.config.authorPerspective, reopened.pack?.config.authorPerspective), 'Regeneration rewrote previous author perspective');
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,
@@ -263,6 +277,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     publishScreenshotCount: publish.pack.post?.screenshotRecommendations.length ?? 0,
     routeChecks,
     articleRevisionsVerified: true,
+    authorPerspectiveVerified: true,
   };
 }
 

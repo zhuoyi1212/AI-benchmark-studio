@@ -140,12 +140,27 @@ export function scopeNotesIssues(plan: WritingPlan, allowed: string[]) {
 export function unsupportedPublicationClaims(copy: CommunityStyleEdit, facts: WritingFact[], scopeNotes: string[]) {
   const source = [...facts.flatMap(f => [f.observation, f.interpretation]), ...scopeNotes].join("\n").replace(/\s+/g, "");
   const pattern = /(?:省去|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|稳定|容易)[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
-  return [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
+  const issues = [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
     const text = [copy.title, copy.body].join("\n");
     const prefix = text.slice(Math.max(0, match.index! - 20), match.index);
     if (/(?:不保证|未经验证|尚未验证|不能推到|不能证明|能否|是否|建议|尝试)[^。；！？\n]*$/.test(prefix)) return [];
+    // Naming a priority is not an assertion that the product is stable.
+    if (/^稳定性(?:更重要|最重要|很重要)?$/.test(match[0]) && /(?:我(?:更|最)?(?:看重|在意|关注)|对我来说[，,]?)[^。；，！？\n]{0,4}$/.test(prefix)) return [];
     return source.includes(match[0].replace(/\s+/g, "")) ? [] : [`删除缺少直接依据的收益、频率或过程断言：${match[0]}`];
   });
+  // Percentages in author preferences are never an evidence source. This is a
+  // value-presence gate, not a replacement for semantic attribution in review.
+  const normalize = (value: string) => value.normalize('NFKC').replace(/\s+/g, '').replace(/百分之(\d+(?:\.\d+)?)/g, '$1%');
+  const percentage = /\d+(?:\.\d+)?%/g;
+  const supported = new Set(normalize(source).match(percentage) ?? []);
+  const text = normalize([copy.title, copy.body, copy.interactionQuestion].join('。'));
+  for (const match of text.matchAll(percentage)) {
+    const prefix = text.slice(Math.max(0, match.index - 18), match.index);
+    // Denying a guarantee does not assert a measured percentage.
+    if (/(?:不能|无法|不)(?:保证|承诺|证明)[^。；;，,！？!?]{0,10}$/.test(prefix)) continue;
+    if (!supported.has(match[0])) issues.push(`百分比 ${match[0]} 缺少实测材料依据，作者判断不能补充实验数据`);
+  }
+  return [...new Set(issues)];
 }
 
 export function publicationReviewPassed(review: NonNullable<CommunityPostOutput["articleReview"]>) {

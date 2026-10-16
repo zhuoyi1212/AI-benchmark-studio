@@ -35,8 +35,13 @@ export async function regeneratePostAction(_state: PostEditActionState, formData
   if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { message: '请以管理员身份重新生成。', success: false };
   const ids = z.object({ projectId: projectIdSchema, sourcePackId: projectIdSchema }).safeParse({ projectId: formData.get('projectId'), sourcePackId: formData.get('sourcePackId') });
   if (!ids.success) return { message: '文章版本无效，请刷新后重试。', success: false };
+  let perspective: unknown;
   try {
-    await enqueueCommunityPostRegeneration(ids.data.projectId, ids.data.sourcePackId);
+    const value = formData.get('authorPerspective');
+    perspective = value === null ? undefined : JSON.parse(String(value));
+  } catch { return { message: '作者判断格式无效，请重试。', success: false }; }
+  try {
+    await enqueueCommunityPostRegeneration(ids.data.projectId, ids.data.sourcePackId, perspective);
     wakeQuickWorker(ids.data.projectId);
     revalidatePath(`/projects/${ids.data.projectId}/publish`);
     revalidatePath(`/projects/${ids.data.projectId}/quick`);
@@ -70,11 +75,17 @@ export async function generatePostAction(_state: PublishActionState, formData: F
     length: formData.get("length"),
     imageCount: formData.get("imageCount"),
     interactionGoal: formData.get("interactionGoal"),
+    ...(formData.get('authorPerspective') !== null ? { authorPerspective: parsePerspective(formData.get('authorPerspective')) } : {}),
   };
   const path = `/projects/${projectId.data}/publish`;
   try { await generateCommunityPost(projectId.data, { ideaId: String(formData.get("ideaId") ?? ""), customAngle: String(formData.get("customAngle") ?? ""), config }); }
   catch (error) { if (error instanceof PublishExecutionError) { revalidatePath(path); return { message: error.message }; } throw error; }
   revalidatePath(path); redirect(path);
+}
+
+function parsePerspective(value: FormDataEntryValue | null): unknown {
+  try { return JSON.parse(String(value)); }
+  catch { return null; } // The service schema returns the normal generation error.
 }
 
 export async function refreshPostTitleAction(

@@ -306,3 +306,9 @@ Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不�
 ### 2026-10-12 文章保存与后台重生成
 
 非破坏性migration `20261012082020_publish_editor_revisions.sql` 新增service-role-only、security invoker函数 `create_publish_revision(projectId, sourcePackId, mode, copy, recommendations)`，无新表。锁定Project及源Report/Findings并校验最新版本；manual从draft→generating→ready保存新文案/可选真实截图关联，旧ready保持immutable。JSON manualEdit包含sourcePackId/savedAt/aiReviewed=false，源AI追溯字段保留但不是本次模型调用。regenerate原子创建draft及quick_jobs，JSON regeneration含sourcePackId/jobId/requestedAt；job payload绑定新packId，成功后生成审计替换旧稿。失败/死worker retry创建下一版本，只有failed job可重试。claim_quick_job仅对显式publish/regenerate扩展专业项目，保留quick任务边界、项目串行、lease、SKIP LOCKED和E2E排除。Artifact来源/图片种类/FK/unique仍由现有trigger约束，保存后失效正文锚点置null。
+
+### 作者判断（2026-10-16）
+
+无新表。`experience_findings.human_output.authorPerspective` 是人工确认时的可选输入，与不可变AI `output` 分开；`publish_packs.config.authorPerspective` 保存该文章使用的输入快照，字段为`goal/focus/tradeoff/verdict`，字符串，每项最多600字，可全空以显式禁用。应用Schema负责裁剪空白、填充省略项和拒绝未知键。它不是Artifact或事实依据。
+
+非破坏性migration `20261016094802_author_perspective_revisions.sql` 替换同签名`create_publish_revision`：regenerate只允许可选`copy.authorPerspective`，数据库校验对象、字段白名单、字符串与长度后，合并进**新**版本配置并原子创建任务；空copy兼容旧调用。manual路径、源版本不可变约束与service-only/security-invoker权限保持。无回填、无历史更新、无新增索引或外键需求。`quick_jobs.payload`仍绑定新packId，worker读取新pack.config并以输入签名区分检查点。

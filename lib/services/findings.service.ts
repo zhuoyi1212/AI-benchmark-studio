@@ -6,7 +6,7 @@ import { z } from "zod";
 import { extractPdfText, maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
 import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
-import { experienceFindingsOutputSchema, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
+import { confirmedFindingsOutputSchema, experienceFindingsOutputSchema, type ConfirmedFindingsOutput, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
 import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/judge-evidence-selection";
 import { findingsRepository } from "@/lib/repositories/findings.repository";
@@ -57,7 +57,7 @@ export type ExperienceFindingsWorkspace = {
     completedAt: string | null;
     humanConfirmedAt: string | null;
     aiOutput: ExperienceFindingsOutput | null;
-    effectiveOutput: ExperienceFindingsOutput | null;
+    effectiveOutput: ConfirmedFindingsOutput | null;
   } | null;
 };
 
@@ -225,7 +225,7 @@ export async function confirmExperienceFindings(projectId: string, findingsId: s
   if (!workspace?.latest || workspace.latest.id !== findingsId || workspace.latest.status !== "completed") {
     throw new FindingsExecutionError("当前 Findings 不存在或还未生成完成。");
   }
-  const output = experienceFindingsOutputSchema.parse(value);
+  const output = confirmedFindingsOutputSchema.parse(value);
   const allowedProducts = new Set(workspace.products.map((item) => item.id));
   const allowedCases = new Set(workspace.testCases.map((item) => item.id));
   const artifacts = new Map(workspace.artifacts.map((item) => [item.artifactId, item]));
@@ -606,7 +606,7 @@ function flattenArtifacts(test: TestExecutionWorkspace): FindingsArtifact[] {
 
 function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["latest"] {
   const aiOutput = row.output ? experienceFindingsOutputSchema.parse(row.output) : null;
-  const humanOutput = row.human_output ? experienceFindingsOutputSchema.parse(row.human_output) : null;
+  const humanOutput = row.human_output ? confirmedFindingsOutputSchema.parse(row.human_output) : null;
   return {
     id: row.id,
     version: row.version,

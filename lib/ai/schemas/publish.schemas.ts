@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const authorNote = z.string().trim().max(600).default('');
+export const authorPerspectiveSchema = z.object({
+  goal: authorNote, focus: authorNote, tradeoff: authorNote, verdict: authorNote,
+}).strict();
+export type AuthorPerspective = z.infer<typeof authorPerspectiveSchema>;
+
 const text = z.string().trim().min(1);
 const internalIdentifierPattern = /(?:\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b|\b(?:blindSampleId|TestRun|artifactId|productId|testCaseId|rubricDimensionId|dimensionId|finalScoreSignature|humanOverrideReason)\b)/i;
 
@@ -56,6 +62,7 @@ export const publishConfigSchema = z.object({
   length: text.max(80),
   imageCount: z.coerce.number().int().min(0).max(9),
   interactionGoal: text.max(500),
+  authorPerspective: authorPerspectiveSchema.optional(),
 });
 export type PublishConfig = z.infer<typeof publishConfigSchema>;
 

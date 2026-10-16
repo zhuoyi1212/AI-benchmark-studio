@@ -15,6 +15,7 @@ import {
   publishConfigSchema,
   selectedContentIdeaSchema,
   manualPostEditSchema,
+  authorPerspectiveSchema,
   type CommunityPostOutput,
   type ContentIdea,
   type PublishConfig,
@@ -44,6 +45,7 @@ import {
 import { communityTitleRules, communityTitleRefreshRules } from "@/lib/community-title-policy";
 
 import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues } from "@/lib/community-story-policy";
+import { authorPerspectiveRules, hasAuthorPerspective } from '@/lib/author-perspective';
 
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
 
@@ -90,7 +92,7 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
   const ideas = latest ? parseIdeas(latest.content_ideas) : [];
   const selectedIdea = latest?.selected_idea ? selectedContentIdeaSchema.parse(latest.selected_idea) : null;
   const storedConfig = latest && hasKeys(latest.config) ? publishConfigSchema.parse(latest.config) : defaultPublishConfig;
-  const config = withAvailableImageCount(storedConfig, source.screenshots.length);
+  const config = withAvailableImageCount(withAuthorPerspective(storedConfig, source), source.screenshots.length);
   const storedPost = latest?.community_post ? storedPostSchema(latest.community_post) : null;
   const post = storedPost ? communityPostOutputSchema.parse({
     ...storedPost,
@@ -147,6 +149,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
             ? [
                 "你是社区内容策划编辑。选题只能建立在人工确认后的真实 Findings、测试计划、Research 背景和真实截图证据上。",
                 "不要重新评分，不要生成排名，也不要把专业评分当作选题中心。",
+                authorPerspectiveRules,
                 "先确定目标读者最想知道的问题，按实际影响和证据完整性选主线，不因为小问题显眼就把它当标题重点。",
                 communityTitleRules,
                 "不要机械复述所有 Findings；选题要有一个清晰主线，并保留证据实际覆盖范围。",
@@ -186,6 +189,8 @@ export async function generateCommunityPost(
 ): Promise<string> {
   const source = await getPublishSource(projectId);
   if (!source) throw new PublishExecutionError("请先确认测评 Findings，或完成专业深度报告。");
+  const parsedConfig = publishConfigSchema.safeParse(input.config);
+  if (!parsedConfig.success) throw new PublishExecutionError('写作配置无效，请检查作者判断的内容和长度后重试。');
 
   let packs = await listPacks(source);
   if (packs[0]?.status === "ready" || packs[0]?.status === "failed") {
@@ -199,7 +204,7 @@ export async function generateCommunityPost(
   const ideas = parseIdeas(pack.content_ideas);
   const selectedIdea = selectIdea(ideas, input.ideaId, input.customAngle);
   const imageArtifacts = source.screenshots;
-  const config = withAvailableImageCount(publishConfigSchema.parse(input.config), imageArtifacts.length);
+  const config = withAvailableImageCount(withAuthorPerspective(parsedConfig.data, source), imageArtifacts.length);
   const postInput = buildPostInput(source, selectedIdea, config);
   const inputSignature = createInputSignature(postInput);
   if (resuming && JSON.stringify(pack.config) !== JSON.stringify(config)) {
@@ -420,13 +425,18 @@ export async function saveCommunityPostEdit(projectId: string, sourcePackId: str
   }
 }
 
-export async function enqueueCommunityPostRegeneration(projectId: string, sourcePackId: string): Promise<string> {
+export async function enqueueCommunityPostRegeneration(projectId: string, sourcePackId: string, authorPerspective?: unknown): Promise<string> {
   const workspace = await getPublishWorkspace(projectId);
   const pack = workspace?.pack;
   if (!pack?.post || pack.id !== sourcePackId || (pack.status !== 'ready' && workspace?.regenerationJob?.status !== 'failed')) {
     throw new PublishExecutionError('文章版本已变化或仍在生成，请刷新页面后重试。');
   }
-  try { return await publishRepository.createRevision(projectId, pack.id, 'regenerate'); }
+  const parsed = authorPerspective === undefined ? undefined : authorPerspectiveSchema.safeParse(authorPerspective);
+  if (parsed && !parsed.success) throw new PublishExecutionError('请检查作者判断，每项最多600字。');
+  const copy = parsed?.success ? { authorPerspective: parsed.data } : {};
+  try { return await (parsed
+    ? publishRepository.createRevision(projectId, pack.id, 'regenerate', copy as Json)
+    : publishRepository.createRevision(projectId, pack.id, 'regenerate')); }
   catch { throw new PublishExecutionError('未能启动重新生成，请刷新页面核对任务状态后重试。'); }
 }
 
@@ -548,13 +558,15 @@ function buildDiscoveryInput(source: PublishSource) {
     caption,
   }));
   if (source.kind === "findings") {
+    const { authorPerspective, ...confirmedFacts } = source.confirmedFindings;
     return {
       sourceType: "confirmed_findings",
       project: { name: source.projectName, intent: source.projectIntent },
       research: source.research,
       protocol: source.protocol,
       testCases: source.testCases,
-      humanConfirmedFindings: source.confirmedFindings,
+      humanConfirmedFindings: confirmedFacts,
+      ...(hasAuthorPerspective(authorPerspective) ? { authorPerspective } : {}),
       imageArtifacts,
     };
   }
@@ -569,6 +581,7 @@ function buildDiscoveryInput(source: PublishSource) {
 }
 
 function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea, config: PublishConfig) {
+  const { authorPerspective, ...writingConfig } = config;
   const allFacts: WritingFact[] = source.kind === "findings"
     ? source.confirmedFindings.findings.map(f => ({ id: f.id, productId: f.productId, testCaseId: f.testCaseId, observation: f.observation, interpretation: f.impact, evidenceArtifactIds: f.evidenceArtifactIds }))
     : source.judgeEvidence.flatMap(product => product.scores.map((score, index) => ({
@@ -583,7 +596,8 @@ function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea
     contentPolicyVersion: storyPolicyVersion,
     artifactIds: source.artifactIds,
     sourceType: source.kind, projectMode: source.projectMode,
-    selectedIdea, config, products: source.products,
+    selectedIdea, config: writingConfig, products: source.products,
+    ...(hasAuthorPerspective(authorPerspective) ? { authorPerspective } : {}),
     tasks: source.protocol.testCases.filter(c => coveredCases.has(c.id)),
     factLedger,
     scopeNotes: source.kind === "findings" ? source.confirmedFindings.limitations : source.analysis?.limitations ?? [],
@@ -591,6 +605,12 @@ function buildPostInput(source: PublishSource, selectedIdea: SelectedContentIdea
     humanConfirmedFindings: source.kind === "findings" ? source.confirmedFindings.findings.filter(f => factLedger.some(fact => fact.id === f.id)) : undefined,
     imageArtifacts: source.screenshots.filter(a => coveredCases.has(a.testCaseId)).map(({ fileUrl: _url, ...artifact }) => artifact),
   };
+}
+
+function withAuthorPerspective(config: PublishConfig, source: PublishSource): PublishConfig {
+  if (config.authorPerspective !== undefined || source.kind !== 'findings') return config;
+  const perspective = source.confirmedFindings.authorPerspective;
+  return perspective ? { ...config, authorPerspective: perspective } : config;
 }
 
 function buildJudgeEvidence(experiment: ReturnType<typeof resultAnalysisInputSchema.parse>) {

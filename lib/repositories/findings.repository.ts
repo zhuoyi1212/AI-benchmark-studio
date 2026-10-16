@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
+import type { ConfirmedFindingsOutput, ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
 import type { AITaskRoute, AIUsage } from "@/lib/ai/types";
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -51,7 +51,7 @@ export const findingsRepository = {
     if (error) throwRepositoryError("findings.complete", error);
   },
 
-  async confirm(findingsId: string, output: ExperienceFindingsOutput): Promise<void> {
+  async confirm(findingsId: string, output: ConfirmedFindingsOutput): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("confirm_experience_findings", {
       p_findings_id: findingsId,
       p_human_output: output as unknown as Json,
