@@ -46,7 +46,7 @@ test('one bounded same-provider audit repair can correct a phantom quote; unrepa
   }
 });
 
-test('Jimeng live regression: vision repair distinguishes root issue objects from nested summary strings and retains images', async () => {
+test('review-shape repair distinguishes issue objects from summaries and retains images for vision routes', async () => {
   const requests = [];
   const problem = { field: 'body', quote: '准备材料', kind: 'fact', reason: '待修正文问题', instruction: '按证据修正' };
   class Provider {
