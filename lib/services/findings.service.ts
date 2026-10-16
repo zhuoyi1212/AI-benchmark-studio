@@ -19,6 +19,7 @@ import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
+import { screenshotObservationRules, screenshotObservationRepairInstruction } from '@/lib/screenshot-observations';
 import type { ExperienceFindingRow, Json } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace } from "@/lib/types/test-run";
 
@@ -494,12 +495,13 @@ async function buildArtifactContent(
         messages: [
           {
             role: "system",
-            content: `逐张读取截图，只描述画面中可直接观察到的产品输出、成功、问题和限制。按 Screenshot 1 到 Screenshot ${batch.length} 的顺序返回 observations 字符串数组，长度必须是 ${batch.length}；不要评分，不要猜测截图外的信息。`,
+            content: screenshotObservationRules(batch.length),
           },
           { role: "user", content: batchContent },
         ],
         maxTokens: 2400,
         maxAttempts: 2,
+        validationRepairInstruction: screenshotObservationRepairInstruction(batch.length),
       });
       for (const [observationIndex, observation] of data.observations.entries()) {
         const image = batch[observationIndex]!;

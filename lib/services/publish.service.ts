@@ -779,7 +779,14 @@ function safeFailureMessage(error: unknown) {
 
 function toUserFacingError(error: unknown) {
   if (error instanceof PublishExecutionError) return error.message;
-  if (error instanceof AIValidationError) return "社区内容返回的数据未通过结构校验，请重试。";
+  if (error instanceof AIValidationError) {
+    if (error.schemaName === 'FindingsScreenshotObservations') return error.category === 'invalid_json'
+      ? '截图识别返回了无效 JSON，自动修复仍未成功，请重试。'
+      : '截图识别结果的条数或字段格式不正确，自动修复仍未成功，请重试。';
+    return error.category === 'invalid_json'
+      ? '社区内容返回了无效 JSON，自动修复仍未成功，请重试。'
+      : '社区内容返回的数据未通过结构校验，请重试。';
+  }
   if (error instanceof AIProviderError) return providerFailureMessage(error, false);
   if (error instanceof RepositoryError) return "社区发布包保存失败，请刷新后重试。";
   return "社区发布包生成失败，请稍后重试。";

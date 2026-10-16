@@ -308,14 +308,14 @@ function buildRepairMessages(messages: AIMessage[], previousContent: string, err
         validationRepairInstruction,
         "Return exactly one complete JSON object only.",
       ].filter(Boolean).join("\n");
-  const videoMessage = messages.find(message => message.role === "user" && Array.isArray(message.content) && message.content.some(part => part.type === "video_url"));
-  // Native video must accompany the active user turn on repair as well. Move
-  // the original evidence turn instead of duplicating its video URLs.
-  const repairContent = videoMessage && Array.isArray(videoMessage.content)
-    ? [...videoMessage.content.filter(part => part.type !== "text"), { type: "text" as const, text: videoMessage.content.filter(part => part.type === "text").map(part => part.text).join("\n") + "\n" + repairInstruction }]
+  const mediaMessages = messages.filter(message => message.role === "user" && Array.isArray(message.content) && message.content.some(part => part.type !== "text"));
+  // Keep the original evidence and labels in the active repair turn, in order.
+  // Move them instead of reattaching a second copy of the images/documents.
+  const repairContent = mediaMessages.length
+    ? [...mediaMessages.flatMap(message => Array.isArray(message.content) ? message.content : []), { type: "text" as const, text: repairInstruction }]
     : repairInstruction;
   return [
-    ...messages.filter(message => message !== videoMessage),
+    ...messages.filter(message => !mediaMessages.includes(message)),
     { role: "assistant", content: previousContent },
     { role: "user", content: repairContent },
   ];

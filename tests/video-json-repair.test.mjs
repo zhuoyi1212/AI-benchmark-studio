@@ -26,10 +26,10 @@ test('bounded keyframe JSON repair keeps image evidence without duplicating medi
   const repaired = requests[1].messages;
   const parts = repaired.flatMap(m => Array.isArray(m.content) ? m.content : []);
   assert.equal(parts.filter(p => p.type === 'image_url').length, 1);
-  const active = repaired.find(m => Array.isArray(m.content) && m.content.some(p => p.type === "image_url"));
+  const active = repaired.at(-1);
   assert.equal(active.role, 'user');
-  assert.equal(active.content.filter(p => p.type === 'text').length, 2);
+  assert.equal(active.content.filter(p => p.type === 'text').length, 3);
   assert.match(active.content[0].text, /原始记录/);
-  assert.match(repaired.at(-1).content, /Do not add an answer wrapper/);
-  assert.match(repaired.at(-1).content, /Previous response was not valid JSON/);
+  assert.match(active.content.at(-1).text, /Do not add an answer wrapper/);
+  assert.match(active.content.at(-1).text, /Previous response was not valid JSON/);
 });

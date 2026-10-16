@@ -180,7 +180,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   screenshot_understanding: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "screenshot-understanding.v1",
+    promptVersion: "screenshot-understanding.v2-json-shape",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

@@ -486,3 +486,7 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-16 作者判断与自然表达增量：新增折叠、全选填的用途/关注点/取舍/选择，分别保存在Findings human_output及文章config，AI Findings不代填；配置可覆盖/清空，不跨Findings误用。选题、Brief、初稿、按需修订和两次独立审核共享作者判断边界，减少机械平衡、反复免责与空泛总结，不新增模型阶段、不换Provider/Model。补充数字百分比来源门禁，并区分“我更看重稳定性”等偏好与产品能力断言；语义归属仍由独立审核负责。create_publish_revision以service-only/security-invoker原子保存新配置和重生成任务，旧版本/评分/Artifact不变。迁移由CLI创建后按远端实际版本对齐为20261016094802_author_perspective_revisions.sql，已应用并核实anon/authenticated不可执行、service_role可执行；无新表/历史回填，安全advisors仅保留既有10项预期service-only表无公开RLS policy的INFO。
 
 验证：新增10项回归，全仓406/406 tests、typecheck、build（真实隔离媒体抽帧/提音自检）、diff检查通过；lint0errors/26条既有warnings。真实Supabase/Storage的完整E2E通过：合成夹具完成确认时保存/读回判断、初次写作继承、手动稿持久化、DB非法字段/类型/超长输入拒绝且无半版本、新判断后台生成与旧配置保留、单产品/横评及不可比拦截；7个页面真实请求200，45次本地模拟Provider请求，3/3临时Project已软删除。未向真实测评模型发送用户材料、未重生成真实用户文章；应用代码未部署，不宣称自然程度已改善或全产品Acceptance Criteria重新认证。补充使用说明与待做真实样稿盲评方案，保留用户既有文档编辑、删除和未跟踪资料。
+
+2026-10-16 截图读取导致重生成失败：从即梦AI咖啡海报项目两次失败任务和Vercel日志定位到FindingsScreenshotObservations，正文尚未生成，视觉模型两次返回invalid_json。经用户明确授权，使用现有4张海报只读复现；旧提示词还复现answer包装导致根observations缺失，新提示词的两批截图均首轮通过。未修改这些图片、实验、评分、确认发现、旧稿或失败任务。
+
+修复为集中截图Prompt v2：明确根对象、数组数量、转义与禁止answer包装；同Provider最多两次，修复请求保留原图片/文件及文字标签的顺序，移至当前用户消息且不重复媒体。Publish错误区分截图JSON、截图字段与正文校验，不降低Schema或跳过证据。新增8项回归覆盖4图分批的非法JSON/answer包装修复、证据归属与引号保留、永久失败有界停止、起草前失败提示、精确提示词文档、原生文件与纯文本修复；414/414 tests、typecheck、build（含隔离媒体自检）、diff检查通过，lint0errors/26条既有warnings。完整E2E通过：7条真实页面请求、保存/后台重生成/旧版保留、横评及不可比拦截，45次本地模拟Provider请求，3/3临时项目已软删除。无DB迁移或历史回填；生产应用尚未更新，本轮不重新认证全产品Acceptance Criteria，真实整篇文章尚未重生成。
