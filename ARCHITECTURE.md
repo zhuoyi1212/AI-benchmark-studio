@@ -399,3 +399,5 @@ publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，
 2026-10-16 作者判断：FindingsEditor / PublishEditor复用折叠选填组件，经Server Action → Service Schema校验 → Repository/RPC保存人工输入；AI Findings Schema不接收该字段。已确认human_output中的authorPerspective按来源继承到publish_packs.config，文章输入可覆盖或显式清空。PublishService把偏好独立投影到选题、Brief、初稿及两次只读审核/定向修订，不放入factLedger；实际配置与输入签名参与版本追溯和检查点。增强自然表达不新增模型阶段或改变Provider/Model；确定性百分比来源检查也不接受偏好作为事实来源，语义归属继续由独立审核负责。新版本配置与重生成任务同事务写入，旧版本配置保持不可变。
 
 2026-10-16 截图结构修复：多截图仍每批最多2张，用独立截图提示词明确根observations字符串数组、固定数量、字符串转义和禁止answer包装。Router的结构修复将原始图片/原生文件与标签按序移动到当前用户消息，附加修复指令，不重复发送同一批媒体；纯文本消息结构不变。同Provider至多两次请求，失败明确为截图JSON或字段错误，不省略截图、不补造观察、不修改历史实验或旧稿。集中截图Prompt升版，Schema/正文与评分门禁保持。
+
+2026-10-16 重新生成可靠性：Quick worker恢复前检查最新写作请求与目标packId；旧任务不能采用或标记更新版本。普通Publish也以有效lease持久化目标，当前failed合法重试创建新版本后先绑定再调用模型；不再以时间范围批量恢复Publish。重试入口与工作台过滤同步排除已被更新请求替代的旧任务。新终审在原有只读契约上要求每条阻断意见定位最终draft，理由与质量/保真问题一致；结构缺失之外要求逐字引文，无效定位进入既有同Provider有限修复。定向修订在返回时执行标题及已知无依据断言校验，保存前仍保留最终门禁。历史JSON继续可读，无新增migration。排查证据及限制见docs/regeneration-reliability-20261016.md。

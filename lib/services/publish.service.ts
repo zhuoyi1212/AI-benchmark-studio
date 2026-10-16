@@ -7,7 +7,7 @@ import {
   storyBriefSchema, storyDraftSchema, storyReviewSchema,
   communityPostContentSchema,
   communityPostTitleSchema,
-  publicationAuditSchema,
+  locatedPublicationAuditSchema,
   communityStyleEditSchema,
   communityPostOutputSchema,
   contentIdeaSchema,
@@ -185,7 +185,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
 
 export async function generateCommunityPost(
   projectId: string,
-  input: { ideaId: string; customAngle?: string; config: unknown },
+  input: { ideaId: string; customAngle?: string; config: unknown; expectedPackId?: string },
 ): Promise<string> {
   const source = await getPublishSource(projectId);
   if (!source) throw new PublishExecutionError("请先确认测评 Findings，或完成专业深度报告。");
@@ -193,11 +193,16 @@ export async function generateCommunityPost(
   if (!parsedConfig.success) throw new PublishExecutionError('写作配置无效，请检查作者判断的内容和长度后重试。');
 
   let packs = await listPacks(source);
+  if (input.expectedPackId && packs[0]?.id !== input.expectedPackId) throw new PublishExecutionError('文章版本已变化，旧任务已停止。');
+  const job = quickExecution.getStore()?.job;
+  const regeneration = packs[0]?.community_post && storedPostSchema(packs[0].community_post)?.regeneration;
+  if (job && regeneration && regeneration.jobId !== job.id) throw new PublishExecutionError('文章属于其他生成任务，旧任务已停止。');
   if (packs[0]?.status === "ready" || packs[0]?.status === "failed") {
     await beginPack(projectId, source);
     packs = await listPacks(source);
   }
   const pack = packs[0];
+  if (job?.kind === 'publish' && pack) await quickJobsRepository.bindPublishPack(job, pack.id);
   const resuming = quickExecution.getStore()?.job.kind === "publish" && pack?.status === "generating";
   if (!pack || (pack.status !== "draft" && !resuming)) throw new PublishExecutionError("请先完成社区选题发现。");
 
@@ -276,7 +281,14 @@ export async function generateCommunityPost(
         { role: "system", content: targetedRevisionRules + "\n同样解决 review.deterministicIssues 列出的格式与表达问题。" },
         { role: "user", content: JSON.stringify({ ...writingSource, review: revisionReview, draft: original }) },
       ];
-      const revisionResult = await aiTaskService.humanizeCommunityPost({ schema: communityStyleEditSchema, schemaName: "CommunityPostRevision", messages: revisionMessages, maxTokens: 6_000, maxAttempts: 2 });
+      const revisionSchema = communityStyleEditSchema.superRefine((copy, context) => {
+        const remaining = [...publicationCopyIssues(copy), ...unsupportedPublicationClaims(copy, claimFacts, postInput.scopeNotes)];
+        if (!source.products.some(p => copy.title.includes(p.name))) remaining.push('标题需要写清产品名');
+        if (unsupportedProcessInference.test(copy.body)) remaining.push('不能从缺少过程记录推断产品行为');
+        for (const message of remaining) context.addIssue({ code: 'custom', message });
+      });
+      const revisionResult = await aiTaskService.humanizeCommunityPost({ schema: revisionSchema, schemaName: "CommunityPostRevision", messages: revisionMessages, maxTokens: 6_000, maxAttempts: 2,
+        validationRepairInstruction: 'Resolve every reported validation issue in the returned copy. Remove unsupported claims rather than replacing them with synonyms. Keep the title within 28 Unicode characters. Preserve unaffected evidence and return title, body, interactionQuestion only.' });
       finalCopy = revisionResult.data;
       if (JSON.stringify(finalCopy) === JSON.stringify(original)) throw new PublishExecutionError("已发现的问题未被实际修订，请重试。");
       generationTrace.push(trace("style_edit", revisionResult, revisionMessages));
@@ -284,11 +296,13 @@ export async function generateCommunityPost(
     }
     stage = "最终保真检查";
     const auditMessages = publicationMessages(storyFinalAuditRules, { source: postInput, storyBrief, review: revisionReview, originalDraft: original, draft: finalCopy }, rawEvidence);
-    const checkedResult = await factCheck({ schema: publicationAuditSchema, schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 3_000, maxAttempts: 2 });
+    const checkedResult = await factCheck({ schema: locatedPublicationAuditSchema(finalCopy), schemaName: "EvidenceCheckedCommunityPost", messages: auditMessages, maxTokens: 3_000, maxAttempts: 2,
+      validationRepairInstruction: 'Audit only draft, the final copy. Every blocking reason in articleReview.issues or stylePreservation.issues must have a matching issues entry with the identical reason and an exact quote from draft[field]. Never quote storyBrief, originalDraft or review as final copy. Return empty issue arrays when there is no unresolved problem. Do not approve an actual error to satisfy the schema.' });
     const preservation = checkedResult.data.stylePreservation;
     if (!publicationReviewPassed(checkedResult.data.articleReview) || preservation.issues.length ||
       !preservation.facts || !preservation.scope || !preservation.stance || !preservation.experience || !preservation.advice || !preservation.evidence) {
-      throw new PublishExecutionError("最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。");
+      const reasons = [...new Set([...checkedResult.data.articleReview.issues, ...preservation.issues])];
+      throw new PublishExecutionError(`最终稿未通过：${reasons.slice(0, 2).join('；')}。本次文章未发布。`);
     }
     generationTrace.push(trace("fact_check", checkedResult, auditMessages));
     usages.push(checkedResult.usage);
@@ -452,6 +466,7 @@ export async function regeneratePreparedCommunityPost(projectId: string, packId:
     ideaId: pack.selectedIdea.id,
     customAngle: pack.selectedIdea.id === 'custom' ? pack.selectedIdea.angle : undefined,
     config: pack.config,
+    expectedPackId: pack.id,
   });
 }
 
@@ -783,6 +798,11 @@ function toUserFacingError(error: unknown) {
     if (error.schemaName === 'FindingsScreenshotObservations') return error.category === 'invalid_json'
       ? '截图识别返回了无效 JSON，自动修复仍未成功，请重试。'
       : '截图识别结果的条数或字段格式不正确，自动修复仍未成功，请重试。';
+    if (error.category === 'schema_validation' && error.schemaName === 'EvidenceCheckedCommunityPost') return '最终审稿意见未能有效定位到最终稿，自动校验修复仍未成功，请重试。';
+    if (error.category === 'schema_validation' && error.schemaName === 'CommunityPostRevision') {
+      const issue = error.issues.find(item => item.code === 'custom')?.message;
+      return issue ? `修订仍未解决：${issue.slice(0, 240)}。请重试。` : '修订稿格式未通过校验，自动修复仍未成功，请重试。';
+    }
     return error.category === 'invalid_json'
       ? '社区内容返回了无效 JSON，自动修复仍未成功，请重试。'
       : '社区内容返回的数据未通过结构校验，请重试。';

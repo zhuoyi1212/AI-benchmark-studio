@@ -17,6 +17,7 @@ export function selectQuickWorkspaceJobs(jobs: QuickJob[], work: CompletedWork) 
     if (['research', 'protocol'].includes(job.kind)) return !work.protocolId;
     if (['evaluate', 'findings'].includes(job.kind) && job.scope !== work.protocolId) return false;
     if (['discovery', 'publish'].includes(job.kind)) {
+      if (jobs.some(next => ['discovery', 'publish'].includes(next.kind) && Date.parse(next.created_at) > Date.parse(job.created_at))) return false;
       if (work.protocolLocked === false) return false;
       if (job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload)
         && typeof job.payload.findingsId === 'string' && work.findingsId !== undefined

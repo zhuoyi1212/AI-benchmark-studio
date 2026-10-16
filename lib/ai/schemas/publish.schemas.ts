@@ -367,3 +367,23 @@ export const publicationAuditSchema = z.object({
   stylePreservation: stylePreservationSchema,
   screenshotRecommendations: z.array(screenshotRecommendationSchema).max(9),
 }).strict();
+
+// Historical audits stay readable. New reviews must locate each blocking
+// claim in the actual final copy, rather than in a brief or an earlier draft.
+export function locatedPublicationAuditSchema(copy: CommunityStyleEdit) {
+  return publicationAuditSchema.extend({ issues: storyReviewSchema.shape.issues }).superRefine((audit, context) => {
+    const reasons = [...audit.articleReview.issues, ...audit.stylePreservation.issues];
+    for (const issue of audit.issues) {
+      if (issue.quote === null ? issue.kind !== 'structure' : !copy[issue.field].includes(issue.quote)) {
+        context.addIssue({ code: 'custom', message: '最终审稿问题必须逐字定位最终稿；只有结构缺失可用空引文' });
+      }
+      if (!reasons.includes(issue.reason)) context.addIssue({ code: 'custom', message: '定位的问题须与未通过原因一致' });
+    }
+    for (const reason of reasons) {
+      if (!audit.issues.some(issue => issue.reason === reason)) context.addIssue({ code: 'custom', message: '每条未通过原因都须有最终稿问题定位' });
+    }
+    const failed = Object.entries(audit.articleReview).some(([key, value]) => key !== 'issues' && value === false)
+      || Object.entries(audit.stylePreservation).some(([key, value]) => key !== 'issues' && value === false);
+    if (failed && !reasons.length) context.addIssue({ code: 'custom', message: '审核不通过须说明具体原因与定位' });
+  });
+}

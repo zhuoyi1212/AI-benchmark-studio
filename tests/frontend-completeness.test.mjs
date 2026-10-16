@@ -46,10 +46,18 @@ test('work from older protocols and Findings cannot block a new protocol', () =>
   assert.equal(selectQuickWorkspaceJobs(jobs, { ...progress, protocolLocked: false }).failed, undefined);
 });
 
-test('only a later completion in the same job input scope supersedes a failure', () => {
+test('a newer writing request supersedes earlier writing failures across config scopes', () => {
   const failed = job('failed', 'publish', 'failed', 'input-a');
-  assert.equal(selectQuickWorkspaceJobs([failed, job('other', 'publish', 'completed', 'input-b', '2026-10-14T11:00:00Z')], progress).failed.id, 'failed');
+  assert.equal(selectQuickWorkspaceJobs([failed, job('other', 'publish', 'completed', 'input-b', '2026-10-14T11:00:00Z')], progress).failed, undefined);
   assert.equal(selectQuickWorkspaceJobs([failed, job('new', 'publish', 'completed', 'input-a', '2026-10-14T11:00:00Z')], progress).failed, undefined);
+});
+
+test('an old retried job never hides a newer explicit revision behind the full-page retry card', () => {
+  const old = job('old', 'publish', 'running', 'old', '2026-10-14T10:00:00Z');
+  for (const status of ['queued', 'running', 'failed']) {
+    const revision = job('revision', 'publish', status, 'new', '2026-10-16T10:00:00Z', { mode: 'regenerate' });
+    assert.deepEqual(selectQuickWorkspaceJobs([old, revision], progress), { active: undefined, failed: undefined });
+  }
 });
 
 test('optional report failures and explicit regeneration never replace the main workspace', () => {

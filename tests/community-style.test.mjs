@@ -73,8 +73,8 @@ test('generation and final raw Artifact fact-check both retain expression rules'
   assert.match(service, /buildRawFindingsEvidenceContent\(projectId, \{[\s\S]*preferPdfText: true/);
   assert.match(service, /factCheckTextCommunityPost/);
   assert.match(service, /requiresVision/);
-  assert.match(service, /schema: communityStyleEditSchema/);
-  assert.match(service, /schema: publicationAuditSchema/);
+  assert.match(service, /communityStyleEditSchema.superRefine/);
+  assert.match(service, /schema: locatedPublicationAuditSchema\(finalCopy\)/);
   assert.match(service, /normalizeScreenshotRecommendations/);
   assert.doesNotMatch(service, /expectedHeadings|isQuickLayoutOnlyIssue/);
   assert.match(service, /communityExpressionIssues\(post, config, confirmedFindings\)/);

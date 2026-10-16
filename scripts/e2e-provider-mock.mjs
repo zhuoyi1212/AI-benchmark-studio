@@ -347,6 +347,7 @@ function buildStructuredOutput(schemaName, messages) {
   }
   if (schemaName === "EvidenceCheckedCommunityPost") {
     return {
+      issues: [],
       articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] },
       stylePreservation: { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] },
       screenshotRecommendations: [],

@@ -62,7 +62,7 @@ test('revision cannot save if the final independent audit still finds problems',
 
 test('format gates ask for targeted revision; unchanged or still-mechanical copy cannot publish', async () => {
   const h = harness({ mutate: (stage, value) => stage === 'CommunityPostDraft' ? { ...value, body: '好用的：' + value.body } : value });
-  await assert.rejects(h.run(), /最终内容规范/);
+  await assert.rejects(h.run(), /修订已发现的问题/);
   assert.equal(h.state.calls[3].schemaName, 'CommunityPostRevision');
   assert.equal(h.state.saved, null);
 });

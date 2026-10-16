@@ -70,4 +70,13 @@ export const quickJobsRepository = {
       .eq('project_id', projectId).eq('id', jobId).eq('status', 'failed');
     if (error) throwRepositoryError('quick.retry', error);
   },
+  async bindPublishPack(job: QuickJob, packId: string) {
+    const payload = { ...(job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) ? job.payload : {}), packId };
+    const now = new Date().toISOString();
+    const { data, error } = await getSupabaseServerClient().from('quick_jobs').update({ payload, updated_at: now })
+      .eq('id', job.id).eq('lease_token', job.lease_token!).eq('status', 'running').gt('lease_until', now).select('id');
+    if (error) throwRepositoryError('quick.bindPublishPack', error);
+    if (!data.length) throw new Error('后台执行权已过期，请等待任务恢复。');
+    job.payload = payload;
+  },
 };

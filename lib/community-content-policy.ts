@@ -139,7 +139,9 @@ export function scopeNotesIssues(plan: WritingPlan, allowed: string[]) {
 // Narrow regressions observed in real model probes. Semantic review still covers other claims.
 export function unsupportedPublicationClaims(copy: CommunityStyleEdit, facts: WritingFact[], scopeNotes: string[]) {
   const source = [...facts.flatMap(f => [f.observation, f.interpretation]), ...scopeNotes].join("\n").replace(/\s+/g, "");
-  const pattern = /(?:省去|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|稳定|容易)[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
+  // “容易踩的坑” names a topic; “容易出错” asserts observed behavior.
+  // Other semantic claims still go through both evidence reviews.
+  const pattern = /(?:省去|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|稳定|容易(?:出错|失败|误判|丢失|卡住|崩溃))[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
   const issues = [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
     const text = [copy.title, copy.body].join("\n");
     const prefix = text.slice(Math.max(0, match.index! - 20), match.index);

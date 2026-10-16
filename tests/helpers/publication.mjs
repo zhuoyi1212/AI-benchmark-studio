@@ -21,7 +21,7 @@ export const draft = {
 export const rawEvidence = `合成验证夹具，不是真实产品测评。任务：老板强势、注重结果，如何在预算紧张时沟通加薪。回答：写下项目的3个硬数字，提前约15分钟沟通。没有真实用户情绪记录，也没有实际沟通结果。artifactId=${id}`;
 const route = { provider: 'deepseek', model: 'fixture', promptVersion: 'fixture-v1' };
 const usage = { inputTokens: 10, outputTokens: 20, latencyMs: 1, estimatedCost: null };
-export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick, readyPack, revisionFailure = false, regenerationJob = null } = {}) {
+export function harness({ mutate, professional = false, realAI = false, raw = rawEvidence, workspace = quick, readyPack, revisionFailure = false, regenerationJob = null, execution } = {}) {
   const state = { calls: [], saved: null, failure: null, rawReads: 0 };
   const invoke = async options => {
     state.calls.push(options);
@@ -42,7 +42,7 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
     } else if (options.schemaName === 'CommunityPostRevision') {
       value = { ...input.draft, body: input.draft.body + '这份清单可以用来准备沟通。' };
     } else if (options.schemaName === 'EvidenceCheckedCommunityPost') {
-      value = { articleReview: review, stylePreservation: preservation, screenshotRecommendations: [] };
+      value = { articleReview: review, stylePreservation: preservation, screenshotRecommendations: [], issues: [] };
     } else if (options.schemaName === 'CommunityPostTitle') {
       value = { reviewSummary: { testPurpose: '加薪准备建议', mainResult: '准备材料与时间具体' }, title: '沟通工具样本加薪实测：准备建议具体' };
     } else throw new Error(options.schemaName);
@@ -52,6 +52,11 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   };
   const forbid = () => { throw new Error('Unexpected professional source'); };
   const repo = {
+    beginFromFindings: async () => {
+      readyPack = { ...readyPack, id: '22222222-2222-4222-8222-222222222222', status: 'draft', community_post: null };
+      state.createdPackId = readyPack.id;
+      return readyPack.id;
+    },
     listByFindings: async () => readyPack ? [readyPack] : [{ id, status: 'draft', content_ideas: [idea] }],
     listByReport: async () => [{ id, status: 'draft', content_ideas: [idea] }],
     startPost: async (_id, _idea, value) => { state.config = value; },
@@ -72,8 +77,8 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
     },
   };
   const overrides = {
-    '@/lib/repositories/quick-jobs.repository': { quickJobsRepository: { get: async () => regenerationJob } },
-    '@/lib/quick/checkpoints': { quickExecution: { getStore: () => undefined }, QuickYield: class extends Error {}, checkpoint: async (_name, _input, execute) => execute() },
+    '@/lib/repositories/quick-jobs.repository': { quickJobsRepository: { get: async () => regenerationJob, bindPublishPack: async (job, packId) => { job.payload = { ...job.payload, packId }; state.boundPackId = packId; } } },
+    '@/lib/quick/checkpoints': { quickExecution: { getStore: () => execution }, QuickYield: class extends Error {}, checkpoint: async (_name, _input, execute) => execute() },
     '@/lib/repositories/publish.repository': { publishRepository: repo },
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => professional ? null : workspace, buildRawFindingsEvidenceContent: async (_id, options) => { state.rawOptions = options; state.rawReads++; return typeof raw === 'function' ? raw() : raw; } },
     '@/lib/services/research.service': { getResearchWorkspace: async () => ({ completedResult: { products: [] } }) },
