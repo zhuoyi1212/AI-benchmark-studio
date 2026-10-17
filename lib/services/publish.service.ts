@@ -44,7 +44,7 @@ import {
 
 import { communityTitleRules, communityTitleRefreshRules } from "@/lib/community-title-policy";
 
-import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues, locatedReviewOutputRules } from "@/lib/community-story-policy";
+import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues, locatedReviewOutputRules, buildStoryWritingInput } from "@/lib/community-story-policy";
 import { authorPerspectiveRules, hasAuthorPerspective } from '@/lib/author-perspective';
 
 const unsupportedProcessInference = /可能通过隐式代理|倾向于以手动命令|没有自动调用(?:任何)?(?:工具|Agent|Skill)|默认(?:不会|不|仅|只)(?:调用|展示|记录)|官方测评(?:得分|评分)|(?:内置专用\s*)?Skill\s*生态的不足|(?:短板|不足)(?:是|在于)?\s*Agent\/Skill\s*协作透明度|Agent\/Skill\s*协作透明度.{0,12}(?:短板|不足)/i;
@@ -242,7 +242,7 @@ export async function generateCommunityPost(
     });
     const storyBrief = briefResult.data;
     const claimFacts = [...facts, { id: 'raw-details', productId: '', testCaseId: '', observation: originalDetails, interpretation: '', evidenceArtifactIds: [] }];
-    const writingSource = { ...postInput, storyBrief, originalDetails };
+    const writingSource = buildStoryWritingInput(postInput, storyBrief, originalDetails);
     stage = "撰写初稿";
     const draftMessages: AIMessage[] = [
       { role: "system", content: storyWritingRules },

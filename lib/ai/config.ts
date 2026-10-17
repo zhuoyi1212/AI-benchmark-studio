@@ -125,7 +125,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   content_discovery: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "content-discovery.v6-author-perspective",
+    promptVersion: "content-discovery.v7-reader-angle",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post.v10-author-perspective",
+    promptVersion: "community-post.v11-reader-editing",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -144,7 +144,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_humanize: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post-humanize.v8-shared-copy-gates",
+    promptVersion: "community-post-humanize.v9-reader-editing",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -153,7 +153,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_title: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post-title.v4-concrete-summary",
+    promptVersion: "community-post-title.v5-reader-summary",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -162,7 +162,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v9-located-review-shape-text",
+    promptVersion: "community-post-evidence-check.v10-reader-editing-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -171,7 +171,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v9-located-review-shape-vision",
+    promptVersion: "community-post-evidence-check.v10-reader-editing-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

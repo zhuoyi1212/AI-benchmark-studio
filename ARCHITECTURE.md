@@ -1,5 +1,9 @@
 # AI Benchmark Studio — Architecture
 
+### Reader editing输入投影（2026-10-17）
+
+`buildStoryWritingInput`为正文与定向修订构建显式字段投影：config、products、完整tasks、完整factLedger与scopeNotes、可选authorPerspective、已验证storyBrief、originalDetails。去除旧selectedIdea和重复humanConfirmedFindings等元数据，原始事实与任务条件不裁剪；策划、初审及终审仍使用完整postInput/原始证据。无新增模型阶段或Schema/表变更。各受影响Prompt单独升版，写作路由沿用Kimi K3，审稿路由保持独立。剪贴板格式化仅省略空字段和与正文独立段落相同的互动，不改存储内容或语义去重。
+
 ## 1. 技术栈
 
 锁定：

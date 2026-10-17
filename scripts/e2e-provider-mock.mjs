@@ -340,7 +340,7 @@ function buildStructuredOutput(schemaName, messages) {
       corePromiseGaps: [], scope: "只限当前任务", ending: "可用来完成这项任务，使用前仍应核对结果", avoidClaims: [], comparison: false };
   }
   if (schemaName === "CommunityPostDraft") {
-    const input = findJsonMessage(messages, v => v.selectedIdea && v.config && v.sourceType);
+    const input = findJsonMessage(messages, v => v.storyBrief && v.config && v.factLedger);
     return { title: `${input.products[0].name}：任务输出可以核对`, body: `我用${input.products[0].name}处理这项任务。${input.factLedger[0].observation}这份输出可以作为整理材料的起点，实际采用前仍要核对具体内容。`, tags: ["AI工具"], interactionQuestion: "" };
   }
   if (schemaName === "CommunityPostReview") {

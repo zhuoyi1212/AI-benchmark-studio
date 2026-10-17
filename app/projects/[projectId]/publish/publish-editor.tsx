@@ -22,6 +22,7 @@ import type { PublishScreenshot, PublishWorkspace } from "@/lib/services/publish
 import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
 import { cn } from "@/lib/utils";
 import { AuthorPerspectiveFields } from '@/components/publish/author-perspective-fields';
+import { formatCommunityPostForCopy } from '@/lib/community-post-formatter';
 
 const initialState: PublishActionState = { message: null };
 const initialTitleState: TitleRefreshActionState = { message: null, title: null, packId: null };
@@ -59,7 +60,7 @@ export function PublishEditor({ workspace, workflowState, quick = false }: { wor
   const editingDisabled = mutating || pack?.status !== "ready";
   const sourceFields = <><input type="hidden" name="projectId" value={workspace.projectId} /><input type="hidden" name="sourcePackId" value={pack?.id ?? ""} /></>;
 
-  const copyPost = async () => { await navigator.clipboard.writeText(`${title}\n\n${body}\n\n${question}\n\n${tags}`); toast.success("社区帖子已复制"); };
+  const copyPost = async () => { await navigator.clipboard.writeText(formatCommunityPostForCopy({ title, body, interactionQuestion: question, tags })); toast.success("社区帖子已复制"); };
   const downloadOne = (image: PublishScreenshot) => { const anchor = document.createElement("a"); anchor.href = image.fileUrl; anchor.download = image.fileName; anchor.target = "_blank"; anchor.click(); toast.success("已开始下载原始截图"); };
   const downloadAll = () => { selectedImages.forEach((image, index) => window.setTimeout(() => downloadOne(image), index * 150)); };
   const moveImage = (index: number, direction: -1 | 1) => setSelectedIds((current) => { const nextIndex = index + direction; if (nextIndex < 0 || nextIndex >= current.length) return current; const next = [...current]; [next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!]; return next; });
