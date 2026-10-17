@@ -123,7 +123,7 @@ export const communityPostTitleSchema = z.object({
 export const titleRefreshAuditSchema = z.object({
   previousTitle: text.max(240),
   title: text.max(28),
-  provider: z.enum(["zhipu", "deepseek"]),
+  provider: z.enum(["zhipu", "deepseek", "moonshot"]),
   model: text,
   promptVersion: text,
   inputSignature: text,
@@ -195,7 +195,7 @@ export const articleReviewSchema = z.object({
 
 export const publishGenerationTraceSchema = z.array(z.object({
   stage: z.enum(["evidence_read", "planning", "writing", "content_check", "style_edit", "fact_check"]),
-  provider: z.enum(["zhipu", "deepseek"]),
+  provider: z.enum(["zhipu", "deepseek", "moonshot"]),
   model: text,
   promptVersion: text,
   inputSignature: text,

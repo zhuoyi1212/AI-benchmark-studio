@@ -6,7 +6,7 @@ import { runBlindJudge } from "@/lib/services/judge.service";
 import { confirmExperienceFindings, generateExperienceFindings, getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { generateProtocol, getProtocolWorkspace, lockProtocol, ProtocolExecutionError } from "@/lib/services/protocols.service";
 import { createProject, softDeleteProject } from "@/lib/services/projects.service";
-import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace, saveCommunityPostEdit, enqueueCommunityPostRegeneration } from "@/lib/services/publish.service";
+import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace, saveCommunityPostEdit, enqueueCommunityPostRegeneration, refreshCommunityPostTitle } from "@/lib/services/publish.service";
 import { runQuickWorker } from '@/lib/quick/worker';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
@@ -258,6 +258,12 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(regenerated.pack.config.authorPerspective?.verdict === revisedPerspective.verdict, 'Regeneration lost the new author perspective');
   const { data: priorCopy } = await getSupabaseServerClient().from('publish_packs').select('config,community_post').eq('id', editedId).single();
   assert(priorCopy?.config && typeof priorCopy.config === 'object' && !Array.isArray(priorCopy.config) && isDeepStrictEqual(priorCopy.config.authorPerspective, reopened.pack?.config.authorPerspective), 'Regeneration rewrote previous author perspective');
+  const refreshed = await refreshCommunityPostTitle(projectId, regeneratedId);
+  const titled = requireValue(await getPublishWorkspace(projectId), 'Refreshed Kimi title disappeared');
+  assert(titled.pack?.id === refreshed.packId && titled.pack.status === 'ready' && titled.pack.post?.title === refreshed.title, 'Kimi title refresh did not persist');
+  assert(titled.pack.post.body === regenerated.pack.post?.body, 'Title refresh rewrote the body');
+  const { data: kimiPack, error: kimiError } = await getSupabaseServerClient().from('publish_packs').select('provider,model').eq('id', refreshed.packId).single();
+  assert(!kimiError && kimiPack?.provider === 'moonshot' && kimiPack.model === 'kimi-k3', 'Kimi provider metadata was not retained');
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,

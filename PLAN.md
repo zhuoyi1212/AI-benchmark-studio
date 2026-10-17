@@ -512,3 +512,12 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 2026-10-17 已测评项目与文章汇编：按用户要求只读整理当前App可见的7个真实已测项目和全部23个有正文的保存版本（含3个人工编辑稿），交付docs/project-articles/已测评项目与文章汇编.docx及同内容Markdown、去敏JSON。快照截至北京时间13:35，排除内部验证/已删除项目及此前单独归档的失败记录；每个项目收录建项意图、当前方案与原始提示词、最新确认发现/限制、全版本索引、最新稿及历史全文、已保存配图文件和段落关系。标题/正文/标签/互动句保持原文，模型元数据继承不冒充重新调用；ready不代表已发表。原始只读快照留本地私密目录并Git忽略，未导出owner、原始输入快照、签名URL或Secret。新增4项导出回归，全仓439/439 tests、typecheck、build含媒体隔离自检、diff check通过，lint0errors/26既有warnings；原始23版ID及四项文案字段逐项一致，全部正文/提示词进入DOCX，最终29页全部渲染并逐页目视检查。无App/数据库/评分/Blind/Human Review/Storage/AI配置改动，无模型调用或部署，未重跑全产品E2E、不重新认证全产品AC；用户既有编辑及未跟踪资料保持。交付边界与Word摘要见docs/project-articles/README.md。
 
 2026-10-17 社区文案诊断：基于已有7项目/23保存版本汇编，以各项目最新就绪稿为主、历史版本为辅，对照用户提供的3份Seedance/可灵参考文章，新增docs/project-articles/社区文案诊断与自然表达改进方案.md。定位验收顺序、重复结论、产品话术复述、作者经历来源、标题与互动习惯等问题；提供7项目逐项原文证据、保留事实的即梦改写示范、既有Brief/作者判断/定向修订内的最小改进及三例定标准四例留作检验的小样本盲评方案。区分编辑判断与已验证效果，参考仅借鉴结构，不移植数字/采访/技术机制；不采纳伪造细节或AI概率。新增2项回归，逐一核对7个记录ID/最新版本/逐字引文和7/7互动、2/7正文问句、6/7冒号及唯一完全重复互动的计数；相关6/6测试与当前工作区448/448全测试、typecheck、build含媒体隔离自检、diff检查通过，lint0errors/26既有warnings。仅提交诊断文档/对应测试及本记录；其他工作区模型相关变更独立保留。无App运行逻辑修改、线上文章替换、模型调用、数据库写入或部署，未执行读者盲评、未重认证全产品AC。
+
+
+2026-10-17 用户指定 Kimi K3 写作模型增量（M15 后）：新增 server-only MoonshotProvider，正文、按需修订与单独标题刷新改用集中 kimi-k3 默认值；选材/Story Brief 与独立文本、视觉审稿保持原路由。K3 使用 JSON mode、low/high 推理与包含思考的输出预算，最终答案继续经 Normalize/Zod/证据门禁，同 Provider 最多两次，不保留思维链；修复输入和实际调用审计一致。MOONSHOT_API_KEY 仅服务端，MOONSHOT_WRITING_MODEL 可覆盖，无新框架/依赖。
+
+迁移 20261017060048_kimi_community_writing 已应用到关联 Supabase，仅扩展 publish_packs.provider CHECK 和 start_community_post/refresh_publish_pack_title 白名单；既有 service_role-only 权限实查通过，安全 advisors 保持 10 项既有 INFO。无新表、历史回填或真实用户文章重写；Blind、Protocol、AI Score、append-only Human Review、Final Score、Storage 规则保留。
+
+验证：充值后真实 K3 HTTP200/OK；真实 Router→Kimi→JSON/Zod smoke 首次通过（252 input/56 output tokens、3291ms，仅合成文本）。新增7项 Kimi 回归并更新现有路由/文档/完整E2E检查，当前混合工作区448/448 tests通过（其中2项为用户既有未跟踪文档回归，本次不提交）。最终typecheck、build（真实隔离媒体抽帧/提音）、diff检查通过；修改范围lint0errors/5既有warnings。从暂存干净快照审计450个tracked文件、74个业务文件，覆盖新增Moonshot Secret、客户端/Provider/Mock边界。
+
+完整E2E前两轮分别命中测试客户端fetch的300秒headers timeout、原360秒场景期限；仅测试传输改用native HTTP并将场景期限调整为600秒，全部业务超时/断言保持。最终Run mvc069zk-3ab494eb成功：3.4分钟、46次本地模拟Provider请求、7个真实页面HTTP200、首次生成/手动保存/后台重生成/标题刷新、新Kimi元数据与旧版本保持、横评及不可比拦截全部通过，3/3临时项目自动软删除。首轮3项已自动清理、第二轮3项已按精确ID和名称保护补清理。无真实用户项目改写、重评或付费文章生成；生产应用未部署，线上仍需配置Moonshot服务端密钥并发布代码。此轮完成模型接入工程验收，不宣称内容更自然或全部产品Acceptance Criteria重新认证。详见docs/kimi-writing-verification.md；保留用户原有编辑、删除和未跟踪资料。

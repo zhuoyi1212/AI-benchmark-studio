@@ -30,7 +30,7 @@ test('portfolio model names and task ownership agree with the actual default rou
     ['research', 'zhipu', 'glm-5.2'],
     ['protocol', 'deepseek', 'deepseek-v4-pro'],
     ['content_discovery', 'deepseek', 'deepseek-v4-pro'],
-    ['community_post', 'deepseek', 'deepseek-v4-flash'],
+    ['community_post', 'moonshot', 'kimi-k3'],
     ['community_post_evidence_check_text', 'deepseek', 'deepseek-v4-flash'],
     ['findings', 'zhipu', 'glm-4.6v'],
     ['judge_multimodal', 'zhipu', 'glm-4.6v'],

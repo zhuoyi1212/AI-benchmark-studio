@@ -1,6 +1,6 @@
 # AI Benchmark Studio 生产提示词清单
 
-更新日期：2026-10-16
+更新日期：2026-10-17
 适用代码：当前 `codex/quick-backend-workflow` 分支
 用途：提示词审查、模型精调、离线评测集设计和 Prompt 版本管理。
 
@@ -8,7 +8,7 @@
 
 ## 1. 模型与路由总表
 
-当前本地和默认配置没有模型环境变量覆盖。生产环境若配置同名变量，以环境变量为准。
+以下为当前代码默认路由；部署环境若配置同名模型变量，以环境变量为准。
 
 | 任务 | Provider | 默认模型 | Prompt Version | 推理 | 最大尝试 |
 |---|---|---|---|---|---:|
@@ -24,16 +24,16 @@
 | 最终结果分析 | DeepSeek | `deepseek-v4-pro` | `result-analysis.v2` | high | 2 |
 | 深度报告 | 智谱 | `glm-5.2` | `report.v2` | standard | 2 |
 | 社区选题 | DeepSeek | `deepseek-v4-pro` | `content-discovery.v6-author-perspective` | standard；修复时 high | 2 |
-| 社区文章初稿 | DeepSeek | `deepseek-v4-flash` | `community-post.v10-author-perspective` | standard | 2 |
-| 社区文章按需修订 | DeepSeek | `deepseek-v4-flash` | `community-post-humanize.v8-shared-copy-gates` | standard | 2 |
-| 单独刷新标题 | DeepSeek | `deepseek-v4-flash` | `community-post-title.v4-concrete-summary` | standard | 2 |
+| 社区文章初稿 | Kimi | `kimi-k3` | `community-post.v10-author-perspective` | standard | 2 |
+| 社区文章按需修订 | Kimi | `kimi-k3` | `community-post-humanize.v8-shared-copy-gates` | standard | 2 |
+| 单独刷新标题 | Kimi | `kimi-k3` | `community-post-title.v4-concrete-summary` | standard | 2 |
 | 纯文本事实核验 | DeepSeek | `deepseek-v4-flash` | `community-post-evidence-check.v9-located-review-shape-text` | standard | 2 |
 | 多模态事实核验 | 智谱 | `glm-4.6v` | `community-post-evidence-check.v9-located-review-shape-vision` | standard | 2 |
 | 截图预理解 | 智谱 | `glm-4.6v` | `screenshot-understanding.v2-json-shape` | standard | 2 |
 | 视频关键帧解析 | 智谱 | `glm-4.6v` | `video-frames.v1-evidence` | standard | 1 |
 | OCR | 智谱 | `glm-ocr` | `ocr.v1` | standard | 1 |
 
-模型环境变量：`ZAI_TEXT_MODEL`、`ZAI_VISION_MODEL`、`ZAI_OCR_MODEL`、`DEEPSEEK_REASONING_MODEL`、`DEEPSEEK_WRITING_MODEL`。
+模型环境变量：`ZAI_TEXT_MODEL`、`ZAI_VISION_MODEL`、`ZAI_OCR_MODEL`、`DEEPSEEK_REASONING_MODEL`、`DEEPSEEK_WRITING_MODEL`、`MOONSHOT_WRITING_MODEL`。Kimi 凭据使用服务端 `MOONSHOT_API_KEY`。K3 的 standard 映射为 `reasoning_effort=low`，high 映射为 high；始终思考，使用 `max_completion_tokens` 且至少预留 16384 tokens（含思考），只保留最终答案。正文、按需修订与标题使用 Kimi；独立文本审稿仍由 DeepSeek 执行，视觉核验保持智谱。
 
 表中的“最大尝试”按当前实际执行计算。Search 和 OCR 虽在路由模板中保留 `maxAttempts: 2`，但当前走 Provider 直连方法，只执行一次，没有进入结构化任务的重试循环。
 

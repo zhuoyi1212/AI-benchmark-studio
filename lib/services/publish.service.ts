@@ -815,7 +815,7 @@ function toUserFacingError(error: unknown) {
 }
 
 function providerFailureMessage(error: AIProviderError, technical: boolean) {
-  const provider = error.provider === "zhipu" ? "Z.AI" : error.provider === "deepseek" ? "DeepSeek" : error.provider;
+  const provider = error.provider === "zhipu" ? "Z.AI" : error.provider === "deepseek" ? "DeepSeek" : error.provider === "moonshot" ? "Kimi" : error.provider;
   const status = error.status ? ` HTTP ${error.status}` : "";
   const detail = error.providerMessage ? `：${error.providerMessage}` : "";
   if (technical) return `${provider} ${error.task} failed (${error.category}${status})${detail}`;

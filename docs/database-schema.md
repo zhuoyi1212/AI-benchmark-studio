@@ -312,3 +312,7 @@ Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不�
 无新表。`experience_findings.human_output.authorPerspective` 是人工确认时的可选输入，与不可变AI `output` 分开；`publish_packs.config.authorPerspective` 保存该文章使用的输入快照，字段为`goal/focus/tradeoff/verdict`，字符串，每项最多600字，可全空以显式禁用。应用Schema负责裁剪空白、填充省略项和拒绝未知键。它不是Artifact或事实依据。
 
 非破坏性migration `20261016094802_author_perspective_revisions.sql` 替换同签名`create_publish_revision`：regenerate只允许可选`copy.authorPerspective`，数据库校验对象、字段白名单、字符串与长度后，合并进**新**版本配置并原子创建任务；空copy兼容旧调用。manual路径、源版本不可变约束与service-only/security-invoker权限保持。无回填、无历史更新、无新增索引或外键需求。`quick_jobs.payload`仍绑定新packId，worker读取新pack.config并以输入签名区分检查点。
+
+## Kimi 写作 Provider（2026-10-17）
+
+迁移 `20261017060048_kimi_community_writing.sql` 仅扩展 `publish_packs.provider` 的 CHECK 为 zhipu/deepseek/moonshot，以及 `start_community_post`、`refresh_publish_pack_title` 的 Provider 白名单；两个 RPC 的既有 service_role-only 权限和状态/版本规则保留。discovery_provider、Research、Judge、Findings 等表和白名单不变。community_post 内 generationTrace/titleRefreshes 接受 moonshot；新调用记录实际模型与 Prompt，旧稿不回填、不改写，无新表或 Storage 变化。

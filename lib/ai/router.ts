@@ -5,12 +5,14 @@ import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { resolveAITaskRoute } from "@/lib/ai/config";
 import { DeepSeekProvider } from "@/lib/ai/providers/deepseek.provider";
+import { MoonshotProvider } from "@/lib/ai/providers/moonshot.provider";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import { ZhipuProvider } from "@/lib/ai/providers/zhipu.provider";
 import { getAIProviderKey } from "@/lib/env/server";
 import { parseStructuredJson } from "@/lib/ai/structured-json";
 import type {
   AIAttemptPerformance,
+  AIProviderName,
   AIMessage,
   AITaskType,
   JudgeArtifactDescriptor,
@@ -76,6 +78,8 @@ async function executeStructuredAITask<Schema extends z.ZodType>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
+      // Audit the actual provider message shape, including fresh repair inputs.
+      attemptMessages = provider.prepareMessages?.(attemptMessages) ?? attemptMessages;
       const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs, signal: request.signal });
       await request.onResponse?.({ route, attempt, reasoning: attemptReasoning, messages: attemptMessages, content: response.content, requestId: response.requestId, usage: response.usage });
       let json: unknown;
@@ -341,9 +345,10 @@ function isTextArtifactMimeType(mimeType: string) {
   return ["text/plain", "text/markdown", "application/json", "text/csv"].includes(mimeType.toLowerCase());
 }
 
-function createProvider(providerName: "zhipu" | "deepseek"): AIProvider {
+function createProvider(providerName: AIProviderName): AIProvider {
   const apiKey = getAIProviderKey(providerName);
   if (providerName === "zhipu") return new ZhipuProvider(apiKey);
+  if (providerName === "moonshot") return new MoonshotProvider(apiKey);
   return new DeepSeekProvider(apiKey);
 }
 

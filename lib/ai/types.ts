@@ -24,7 +24,7 @@ export const aiTaskTypes = [
 ] as const;
 
 export type AITaskType = (typeof aiTaskTypes)[number];
-export type AIProviderName = "zhipu" | "deepseek";
+export type AIProviderName = "zhipu" | "deepseek" | "moonshot";
 export type AICapability = "structured_text" | "multimodal" | "web_search" | "ocr";
 export type AIReasoningMode = "standard" | "high";
 

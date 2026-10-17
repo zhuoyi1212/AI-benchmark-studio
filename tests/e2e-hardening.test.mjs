@@ -149,6 +149,8 @@ test("full route E2E verifies Blind Review before Quick Findings and Findings Pu
 });
 
 test("full E2E client allows the route to finish its bounded cleanup and response", () => {
-  assert.match(e2eRunner, /AbortSignal\.timeout\(360_000\)/);
+  assert.match(e2eRunner, /AbortSignal\.timeout\(600_000\)/);
+  assert.match(e2eRunner, /const response = await postFullFlow/);
+  assert.match(e2eRunner, /httpRequest\(url, \{ method: options\.method, headers: options\.headers, signal: options\.signal \}/);
   assert.match(e2eRunner, /allowing server-side cleanup 30 seconds to finish/);
 });

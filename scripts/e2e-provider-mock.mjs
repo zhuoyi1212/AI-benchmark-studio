@@ -23,7 +23,7 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
         requests.push({ task: "research_search", multimodal: false });
         return send(response, 200, createSearchResponse(body));
       }
-      if (!["/zhipu/chat/completions", "/deepseek/chat/completions"].includes(request.url)) {
+      if (!["/zhipu/chat/completions", "/deepseek/chat/completions", "/moonshot/chat/completions"].includes(request.url)) {
         return send(response, 404, { error: "Unknown E2E provider endpoint" });
       }
 
@@ -44,12 +44,12 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
         });
         return send(response, 200, planned.body);
       }
-      const provider = request.url.startsWith("/zhipu/") ? "zhipu" : "deepseek";
+      const provider = request.url.startsWith("/zhipu/") ? "zhipu" : request.url.startsWith("/moonshot/") ? "moonshot" : "deepseek";
       const parts = body.messages.flatMap(m => Array.isArray(m.content) ? m.content : []);
       const nativeVideo = parts.some(p => p.type === "video_url" || p.type === "file_url" && /\.mp4/.test(p.file_url.url));
       if (videoEvidence && nativeVideo) throw new Error("Video fixture reached provider as raw MP4");
       if (videoEvidence && schemaName === "JudgeCaseScores" && (parts.some(p => p.type !== "text") || JSON.stringify(body.messages).includes(process.env.E2E_VIDEO_IDENTITY))) throw new Error("Video evaluator received binary or real identity");
-      const trackedRequest = { task: schemaName, provider, multimodal, nativeVideo };
+      const trackedRequest = { task: schemaName, provider, model: body.model, multimodal, nativeVideo };
       requests.push(trackedRequest);
       if (videoEvidence && schemaName === "VideoFrameObservations") {
         const timestamps = parts.filter(p => p.type === "text" && p.text.startsWith("timestamp: ")).map(p => Number(p.text.slice(11)));
@@ -83,6 +83,7 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
     baseUrl: `http://127.0.0.1:${address.port}`,
     stats: () => ({
       total: requests.length,
+      kimiWritingRequests: requests.filter(r => r.provider === "moonshot" && r.model === "kimi-k3").length,
       nativeVideoRequests: requests.filter(r => r.nativeVideo).length,
       videoEvaluatorProviders: requests.filter(r => r.task === "JudgeCaseScores").map(r => r.provider),
       taskCounts: Object.fromEntries([...Map.groupBy(requests, (item) => item.task)].map(([task, items]) => [task, items.length])),
@@ -100,7 +101,7 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
 async function proxyRealProviderRequest(provider, apiKey, body, response) {
   const endpoint = provider === "zhipu"
     ? "https://api.z.ai/api/paas/v4/chat/completions"
-    : "https://api.deepseek.com/chat/completions";
+    : provider === "moonshot" ? "https://api.moonshot.cn/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
   const upstream = await fetch(endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -128,6 +129,10 @@ function createSearchResponse(body) {
 }
 
 function buildStructuredOutput(schemaName, messages) {
+  if (schemaName === "CommunityPostTitle") {
+    const input = findJsonMessage(messages, value => value.articleBody && value.avoidTitles);
+    return { reviewSummary: { testPurpose: "任务输出实测", mainResult: "输出可核对" }, title: `${input.products[0]}：本轮任务输出实测` };
+  }
   if (schemaName === "ProductResearch") {
     const sources = extractSources(messages);
     return {

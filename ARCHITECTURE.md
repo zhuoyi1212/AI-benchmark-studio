@@ -403,3 +403,7 @@ publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，
 2026-10-16 重新生成可靠性：Quick worker恢复前检查最新写作请求与目标packId；旧任务不能采用或标记更新版本。普通Publish也以有效lease持久化目标，当前failed合法重试创建新版本后先绑定再调用模型；不再以时间范围批量恢复Publish。重试入口与工作台过滤同步排除已被更新请求替代的旧任务。新终审在原有只读契约上要求每条阻断意见定位最终draft，理由与质量/保真问题一致；结构缺失之外要求逐字引文，无效定位进入既有同Provider有限修复。定向修订在返回时执行标题及已知无依据断言校验，保存前仍保留最终门禁。历史JSON继续可读，无新增migration。排查证据及限制见docs/regeneration-reliability-20261016.md。
 
 2026-10-16 真实回归补充：修订Schema同步执行communityExpressionIssues，避免修订新增报告套话后直到终稿才失败；语言错误包含实际触发短语。初审/终审和相应repair instruction共享locatedReviewOutputRules，明确根issues为六字段问题对象数组，嵌套articleReview.issues为字符串摘要数组。视觉修复仍保留原图，最多两次同Provider尝试，不合格对象不转换、不补造定位。修订/审核Prompt升版，无新增模型阶段或数据表。
+
+### Kimi 社区写作（2026-10-17）
+
+在既有 Task Service → Router → Provider Adapter 中新增 MoonshotProvider；community_post、community_post_humanize、community_post_title 使用 `MOONSHOT_WRITING_MODEL`（默认 kimi-k3）和 `MOONSHOT_API_KEY`。沿用统一 HTTP 错误、最终答案 Normalize、Zod 和同 Provider 有界修复；不保存 reasoning_content。K3 标准推理为 low，预算改用包含思考的 max_completion_tokens。独立文本/视觉审稿、Research/Judge/Findings/Report 路由保持。Publish provider CHECK 和两个 service-only RPC 接受 moonshot，generationTrace/titleRefreshes 新旧 Provider 兼容，历史内容不回填。

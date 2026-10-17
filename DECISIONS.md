@@ -133,3 +133,5 @@
 2026-10-12 文章编辑持久化：用户明确要求正文可重生成，手动修改可保存。新增service-only原子create_publish_revision RPC，manual复制生成来源并创建新ready版本，记录manualEdit/aiReviewed=false；regenerate原子创建draft版本与固定packId的publish任务，复用队列、阶段检查点、AI路由和独立审核。专业项目仅显式文章重生成可使用此队列，其余任务保持quick-only，保留E2E隔离。旧稿不可变；人工文案不强行接受AI写作语义门禁，但保留长度/结构/内部ID/真实Artifact校验。去掉失效段落证据锚点，不制造替代截图。
 
 2026-10-16 作者判断与自然表达：按用户“提升最后人味”的要求，确认Findings/写作配置可选填goal、focus、tradeoff、verdict，每项最多600字。它们只代表人工偏好，不进入AI Findings输出或事实账本；已确认来源继承到新文章配置，显式文章输入可覆盖或清空，不跨Findings复用。现有文章补充后以regenerate创建新版本并原子入队，不能更新旧稿。Brief、初稿、修订和独立审核共享判断边界，允许有据的偏好与不对称篇幅，减少模板结构、重复限制和空泛总结；不编造经历、情绪、数字或产品能力。复用既有路由/模型/检查点，只升版Prompt与扩展JSON/RPC校验。工程验证不代表“人味”效果已提高，真实样稿盲评另行完成。
+
+2026-10-17 Kimi K3 写作：用户明确要求将最终内容生成切换为 Kimi K3，并配置 Moonshot Key、充值后验证调用。新增服务端 MoonshotProvider，社区正文、按需修订及标题默认 kimi-k3，MOONSHOT_WRITING_MODEL 可覆盖；独立文本审稿与视觉核验保持原集中路由。K3 standard 使用 low（始终开启思考），不沿用 Flash 的 non-thinking 参数；预算包含思考，输出继续 JSON/runtime validation，任何重试不跨 Provider。仅扩展 Publish 的 provider 元数据约束和既有两个 RPC 的 Provider 白名单，保留权限、历史版本、Blind、评分、审核及证据规则。此前 Flash 写作限定由本决定替代；不承诺自然程度提升，真实文章效果另行评测。
