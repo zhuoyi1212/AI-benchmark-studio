@@ -12,6 +12,7 @@ import { getPublishWorkspace } from '@/lib/services/publish.service';
 import { getProjectWorkflowState } from '@/lib/services/workflow-navigation.service';
 import { getQuickWorkflowJobs } from '@/lib/services/quick-workflow.service';
 import { quickStageLabels } from '@/lib/quick/types';
+import { selectQuickWorkspaceJobs } from '@/lib/quick/workspace-jobs';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { Card } from '@/components/ui/card';
 import { QuickActionButton } from './action-button';
@@ -30,13 +31,24 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
   const [protocolWorkspace, workflowState] = await Promise.all([getProtocolWorkspace(projectId), getProjectWorkflowState(projectId)]);
   const protocol = protocolWorkspace?.protocol;
   if (!workflowState) notFound();
-  const currentJobs = jobs.filter(job => {
-    if (['research','protocol'].includes(job.kind)) return !protocol;
-    if (['evaluate','findings'].includes(job.kind)) return job.scope === protocol?.id;
-    return true;
+  // Read current results before interpreting old queue failures. The publish service
+  // binds its source to the current locked protocol and confirmed Findings.
+  const preparedPublish = workflowState.stages.publish.completed ? await getPublishWorkspace(projectId) : null;
+  const publishReady = preparedPublish?.pack?.status === 'ready';
+  const needsReviewCheck = !publishReady && jobs.some(job => job.kind === 'evaluate' && job.scope === protocol?.id && job.status === 'failed');
+  const needsFindingsCheck = !publishReady && jobs.some(job => ((job.kind === 'findings' && job.scope === protocol?.id) || ['discovery', 'publish'].includes(job.kind)) && job.status === 'failed');
+  const [preparedReview, preparedFindings] = await Promise.all([
+    needsReviewCheck ? getHumanReviewWorkspace(projectId) : null,
+    needsFindingsCheck ? getExperienceFindingsWorkspace(projectId) : null,
+  ]);
+  const { active, failed } = selectQuickWorkspaceJobs(jobs, {
+    protocolId: protocol?.id,
+    protocolLocked: protocol?.status === 'locked',
+    findingsId: preparedFindings?.latest?.id ?? preparedPublish?.findingsId ?? undefined,
+    publishReady,
+    reviewCompleted: preparedReview?.protocolId === protocol?.id && preparedReview?.status === 'revealed',
+    findingsCompleted: preparedFindings?.protocolId === protocol?.id && preparedFindings?.latest?.status === 'completed',
   });
-  const active = currentJobs.find(job => ['queued','running'].includes(job.status) && !['analysis','report'].includes(job.kind));
-  const failed = [...currentJobs].reverse().find(job => job.status === 'failed' && !['analysis','report'].includes(job.kind));
   let content: React.ReactNode;
   let step = 0;
   if (active || failed) {
@@ -66,10 +78,10 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
       step = 1;
     }
   } else {
-    const findings = await getExperienceFindingsWorkspace(projectId);
+    const findings = preparedFindings ?? await getExperienceFindingsWorkspace(projectId);
     const run = findings?.latest;
     if (run?.humanConfirmedAt) {
-      const publish = await getPublishWorkspace(projectId);
+      const publish = preparedPublish ?? await getPublishWorkspace(projectId);
       content = !jobs.some(job => job.kind === 'discovery') && publish?.pack?.status !== 'ready'
         ? <QuickActionButton projectId={projectId} operation="write" id={run.id}>生成文章</QuickActionButton>
         : publish ? <PublishEditor quick key={`${publish.pack?.id}-${publish.pack?.status}`} workspace={publish} workflowState={workflowState} /> : <p>正在准备文章。</p>;

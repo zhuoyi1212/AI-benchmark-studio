@@ -24,7 +24,7 @@ export class DeepSeekProvider implements AIProvider {
       thinking: { type: highReasoning ? "enabled" : "disabled" },
       ...(highReasoning ? { reasoning_effort: "high" } : {}),
       stream: false,
-    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs });
+    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs, signal: request.signal });
 
     // reasoning_content is intentionally ignored; only the final structured answer enters the domain.
     return normalizeCompletionResponse(this.name, data, latencyMs, status, request);

@@ -1,5 +1,9 @@
 # AI Benchmark Studio — Architecture
 
+### Reader editing输入投影（2026-10-17）
+
+`buildStoryWritingInput`为正文与定向修订构建显式字段投影：config、products、完整tasks、完整factLedger与scopeNotes、可选authorPerspective、已验证storyBrief、originalDetails。去除旧selectedIdea和重复humanConfirmedFindings等元数据，原始事实与任务条件不裁剪；策划、初审及终审仍使用完整postInput/原始证据。无新增模型阶段或Schema/表变更。各受影响Prompt单独升版，写作路由沿用Kimi K3，审稿路由保持独立。剪贴板格式化仅省略空字段和与正文独立段落相同的互动，不改存储内容或语义去重。
+
 ## 1. 技术栈
 
 锁定：
@@ -375,3 +379,35 @@ Blind Judge 与 Experience Findings 共用 `single-media-family.v1` 证据选择
 `community-content-policy.ts` 集中维护生成、模板、内容核验、语言编辑、最终审核规则及确定性门禁。PublishService 从选题覆盖的 Findings/专业观察投影 factLedger，保留证据ID与任务关联，不传 Report全文/数值评分。初稿 schema 必需 writingPlan；ReviewedCommunityPost 同原始 Artifact 做内容核验；HumanizedCommunityPost 使用 strict 三字段 Schema；EvidenceCheckedCommunityPost 仅返回质量/六项保真/图片关联，程序合并实际审核文案。
 
 同一原始 Artifact 读取助手用于两类来源；图片/PDF混合路由仍按实际内容模态选择。复用 Router 和 quick_job_steps；新增阶段名称不新增任务队列，Prompt/Schema/输入参与签名，旧检查点不能误当新规范结果。publish_packs.community_post 保存 writingPlan/contentPolicyVersion/contentBrief/languagePass/styleEdit/stylePreservation/generationTrace，旧字段可选保证历史可读。此次补齐仓储曾遗漏的 contentBrief/languagePass 保存。没有新增表或客户端权限。
+
+
+### Reader Story 下游链路（2026-10-11）
+
+此版替代旧 Publish 强制模板与无条件润色流程，保留 AI Task Service → Router → Provider。人工确认 Findings 或专业证据投影后，选题以读者问题为起点；服务限定所选任务及来源 Artifact，再执行 Story Brief → 四字段初稿 → 只读初审 → 按需三字段修订 → 独立最终只读审核。正常为四阶段、修订为五阶段，选题另计；视频先增加一个 evidence_read 阶段。文本策划复用 content_discovery；图片/文件的策划与复核明确使用视觉路由；视频仅由视觉路由先抽取 details，随后文本路由进行策划/审稿。正文和定向修订模型配置不变。
+
+Brief 关联事实和 Artifact ID，服务校验引用及共同任务比较准入；写作者读取原始文本、PDF 抽取文本和 Brief 中的视觉细节。视频在本次下游传输使用 video_url，并将当前任务及其材料与视频放在同一个 user 消息，避免嵌入测试 Prompt 被误当任务；修复请求移动而非重复原视频消息。此前 Judge/Findings 传输及历史评分不在本轮改变范围内。错误日志仅增加媒体数量，不记录 URL 或原始视频。
+
+publish_packs.community_post JSON 增加兼容性的 storyBrief / draftReview，成功保存原稿、实际最终稿、四项质量与六项保真、阶段路由/版本/输入签名/usage。Repository 的既有完成 RPC 原子写入；无新表、无 migration。历史 writingPlan、contentBrief、editorialPlan 仍可读取；重生成创建新版本。成功阶段沿用 quick_job_steps，失败不能 ready 或回退 Mock。配图段落按最终正文锚定句由程序定位。
+
+
+## 视频媒体证据架构（2026-10-11）
+
+按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。
+
+
+2026-10-12 标题策略：lib/community-title-policy.ts 提供共享概括与审核规则，供选题发现、Story Brief、初稿、定向修订、独立审核和refreshCommunityPostTitle复用。标题刷新以articleBody为主、旧标题只作避免重复，旧Brief/选题不再发送，同一次结构化标题任务先输出用途/结果事实摘要再生成标题（至多两次尝试），服务仅保存标题与原有审计及现有immutable PublishPack RPC，不新增模型阶段或表。语义主次由提示词与原有文章审核判断；名称、长度、数字、重复/夸张等确定性校验保留，不用关键词黑名单猜任务是否重要。
+
+
+2026-10-12 文章版本编辑：Editor → authenticated Server Action → PublishService → PublishRepository.createRevision → create_publish_revision事务。服务从当前工作台校验sourcePackId、内容格式及图片权限；RPC锁定Project和源Findings/Report、核对最新版本后创建版本，不更新ready原稿。manualEdit仅记录来源、保存时间及aiReviewed=false，AI路由字段保留来源追溯，当前编辑稿不显示旧AI审核徽章。regenerate的PublishPack和quick_jobs同事务插入，payload绑定packId/sourcePackId/mode，worker按固定版本复用四至五阶段流程，hard restart保留generating继续；失败明确终止，新尝试新版本，完成不重跑分析/报告。response后唤醒一次，Cron/本地poller续跑，页面只读取状态。quick页将文章重生成交给Editor显示上一版及状态，避免全页遮挡。仅未完成regeneration读取一条job，不增加正常历史读取请求。
+
+2026-10-16 作者判断：FindingsEditor / PublishEditor复用折叠选填组件，经Server Action → Service Schema校验 → Repository/RPC保存人工输入；AI Findings Schema不接收该字段。已确认human_output中的authorPerspective按来源继承到publish_packs.config，文章输入可覆盖或显式清空。PublishService把偏好独立投影到选题、Brief、初稿及两次只读审核/定向修订，不放入factLedger；实际配置与输入签名参与版本追溯和检查点。增强自然表达不新增模型阶段或改变Provider/Model；确定性百分比来源检查也不接受偏好作为事实来源，语义归属继续由独立审核负责。新版本配置与重生成任务同事务写入，旧版本配置保持不可变。
+
+2026-10-16 截图结构修复：多截图仍每批最多2张，用独立截图提示词明确根observations字符串数组、固定数量、字符串转义和禁止answer包装。Router的结构修复将原始图片/原生文件与标签按序移动到当前用户消息，附加修复指令，不重复发送同一批媒体；纯文本消息结构不变。同Provider至多两次请求，失败明确为截图JSON或字段错误，不省略截图、不补造观察、不修改历史实验或旧稿。集中截图Prompt升版，Schema/正文与评分门禁保持。
+
+2026-10-16 重新生成可靠性：Quick worker恢复前检查最新写作请求与目标packId；旧任务不能采用或标记更新版本。普通Publish也以有效lease持久化目标，当前failed合法重试创建新版本后先绑定再调用模型；不再以时间范围批量恢复Publish。重试入口与工作台过滤同步排除已被更新请求替代的旧任务。新终审在原有只读契约上要求每条阻断意见定位最终draft，理由与质量/保真问题一致；结构缺失之外要求逐字引文，无效定位进入既有同Provider有限修复。定向修订在返回时执行标题及已知无依据断言校验，保存前仍保留最终门禁。历史JSON继续可读，无新增migration。排查证据及限制见docs/regeneration-reliability-20261016.md。
+
+2026-10-16 真实回归补充：修订Schema同步执行communityExpressionIssues，避免修订新增报告套话后直到终稿才失败；语言错误包含实际触发短语。初审/终审和相应repair instruction共享locatedReviewOutputRules，明确根issues为六字段问题对象数组，嵌套articleReview.issues为字符串摘要数组。视觉修复仍保留原图，最多两次同Provider尝试，不合格对象不转换、不补造定位。修订/审核Prompt升版，无新增模型阶段或数据表。
+
+### Kimi 社区写作（2026-10-17）
+
+在既有 Task Service → Router → Provider Adapter 中新增 MoonshotProvider；community_post、community_post_humanize、community_post_title 使用 `MOONSHOT_WRITING_MODEL`（默认 kimi-k3）和 `MOONSHOT_API_KEY`。沿用统一 HTTP 错误、最终答案 Normalize、Zod 和同 Provider 有界修复；不保存 reasoning_content。K3 标准推理为 low，预算改用包含思考的 max_completion_tokens。独立文本/视觉审稿、Research/Judge/Findings/Report 路由保持。Publish provider CHECK 和两个 service-only RPC 接受 moonshot，generationTrace/titleRefreshes 新旧 Provider 兼容，历史内容不回填。

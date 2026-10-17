@@ -3,6 +3,14 @@ import type { CommunityPostOutput } from "./ai/schemas/publish.schemas";
 const markers = /[（(]\s*p\d+\s*[)）]/gi;
 const paragraphs = (body: string) => body.replace(markers, "").split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
 
+/** Suppress a repeated standalone interaction only in clipboard output; stored copy stays intact. */
+export function formatCommunityPostForCopy(copy: { title: string; body: string; interactionQuestion: string; tags: string }) {
+  const comparable = (text: string) => text.normalize('NFKC').replace(/\s+/g, '');
+  const question = copy.interactionQuestion.trim();
+  const alreadyPresent = question && copy.body.split(/\n\s*\n/).some(paragraph => comparable(paragraph) === comparable(question));
+  return [copy.title, copy.body, alreadyPresent ? '' : question, copy.tags].map(part => part.trim()).filter(Boolean).join('\n\n');
+}
+
 /** Display references are derived from selection order, never stored in evidence IDs. */
 export function formatCommunityBody(body: string, originalBody: string, selectedIds: string[], availableIds: string[], recommendations: CommunityPostOutput["screenshotRecommendations"]) {
   const original = paragraphs(originalBody);

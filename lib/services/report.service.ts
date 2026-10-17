@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import {
   generatedReportSchema,
@@ -64,7 +65,7 @@ export class ReportGenerationError extends Error {
 export async function getReportWorkspace(projectId: string): Promise<ReportWorkspace | null> {
   const source = await getCurrentSource(projectId);
   if (!source) return null;
-  const reports = await reportRepository.listByAnalysis(source.analysisRow.id);
+  const reports = await reportRepository.listByAnalysis(source.analysisRow.id, 1);
   const latest = reports[0] ?? null;
   const [evidence, research] = await Promise.all([
     latest ? getEvidence(latest.id, source.input) : Promise.resolve([]),
@@ -244,7 +245,7 @@ async function getEvidence(reportId: string, input: ReportGenerationInput["exper
       testCaseId: relation.testCaseId,
       fileName: row.file_name,
       mimeType: row.mime_type,
-      fileUrl: await testExecutionRepository.createSignedUrl(row.storage_path),
+      fileUrl: await memoPageRead(`artifact-url:${row.storage_path}`, () => testExecutionRepository.createSignedUrl(row.storage_path)),
       caption: linkByArtifact.get(row.id)?.caption ?? null,
     };
   }));

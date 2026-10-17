@@ -1,5 +1,6 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { humanReviewRepository } from "@/lib/repositories/human-review.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { getJudgeReviewWorkspace, type JudgeReviewWorkspace } from "@/lib/services/judge.service";
@@ -25,6 +26,15 @@ export type HumanReviewScore = {
   reviewFlags: Array<"low_confidence" | "evidence_risk" | "judge_conflict" | "parse_risk" | "fact_risk">;
 };
 
+export type HumanReviewAuditEntry = {
+  id: string;
+  judgeScoreId: string;
+  action: "override" | "revert";
+  score: number | null;
+  reason: string | null;
+  createdAt: string;
+};
+
 export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
   reviewSessionId: string;
   judgeRunId: string;
@@ -33,6 +43,7 @@ export type HumanReviewWorkspace = Omit<JudgeReviewWorkspace, "latestRun"> & {
   revealedAt: string | null;
   scores: HumanReviewScore[];
   summary: { total: number; adjusted: number; accepted: number; auditEvents: number; anomalies: number };
+  auditHistory?: HumanReviewAuditEntry[];
   revealedMappings: Array<{
     sampleId: string;
     sampleLabel: string;
@@ -50,6 +61,10 @@ export class HumanReviewError extends Error {
 }
 
 export async function getHumanReviewWorkspace(projectId: string): Promise<HumanReviewWorkspace | null> {
+  return memoPageRead(`human-review:${projectId}`, () => readHumanReviewWorkspace(projectId));
+}
+
+async function readHumanReviewWorkspace(projectId: string): Promise<HumanReviewWorkspace | null> {
   const judge = await getJudgeReviewWorkspace(projectId);
   if (!judge?.latestRun || judge.latestRun.status !== "completed") return null;
   try {
@@ -129,6 +144,14 @@ export async function getHumanReviewWorkspace(projectId: string): Promise<HumanR
         auditEvents: events.length,
         anomalies: scores.filter((score) => score.reviewFlags.length > 0).length,
       },
+      auditHistory: events.map(event => ({
+        id: event.id,
+        judgeScoreId: event.judge_score_id,
+        action: event.action,
+        score: event.override_score,
+        reason: event.reason,
+        createdAt: event.created_at,
+      })),
       revealedMappings,
     };
   } catch (error) {

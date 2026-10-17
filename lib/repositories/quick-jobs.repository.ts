@@ -1,10 +1,16 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { throwRepositoryError } from '@/lib/repositories/repository-error';
 import type { Json } from '@/lib/types/database';
 import type { NextQuickJob, QuickJob } from '@/lib/quick/types';
 
 export const quickJobsRepository = {
+  async get(projectId: string, jobId: string): Promise<QuickJob | null> {
+    const { data, error } = await getSupabaseServerClient().from('quick_jobs').select('*').eq('project_id', projectId).eq('id', jobId).maybeSingle();
+    if (error) throwRepositoryError('quick.get', error);
+    return data ? data as QuickJob : null;
+  },
   async enqueue(projectId: string, next: NextQuickJob) {
     const { data, error } = await getSupabaseServerClient().rpc('enqueue_quick_job', {
       p_project_id: projectId, p_kind: next.kind, p_scope: next.scope, p_payload: next.payload ?? {},
@@ -18,6 +24,13 @@ export const quickJobsRepository = {
     return data;
   },
   async claim(projectId?: string): Promise<QuickJob | null> {
+    // Test-only pollers must explicitly identify their own reserved fixture.
+    if (!projectId && process.env.E2E_TEST_MODE === '1' && process.env.E2E_TEST_RUN_ID) {
+      const { data: fixture, error } = await getSupabaseServerClient().from('projects').select('id').eq('name', `[E2E] Backend Quick ${process.env.E2E_TEST_RUN_ID}`).is('deleted_at', null).maybeSingle();
+      if (error) throwRepositoryError('quick.fixtureScope', error);
+      if (!fixture) return null;
+      projectId = fixture.id;
+    }
     const { data, error } = await getSupabaseServerClient().rpc('claim_quick_job', { p_project_id: projectId });
     if (error) throwRepositoryError('quick.claim', error);
     return data[0] ? data[0] as QuickJob : null;
@@ -53,8 +66,17 @@ export const quickJobsRepository = {
     if (!data.length) throw new Error('后台执行权已过期，请等待任务恢复。');
   },
   async retry(projectId: string, jobId: string) {
-    const { error } = await getSupabaseServerClient().from('quick_jobs').update({ status: 'queued', attempts: 0, error_message: null, available_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    const { error } = await getSupabaseServerClient().from('quick_jobs').update({ status: 'queued', attempts: 0, result: { retryEpoch: randomUUID() }, error_message: null, available_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('project_id', projectId).eq('id', jobId).eq('status', 'failed');
     if (error) throwRepositoryError('quick.retry', error);
+  },
+  async bindPublishPack(job: QuickJob, packId: string) {
+    const payload = { ...(job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) ? job.payload : {}), packId };
+    const now = new Date().toISOString();
+    const { data, error } = await getSupabaseServerClient().from('quick_jobs').update({ payload, updated_at: now })
+      .eq('id', job.id).eq('lease_token', job.lease_token!).eq('status', 'running').gt('lease_until', now).select('id');
+    if (error) throwRepositoryError('quick.bindPublishPack', error);
+    if (!data.length) throw new Error('后台执行权已过期，请等待任务恢复。');
+    job.payload = payload;
   },
 };

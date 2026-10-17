@@ -106,3 +106,7 @@ Publish 中点击写法即可同步风格、结构和篇幅，也可展开“文
 ## 后台快速模式
 
 快速项目通过统一工作台自动执行准备、匿名分析和文章生成，用户保留方案采用、实测上传和发现确认。常驻 Node 自动运行队列；Serverless 需要受密钥保护的调度器。部署、恢复机制与验证命令见 [后台快速模式](docs/quick-workflow.md)。
+
+### Kimi 社区写作
+
+在 `.env.local` 设置 `MOONSHOT_API_KEY`，可选 `MOONSHOT_WRITING_MODEL`（默认 `kimi-k3`）。社区正文、按需修订与标题使用 Kimi，独立审稿沿用 DeepSeek/智谱。需先应用 `kimi_community_writing` 迁移；修改环境变量后重启服务。线上部署需配置同名服务端密钥并重新部署。用 `node --env-file=.env.local scripts/verify-kimi.mjs` 做一次真实 JSON 连接测试（发送合成文本，会产生少量 API 费用，不写项目数据）。

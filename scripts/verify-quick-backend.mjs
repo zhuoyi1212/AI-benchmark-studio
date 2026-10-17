@@ -6,13 +6,15 @@ import { startE2EProviderMock } from './e2e-provider-mock.mjs';
 
 const token = randomUUID(), runId = `${Date.now().toString(36)}-${randomUUID().slice(0,8)}`;
 const recovery = process.env.E2E_QUICK_RECOVERY === '1';
-const provider = await startE2EProviderMock({ failOnceTask: recovery ? 'HumanizedCommunityPost' : undefined });
+const videoEvidence = process.env.E2E_VIDEO_FIXTURE === '1';
+if (videoEvidence) process.env.E2E_VIDEO_IDENTITY = `验证工具${runId.slice(-8)}`;
+const provider = await startE2EProviderMock({ failOnceTask: recovery ? 'CommunityPostRevision' : undefined });
 const socket = createServer(); await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
 const port = socket.address().port; await new Promise(resolve => socket.close(resolve));
 const origin = `http://127.0.0.1:${port}`;
 function startApp() {
 const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', String(port)], {
-  env: { ...process.env, E2E_TEST_MODE: '1', E2E_TEST_TOKEN: token, QUICK_WORKER_DISABLED: '0', AI_E2E_PROVIDER_BASE_URL: provider.baseUrl, ZAI_API_KEY: 'e2e-key', DEEPSEEK_API_KEY: 'e2e-key', AI_BENCHMARK_NEXT_DIST_DIR: '.next-quick-e2e', NEXT_TELEMETRY_DISABLED: '1', CRON_SECRET: token },
+  env: { ...process.env, E2E_TEST_MODE: '1', E2E_TEST_RUN_ID: runId, E2E_TEST_TOKEN: token, QUICK_WORKER_DISABLED: videoEvidence ? '1' : '0', AI_E2E_PROVIDER_BASE_URL: provider.baseUrl, ZAI_API_KEY: 'e2e-key', DEEPSEEK_API_KEY: 'e2e-key', AI_BENCHMARK_NEXT_DIST_DIR: '.next-quick-e2e', NEXT_TELEMETRY_DISABLED: '1', CRON_SECRET: token },
   stdio: ['ignore','pipe','pipe'], detached: true,
 });
 child.stdout.pipe(process.stdout); child.stderr.pipe(process.stderr);
@@ -27,8 +29,9 @@ async function call(operation) {
   return response.json();
 }
 async function until(predicate, allowFailure = false) {
-  const deadline = Date.now()+240000;
+  const deadline = Date.now() + (videoEvidence ? 600000 : 240000);
   while (Date.now()<deadline) {
+    if (videoEvidence) await call('tick');
     const state = await call('status');
     const failed = state.jobs.find(job=>job.status==='failed');
     if (!allowFailure) assert.equal(failed, undefined, JSON.stringify(failed));
@@ -53,7 +56,8 @@ try {
   const findings = await until(state=>state.findings?.status==='completed');
   assert.equal(findings.revealed,true); assert.equal(findings.findings.confirmed,false);
   assert.equal(findings.jobs.some(job=>job.kind==='discovery'),false);
-  // No page is open; only read-only status requests are made while workers advance.
+  // No page is open. Standard mode tests the poller; video mode dispatches an
+  // isolated fixture worker explicitly so other versions cannot claim continuations.
   await call('confirm');
   if (recovery) {
     await until(state => state.jobs.some(job => job.kind === 'publish' && job.status === 'failed'), true);
@@ -68,15 +72,21 @@ try {
   }
   const complete = await until(state=>state.publish?.status==='ready' && state.jobs.some(job=>job.kind==='report' && job.status==='completed'));
   for (const kind of ['research','protocol','evaluate','findings','discovery','publish','analysis','report']) assert.equal(complete.jobs.filter(job=>job.kind===kind).length,1,kind);
-  for (const task of ['CommunityPostDraft','ReviewedCommunityPost','HumanizedCommunityPost','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'HumanizedCommunityPost' ? 2 : 1,task);
+  for (const task of ['CommunityStoryBrief','CommunityPostDraft','CommunityPostReview','CommunityPostRevision','EvidenceCheckedCommunityPost']) assert.equal(provider.stats().taskCounts[task], recovery && task === 'CommunityPostRevision' ? 2 : 1,task);
+  if (videoEvidence) {
+    assert.equal(provider.stats().nativeVideoRequests, 0);
+    assert.equal(provider.stats().videoEvaluatorProviders[0], 'deepseek');
+    assert.ok(provider.stats().taskCounts.VideoFrameObservations >= 3);
+  }
   const html = await (await fetch(`${origin}/projects/${projectId}/quick`)).text();
   assert.ok(html.includes('快速模式'));
-  console.log(JSON.stringify({ ok:true, recovery, projectId, runId, stages:complete.jobs.map(job=>job.kind), publishVersion:complete.publish.version, providerCalls:provider.stats().taskCounts }));
+  console.log(JSON.stringify({ ok:true, recovery, videoEvidence, projectId, runId, stages:complete.jobs.map(job=>job.kind), publishVersion:complete.publish.version, providerCalls:provider.stats().taskCounts }));
   if (process.env.E2E_BROWSER_HOLD === '1') {
     console.log(`Browser verification ready: ${origin}/projects/${projectId}/quick`);
     await pause(180000);
   }
 } finally {
+  console.log("Provider verification summary:", provider.stats());
   if (projectId) console.log('Cleanup:', await call('cleanup'));
   process.kill(-child.pid,'SIGTERM'); await provider.close();
 }

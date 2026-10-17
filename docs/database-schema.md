@@ -294,3 +294,25 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 ### 2026-10-05 Artifact 签名直传（无 DDL 变更）
 
 上传继续使用私有 `benchmark-artifacts` bucket 与既有 `projects/{projectId}/runs/{testRunId}/{artifactId}.{ext}` 路径。服务端签发单次上传 URL，浏览器直传完成后才调用既有 `record_test_artifact`；确认阶段以 Storage 实际对象核验大小、MIME、文件头和文本 SHA-256。校验或记录失败会删除孤立对象，重复确认按 storage path 返回已有 Artifact。没有新增表、字段、RPC、客户端数据库权限或公开 bucket。
+
+
+### 视频证据脱敏（2026-10-11）
+
+Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不增加表或改历史记录。`redact_video_judge_evidence(judge_run_id,test_case_id,content)` 为 security invoker、空 search_path，仅 service_role 可执行；验证 running JudgeRun、Locked Protocol 和所属 Case，限 2MB 文本，数据库内对本项目产品名、官网/域名脱敏，不返回真实身份或 Mapping。VideoEvidence derivative JSON 与预处理 JPEG/WAV base64 保存在既有私有 `benchmark-artifacts/media-cache/`，关联原 Artifact ID/hash/policy/context/router 签名；binary 不进入 PostgreSQL。快速媒体失败只写独立 quick_job_steps degraded 记录，不写 judge_scores。
+
+`20261011153000_isolate_quick_e2e_workers.sql` 保留 claim_quick_job 的签名、角色和 lease/锁语义，只让保留的 `[E2E]` 测试项目必须由指定 project_id 的工作端领取，避免生产 Cron 使用真实 Provider 执行测试夹具。没有改表、删除用户数据或覆盖历史。E2E poller 通过专用测试环境变量限定自己的项目；普通项目队列不受此过滤影响。
+
+
+### 2026-10-12 文章保存与后台重生成
+
+非破坏性migration `20261012082020_publish_editor_revisions.sql` 新增service-role-only、security invoker函数 `create_publish_revision(projectId, sourcePackId, mode, copy, recommendations)`，无新表。锁定Project及源Report/Findings并校验最新版本；manual从draft→generating→ready保存新文案/可选真实截图关联，旧ready保持immutable。JSON manualEdit包含sourcePackId/savedAt/aiReviewed=false，源AI追溯字段保留但不是本次模型调用。regenerate原子创建draft及quick_jobs，JSON regeneration含sourcePackId/jobId/requestedAt；job payload绑定新packId，成功后生成审计替换旧稿。失败/死worker retry创建下一版本，只有failed job可重试。claim_quick_job仅对显式publish/regenerate扩展专业项目，保留quick任务边界、项目串行、lease、SKIP LOCKED和E2E排除。Artifact来源/图片种类/FK/unique仍由现有trigger约束，保存后失效正文锚点置null。
+
+### 作者判断（2026-10-16）
+
+无新表。`experience_findings.human_output.authorPerspective` 是人工确认时的可选输入，与不可变AI `output` 分开；`publish_packs.config.authorPerspective` 保存该文章使用的输入快照，字段为`goal/focus/tradeoff/verdict`，字符串，每项最多600字，可全空以显式禁用。应用Schema负责裁剪空白、填充省略项和拒绝未知键。它不是Artifact或事实依据。
+
+非破坏性migration `20261016094802_author_perspective_revisions.sql` 替换同签名`create_publish_revision`：regenerate只允许可选`copy.authorPerspective`，数据库校验对象、字段白名单、字符串与长度后，合并进**新**版本配置并原子创建任务；空copy兼容旧调用。manual路径、源版本不可变约束与service-only/security-invoker权限保持。无回填、无历史更新、无新增索引或外键需求。`quick_jobs.payload`仍绑定新packId，worker读取新pack.config并以输入签名区分检查点。
+
+## Kimi 写作 Provider（2026-10-17）
+
+迁移 `20261017060048_kimi_community_writing.sql` 仅扩展 `publish_packs.provider` 的 CHECK 为 zhipu/deepseek/moonshot，以及 `start_community_post`、`refresh_publish_pack_title` 的 Provider 白名单；两个 RPC 的既有 service_role-only 权限和状态/版本规则保留。discovery_provider、Research、Judge、Findings 等表和白名单不变。community_post 内 generationTrace/titleRefreshes 接受 moonshot；新调用记录实际模型与 Prompt，旧稿不回填、不改写，无新表或 Storage 变化。

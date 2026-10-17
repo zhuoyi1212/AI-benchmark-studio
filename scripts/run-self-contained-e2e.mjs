@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
+import { request as httpRequest } from "node:http";
 import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { startE2EProviderMock } from "./e2e-provider-mock.mjs";
@@ -15,13 +16,14 @@ const runId = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 const protocolOnly = process.env.E2E_PROTOCOL_ONLY === "1";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
 const realAiQuickPublish = process.env.E2E_REAL_AI_FINDINGS_PUBLISH === "1";
-const realAiTasks = ["ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "ReviewedCommunityPost", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost"];
+const realAiTasks = ["ExperienceFindings", "ContentIdeas", "CommunityStoryBrief", "CommunityPostDraft", "CommunityPostReview", "CommunityPostRevision", "EvidenceCheckedCommunityPost"];
 const liveProviderKeys = {
   zhipu: process.env.ZAI_API_KEY || localEnvironment.ZAI_API_KEY,
   deepseek: process.env.DEEPSEEK_API_KEY || localEnvironment.DEEPSEEK_API_KEY,
+  moonshot: process.env.MOONSHOT_API_KEY || localEnvironment.MOONSHOT_API_KEY,
 };
 if (realAiQuickPublish && Object.values(liveProviderKeys).some((value) => !value)) {
-  throw new Error("Real AI Findings → Publish E2E requires both configured provider credentials");
+  throw new Error("Real AI Findings → Publish E2E requires all configured provider credentials");
 }
 if (realAiQuickPublish && protocolOnly) throw new Error("Real AI Findings → Publish E2E requires the full-flow scenario");
 const token = randomUUID();
@@ -55,6 +57,8 @@ try {
       E2E_TEST_TOKEN: token,
       ZAI_API_KEY: realAiQuickPublish ? liveProviderKeys.zhipu : "e2e-provider-key-not-a-secret",
       DEEPSEEK_API_KEY: realAiQuickPublish ? liveProviderKeys.deepseek : "e2e-provider-key-not-a-secret",
+      MOONSHOT_API_KEY: realAiQuickPublish ? liveProviderKeys.moonshot : "e2e-provider-key-not-a-secret",
+      MOONSHOT_WRITING_MODEL: "kimi-k3",
       AI_BENCHMARK_NEXT_DIST_DIR: ".next-e2e",
       NEXT_TELEMETRY_DISABLED: "1",
     },
@@ -66,11 +70,11 @@ try {
   await waitForServer(appOrigin, appProcess, logs);
 
   fullFlowRequestStarted = true;
-  const response = await fetch(`${appOrigin}/api/e2e-test/full-flow`, {
+  const response = await postFullFlow(`${appOrigin}/api/e2e-test/full-flow`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-e2e-token": token },
     body: JSON.stringify({ runId, protocolOnly, textOnlyEvidence }),
-    signal: AbortSignal.timeout(360_000),
+    signal: AbortSignal.timeout(600_000),
   });
   const result = await response.json();
   fullFlowResponseReceived = true;
@@ -89,6 +93,8 @@ try {
     assert.equal(result.single.findingsConfirmed, true);
     assert.equal(result.single.quickPublishSourceType, "findings");
     assert.equal(result.single.quickPublishReady, true);
+    assert.equal(result.single.articleRevisionsVerified, true);
+    assert.equal(result.single.authorPerspectiveVerified, true);
     assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
     assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
     if (textOnlyEvidence) assert.equal(result.single.publishScreenshotCount, 0);
@@ -104,11 +110,12 @@ try {
   const providerStats = providerMock.stats();
   const expectedTasks = protocolOnly
     ? ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent"]
-    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "ExperienceFindings", "ContentIdeas", "CommunityPostDraft", "ReviewedCommunityPost", "HumanizedCommunityPost", "EvidenceCheckedCommunityPost", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport"];
+    : ["research_search", "ProductResearch", "ComparabilityResult", "ProtocolContent", "ExperienceFindings", "ContentIdeas", "CommunityStoryBrief", "CommunityPostDraft", "CommunityPostReview", "CommunityPostRevision", "EvidenceCheckedCommunityPost", "JudgeCaseScores", "FinalResultAnalysis", "BenchmarkReport"];
   for (const task of expectedTasks) {
     assert.ok(providerStats.taskCounts[task] > 0, `Provider boundary did not receive ${task}`);
   }
   if (!protocolOnly) {
+    assert.ok(providerStats.kimiWritingRequests > 0, "Community writing must reach the Kimi K3 adapter");
     if (realAiQuickPublish) {
       for (const task of realAiTasks) {
         assert.ok(providerStats.realAiTaskCounts[task] > 0, `${task} did not reach a real AI provider`);
@@ -116,10 +123,10 @@ try {
     } else {
       assert.equal(providerStats.taskCounts.ExperienceFindings, 1, "Quick Findings must run once");
       assert.equal(providerStats.taskCounts.ContentIdeas, 1, "Quick Content Discovery must run once");
-      assert.equal(providerStats.taskCounts.CommunityPostDraft, 1, "Quick Community Post must generate one initial draft");
-      assert.equal(providerStats.taskCounts.ReviewedCommunityPost, 1, "Initial facts must pass before polishing");
-      assert.equal(providerStats.taskCounts.HumanizedCommunityPost, 1, "Quick Community Post must run one language naturalization pass");
-      assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 1, "Quick Community Post must run one evidence check");
+      assert.equal(providerStats.taskCounts.CommunityPostDraft, 2, "Initial article and explicit regeneration must each generate one draft");
+      assert.equal(providerStats.taskCounts.CommunityPostReview, 2, "Initial review must report actionable issues");
+      assert.equal(providerStats.taskCounts.CommunityPostRevision, 2, "Quick Community Post must run one targeted revision pass");
+      assert.equal(providerStats.taskCounts.EvidenceCheckedCommunityPost, 2, "Quick Community Post must run one evidence check");
     }
     if (textOnlyEvidence) assert.equal(providerStats.multimodalJudgeRequests, 0, "Text artifacts must stay on the text Judge route");
     else assert.ok(providerStats.multimodalJudgeRequests > 0, "Multimodal Judge did not receive the original image Artifact");
@@ -164,6 +171,21 @@ try {
   } finally {
     await providerMock.close();
   }
+}
+
+// Keep the explicit ten-minute test-scenario deadline. Native HTTP avoids fetch's
+// separate five-minute headers deadline for this long local test route.
+function postFullFlow(url, options) {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(url, { method: options.method, headers: options.headers, signal: options.signal }, response => {
+      const chunks = [];
+      response.on("data", chunk => chunks.push(chunk));
+      response.once("error", reject);
+      response.once("end", () => resolve(new Response(Buffer.concat(chunks), { status: response.statusCode })));
+    });
+    request.once("error", reject);
+    request.end(options.body);
+  });
 }
 
 async function waitForServer(origin, child, output) {

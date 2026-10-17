@@ -1,0 +1,569 @@
+{
+  "archivedAt": "2026-10-16T15:42:25.250Z",
+  "scope": "visible active projects; failed publish packs and all failed background jobs; retain experimental source records",
+  "counts": {
+    "publish_packs": 25,
+    "quick_jobs": 13,
+    "publish_pack_artifacts": 0,
+    "quick_job_steps": 34
+  },
+  "projects": [
+    {
+      "id": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "name": "懂你AI",
+      "failedPacks": 4
+    },
+    {
+      "id": "92a77a0c-558e-4242-ac5e-3691e3884c07",
+      "name": "豆包 VS deepseek",
+      "failedPacks": 1
+    },
+    {
+      "id": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "name": "秘塔AI搜索",
+      "failedPacks": 4
+    },
+    {
+      "id": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "name": "万彩AI",
+      "failedPacks": 4
+    },
+    {
+      "id": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "name": "即梦AI｜中文咖啡活动海报生成",
+      "failedPacks": 7
+    },
+    {
+      "id": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+      "name": "Kimi深度研究｜选型报告与引用核验",
+      "failedPacks": 0
+    },
+    {
+      "id": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "name": "腾讯元宝｜联网查证与来源核验",
+      "failedPacks": 5
+    }
+  ],
+  "failedPacks": [
+    {
+      "id": "9bef295f-209a-48cc-95cb-f79e37d17d6b",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 10,
+      "status": "failed",
+      "error": "读取写作材料：Z.AI 拒绝了本次生成请求 HTTP 400：图片输入格式/解析错误",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-10-16T12:40:23.941586+00:00",
+      "updatedAt": "2026-10-16T12:40:38.862395+00:00"
+    },
+    {
+      "id": "83500311-b819-4bd4-89f7-c741944c8a94",
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "version": 3,
+      "status": "failed",
+      "error": "AI Provider request failed",
+      "provider": "zhipu",
+      "model": "glm-5.2",
+      "promptVersion": "community-post.v4-content-brief-draft",
+      "createdAt": "2026-09-23T16:08:40.547036+00:00",
+      "updatedAt": "2026-09-23T16:13:59.621891+00:00"
+    },
+    {
+      "id": "aaa27b7b-b689-4632-a77b-0c89b731bc59",
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "version": 1,
+      "status": "failed",
+      "error": "PublishPack validation failed: realEvidenceReferences",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-09-23T15:06:16.290602+00:00",
+      "updatedAt": "2026-09-23T15:06:34.963325+00:00"
+    },
+    {
+      "id": "8db9dcb0-9f7b-4143-b57d-e5ae13bc5ccf",
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "version": 2,
+      "status": "failed",
+      "error": "PublishPack validation failed: realEvidenceReferences",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-09-23T15:58:30.538619+00:00",
+      "updatedAt": "2026-09-23T15:58:52.417248+00:00"
+    },
+    {
+      "id": "1dbaa881-a3be-4560-b15d-760b3f06c9b6",
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "version": 4,
+      "status": "failed",
+      "error": "Z.AI community_post_evidence_check failed (network)：UND_ERR_SOCKET: other side closed",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v4-content-brief-draft",
+      "createdAt": "2026-09-23T16:21:22.403875+00:00",
+      "updatedAt": "2026-09-23T16:23:29.8517+00:00"
+    },
+    {
+      "id": "ab7b4b2e-efb2-44f5-b1ec-6d033d75aa26",
+      "projectId": "92a77a0c-558e-4242-ac5e-3691e3884c07",
+      "version": 1,
+      "status": "failed",
+      "error": "PublishPack validation failed: EvidenceCheckedCommunityPost",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v4-content-brief-draft",
+      "createdAt": "2026-09-24T17:13:30.487635+00:00",
+      "updatedAt": "2026-09-24T17:18:33.63917+00:00"
+    },
+    {
+      "id": "42044e72-225e-4762-a04d-c3fa22f36756",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 9,
+      "status": "failed",
+      "error": "核验初稿：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v10-author-perspective",
+      "createdAt": "2026-10-16T12:22:07.239177+00:00",
+      "updatedAt": "2026-10-16T12:25:02.690532+00:00"
+    },
+    {
+      "id": "25cf75dd-f9ef-4b14-94bf-899682dea1f8",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "version": 1,
+      "status": "failed",
+      "error": "PublishPack validation failed: EvidenceCheckedCommunityPost",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v4-content-brief-draft",
+      "createdAt": "2026-09-26T13:56:44.044266+00:00",
+      "updatedAt": "2026-09-26T13:59:07.521967+00:00"
+    },
+    {
+      "id": "ce507bc6-13da-4b89-941b-8b051ec770a5",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "version": 2,
+      "status": "failed",
+      "error": "DeepSeek community_post_evidence_check_text failed (truncated_response HTTP 200)",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v4-content-brief-draft",
+      "createdAt": "2026-09-26T14:02:23.966691+00:00",
+      "updatedAt": "2026-09-26T14:03:10.870646+00:00"
+    },
+    {
+      "id": "34bc3f4c-069c-406e-a751-2b284a1e5e0f",
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "version": 1,
+      "status": "failed",
+      "error": "核验初稿：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v6-evidence-plan",
+      "createdAt": "2026-10-06T12:29:14.715363+00:00",
+      "updatedAt": "2026-10-06T12:31:28.113905+00:00"
+    },
+    {
+      "id": "d1f785d0-2ae6-4112-9558-057645fbb3de",
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "version": 2,
+      "status": "failed",
+      "error": "核验初稿：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v6-evidence-plan",
+      "createdAt": "2026-10-06T12:45:41.092255+00:00",
+      "updatedAt": "2026-10-06T12:46:25.486274+00:00"
+    },
+    {
+      "id": "96c9979f-2c2d-4bbf-8ef2-50a9d4bd51cc",
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "version": 3,
+      "status": "failed",
+      "error": "核验初稿：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v6-evidence-plan",
+      "createdAt": "2026-10-06T12:55:46.917206+00:00",
+      "updatedAt": "2026-10-06T12:57:27.19101+00:00"
+    },
+    {
+      "id": "c59ad46a-919d-4455-8744-ddcae8da0998",
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "version": 4,
+      "status": "failed",
+      "error": "最终保真检查：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v6-evidence-plan",
+      "createdAt": "2026-10-06T13:06:16.191896+00:00",
+      "updatedAt": "2026-10-06T13:08:09.260532+00:00"
+    },
+    {
+      "id": "00c41ba8-f9fd-4c9b-954a-d531d52626c2",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "version": 6,
+      "status": "failed",
+      "error": "最终保真检查：最终内容规范未通过：删除缺少直接依据的收益、频率或过程断言：容易踩的坑。请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v8-summary-title",
+      "createdAt": "2026-10-14T03:22:08.747539+00:00",
+      "updatedAt": "2026-10-14T03:25:18.286989+00:00"
+    },
+    {
+      "id": "afacb756-e1d1-49a5-bfa3-45fd5fe6af46",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 1,
+      "status": "failed",
+      "error": "读取写作材料：Z.AI 拒绝了本次生成请求 HTTP 400：图片输入格式/解析错误",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-10-14T14:03:39.984368+00:00",
+      "updatedAt": "2026-10-14T14:04:40.999346+00:00"
+    },
+    {
+      "id": "1aeaf11e-79de-4aa8-a68d-2d8962f0220e",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 2,
+      "status": "failed",
+      "error": "读取写作材料：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-10-14T14:07:24.733714+00:00",
+      "updatedAt": "2026-10-14T14:09:14.0597+00:00"
+    },
+    {
+      "id": "7bb776e1-5425-4fca-8b58-af1c9a8fd405",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "version": 1,
+      "status": "failed",
+      "error": "最终保真检查：最终内容规范未通过：标题不能超过 28 个字符。请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v9-concrete-title",
+      "createdAt": "2026-10-14T14:40:52.50263+00:00",
+      "updatedAt": "2026-10-14T14:44:10.657511+00:00"
+    },
+    {
+      "id": "912e9899-1fb7-411b-8cdc-84ad022ebf54",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "version": 3,
+      "status": "failed",
+      "error": "后台执行中断，保留该次记录并从已保存阶段恢复。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v9-concrete-title",
+      "createdAt": "2026-10-14T14:55:00.387752+00:00",
+      "updatedAt": "2026-10-14T15:04:25.484071+00:00"
+    },
+    {
+      "id": "1d7df033-0c82-437c-b0bf-1ddea8d6f8a9",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "version": 2,
+      "status": "failed",
+      "error": "最终保真检查：最终内容规范未通过：标题不能超过 28 个字符。请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v9-concrete-title",
+      "createdAt": "2026-10-14T14:47:28.748262+00:00",
+      "updatedAt": "2026-10-14T14:51:11.358953+00:00"
+    },
+    {
+      "id": "a0649648-231b-4a85-bac9-6dc09963ec30",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 5,
+      "status": "failed",
+      "error": "读取写作材料：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-10-16T10:13:59.419857+00:00",
+      "updatedAt": "2026-10-16T10:15:43.98123+00:00"
+    },
+    {
+      "id": "31fcc579-8596-4a28-b18c-3849c481f6ad",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 6,
+      "status": "failed",
+      "error": "读取写作材料：社区内容返回的数据未通过结构校验，请重试。",
+      "provider": null,
+      "model": null,
+      "promptVersion": null,
+      "createdAt": "2026-10-16T10:17:50.236268+00:00",
+      "updatedAt": "2026-10-16T10:18:31.908839+00:00"
+    },
+    {
+      "id": "916c5287-22c4-4de0-be6f-d60f69d87549",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "version": 7,
+      "status": "failed",
+      "error": "最终保真检查：最终内容规范未通过：删除缺少直接依据的收益、频率或过程断言：不用改。请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v10-author-perspective",
+      "createdAt": "2026-10-16T10:37:04.567778+00:00",
+      "updatedAt": "2026-10-16T10:42:02.697615+00:00"
+    },
+    {
+      "id": "1b52abc4-bbd8-4fcc-9527-2eb9c01df53a",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "version": 5,
+      "status": "failed",
+      "error": "最终保真检查：最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v10-author-perspective",
+      "createdAt": "2026-10-16T11:02:14.647548+00:00",
+      "updatedAt": "2026-10-16T11:05:46.739996+00:00"
+    },
+    {
+      "id": "4ea6686e-587d-4b38-b217-1a0a0465ce2b",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "version": 6,
+      "status": "failed",
+      "error": "最终保真检查：最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v10-author-perspective",
+      "createdAt": "2026-10-16T11:06:25.14144+00:00",
+      "updatedAt": "2026-10-16T11:06:30.083272+00:00"
+    },
+    {
+      "id": "a8cf5034-018e-4692-b9c2-d66a6a2f50c5",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "version": 8,
+      "status": "failed",
+      "error": "最终保真检查：最终内容规范未通过：删除报告腔，改为事实紧接具体判断。请重试。",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "promptVersion": "community-post.v10-author-perspective",
+      "createdAt": "2026-10-16T12:22:06.335019+00:00",
+      "updatedAt": "2026-10-16T12:24:18.191791+00:00"
+    }
+  ],
+  "failedJobs": [
+    {
+      "id": "3964a7f8-be39-43de-9ab3-ae24bc542cb4",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "FindingsScreenshotObservations",
+      "error": "读取写作材料：社区内容返回的数据未通过结构校验，请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T10:13:59.419857+00:00",
+      "updatedAt": "2026-10-16T10:15:44.568419+00:00"
+    },
+    {
+      "id": "607b1915-d963-4e40-bf14-21c25cbd137e",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "FindingsScreenshotObservations",
+      "error": "读取写作材料：社区内容返回的数据未通过结构校验，请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T10:17:50.236268+00:00",
+      "updatedAt": "2026-10-16T10:18:32.18573+00:00"
+    },
+    {
+      "id": "40c47f47-559b-48ad-a2d2-30ea38d4a596",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "EvidenceCheckedCommunityPost",
+      "error": "最终保真检查：最终内容规范未通过：删除缺少直接依据的收益、频率或过程断言：容易踩的坑。请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T03:22:08.747539+00:00",
+      "updatedAt": "2026-10-14T03:25:18.520625+00:00"
+    },
+    {
+      "id": "ea6735ee-2dd1-44f6-b906-fe44a0738e14",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "FindingsScreenshotObservations",
+      "error": "读取写作材料：Z.AI 拒绝了本次生成请求 HTTP 400：图片输入格式/解析错误",
+      "attempts": 1,
+      "createdAt": "2026-10-16T12:40:23.941586+00:00",
+      "updatedAt": "2026-10-16T12:40:39.108412+00:00"
+    },
+    {
+      "id": "487803a1-5101-424d-84e7-09b94c333095",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "EvidenceCheckedCommunityPost",
+      "error": "最终保真检查：最终内容规范未通过：删除缺少直接依据的收益、频率或过程断言：不用改。请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T10:37:04.567778+00:00",
+      "updatedAt": "2026-10-16T10:42:02.899245+00:00"
+    },
+    {
+      "id": "4c83252e-f4af-4182-9938-71cfe0a63dce",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "CommunityPostDraft",
+      "error": "重新生成记录无效，请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T11:02:14.647548+00:00",
+      "updatedAt": "2026-10-16T11:06:06.757239+00:00"
+    },
+    {
+      "id": "3fe7399c-4818-4bd7-a91a-5c10f0270a3d",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "EvidenceCheckedCommunityPost",
+      "error": "最终保真检查：最终稿的事实保真或文章质量检查未通过，请重试；本次文章未发布。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T14:41:03.262337+00:00",
+      "updatedAt": "2026-10-16T11:06:30.348387+00:00"
+    },
+    {
+      "id": "0a6a1384-167d-4d14-86c9-643ef036bc3a",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "CommunityPostReview",
+      "error": "核验初稿：社区内容返回的数据未通过结构校验，请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T12:22:07.239177+00:00",
+      "updatedAt": "2026-10-16T12:25:03.851213+00:00"
+    },
+    {
+      "id": "5c6e9792-c815-487c-9431-5479be1f0a68",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "kind": "publish",
+      "status": "failed",
+      "stage": "EvidenceCheckedCommunityPost",
+      "error": "最终保真检查：最终内容规范未通过：删除报告腔，改为事实紧接具体判断。请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-16T12:22:06.335019+00:00",
+      "updatedAt": "2026-10-16T12:24:18.413225+00:00"
+    },
+    {
+      "id": "7a1ce4b3-55b4-4a73-9c89-a0f3120cbed6",
+      "projectId": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+      "kind": "analysis",
+      "status": "failed",
+      "stage": "FinalResultAnalysis",
+      "error": "恢复中断任务失败，请重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T09:56:43.460076+00:00",
+      "updatedAt": "2026-10-16T11:07:42.958068+00:00"
+    },
+    {
+      "id": "e6f1956e-2227-4a4b-a964-37e8143e7dd1",
+      "projectId": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+      "kind": "protocol",
+      "status": "failed",
+      "stage": "ProtocolContent",
+      "error": "AI 已返回结果，但方案结构校验失败，请重新生成。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T08:01:44.219189+00:00",
+      "updatedAt": "2026-10-14T08:06:45.09993+00:00"
+    },
+    {
+      "id": "65d6c298-0c3f-45d6-b3d1-a9e26f441d7e",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "kind": "protocol",
+      "status": "failed",
+      "stage": "ProtocolContent",
+      "error": "AI 已返回结果，但方案结构校验失败，请重新生成。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T08:02:55.786191+00:00",
+      "updatedAt": "2026-10-14T08:08:08.613437+00:00"
+    },
+    {
+      "id": "26d21304-9560-4254-9e10-7a73bd576400",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "kind": "evaluate",
+      "status": "failed",
+      "stage": "JudgeCaseScores",
+      "error": "AI Provider 暂时无法完成 Blind Judge，请稍后重试。",
+      "attempts": 1,
+      "createdAt": "2026-10-14T12:42:58.889866+00:00",
+      "updatedAt": "2026-10-14T12:46:59.926491+00:00"
+    }
+  ],
+  "images": [
+    {
+      "file": "jimeng-screenshot-schema-failure.png",
+      "source": "user-original",
+      "sourceName": "codex-clipboard-64b09c07-34c3-4559-9e7c-b6c605776f32.png",
+      "sha256": "6702ea1513a6cb562becf823be4954148382e6b038e1ed31a7618f6c583b8853"
+    },
+    {
+      "file": "yuanbao-final-review-failure.png",
+      "source": "user-original",
+      "sourceName": "codex-clipboard-96fbff0d-db8b-4ce7-adad-d2e86aa7edb3.png",
+      "sha256": "c5d81d48efb2b9d0f0e42fb0acd9d8d06e20c51ffb9b4f4657135c0103fcce49"
+    },
+    {
+      "file": "jimeng-v11-success.jpg",
+      "source": "browser-capture",
+      "sourceName": "production-browser-reload-after-cleanup",
+      "sha256": "a1602a62be324b7771c30d6c841d49b84f732b499b8391e192c994b14427f6e1",
+      "capturedAt": "2026-10-16T16:33:45.414Z"
+    },
+    {
+      "file": "yuanbao-v7-success.jpg",
+      "source": "browser-capture",
+      "sourceName": "yuanbao-regeneration-20261016.jpg",
+      "sha256": "217c5ac83e20b12d5c5262ffc6b870af0c349146c56dbd7c8c9abd233ece9008"
+    },
+    {
+      "file": "dongni-v9-success.jpg",
+      "source": "browser-capture",
+      "sourceName": "dongni-regeneration-20261016.jpg",
+      "sha256": "e66b3d9212a83a6cc9201e423c3c5c9c181c3f781fc62eea581bdc4476603d68"
+    }
+  ],
+  "privateBackup": {
+    "relativePath": "outputs/badcase-archive/2026-10-16/backup.private.json",
+    "sha256": "742294d182ef92a001df97be806f47fd02fda796cba7904978469763037e3401",
+    "distribution": "local-only; excluded from Git"
+  },
+  "cleanup": {
+    "status": "completed",
+    "verifiedAt": "2026-10-16T16:39:23.863Z",
+    "removed": {
+      "publish_packs": 25,
+      "quick_jobs": 13,
+      "publish_pack_artifacts": 0,
+      "quick_job_steps": 34
+    },
+    "failedPacksRemaining": 0,
+    "failedArticleJobsRemaining": 0,
+    "preservedTableComparisons": 27,
+    "comparison": "Two cleanup batches, each with before/after canonical SHA-256 comparison across all 27 public tables after excluding that batch of archived deletions",
+    "transaction": "Two transactions with exact IDs, failed status, snapshot digest or full-row comparison, no active jobs, child-first deletes and exact counts; mismatch aborts. Each batch followed by a 27-table preservation check.",
+    "appCheck": {
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "status": "文章已就绪",
+      "version": 11,
+      "method": "Production browser reload; full-page screenshot"
+    },
+    "validation": {
+      "testsPassed": 431,
+      "typecheck": "passed",
+      "build": "passed including isolated media smoke test",
+      "lintErrors": 0,
+      "existingLintWarnings": 26
+    },
+    "failedBackgroundJobsRemaining": 0
+  },
+  "supplementaryArchivedAt": "2026-10-16T16:37:35.413Z",
+  "supplementaryPrivateBackups": [
+    {
+      "relativePath": "outputs/badcase-archive/2026-10-17-other-jobs/backup.private.json",
+      "sha256": "0d900c479c30fcd995708349c1bdc88cb56e5bf3fe5a7fee02c7ed83930357ca",
+      "distribution": "local-only; excluded from Git"
+    }
+  ]
+}

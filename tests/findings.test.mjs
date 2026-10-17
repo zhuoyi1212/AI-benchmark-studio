@@ -131,7 +131,7 @@ test("PublishPack can bind either confirmed Findings or a professional Report", 
   assert.match(publishService, /humanConfirmedFindings/);
   assert.match(publishService, /优先使用真实 Case/);
   assert.match(publishService, /buildRawFindingsEvidenceContent/);
-  assert.match(publishService, /完整原始 Artifact/);
+  assert.match(publishService, /artifactIds: source.artifactIds/);
 });
 
 test("new public Findings functions remain service-role only", () => {

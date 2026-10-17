@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 
 const expectedAuthorization = "Bearer e2e-local-provider-boundary";
 const textOnlyEvidence = process.env.E2E_TEXT_ONLY_ARTIFACTS === "1";
+const videoEvidence = process.env.E2E_VIDEO_FIXTURE === "1";
 
 export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys = {}, failOnceTask } = {}) {
   const requests = [];
@@ -22,7 +23,7 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
         requests.push({ task: "research_search", multimodal: false });
         return send(response, 200, createSearchResponse(body));
       }
-      if (!["/zhipu/chat/completions", "/deepseek/chat/completions"].includes(request.url)) {
+      if (!["/zhipu/chat/completions", "/deepseek/chat/completions", "/moonshot/chat/completions"].includes(request.url)) {
         return send(response, 404, { error: "Unknown E2E provider endpoint" });
       }
 
@@ -43,9 +44,18 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
         });
         return send(response, 200, planned.body);
       }
-      const provider = request.url.startsWith("/zhipu/") ? "zhipu" : "deepseek";
-      const trackedRequest = { task: schemaName, provider, multimodal };
+      const provider = request.url.startsWith("/zhipu/") ? "zhipu" : request.url.startsWith("/moonshot/") ? "moonshot" : "deepseek";
+      const parts = body.messages.flatMap(m => Array.isArray(m.content) ? m.content : []);
+      const nativeVideo = parts.some(p => p.type === "video_url" || p.type === "file_url" && /\.mp4/.test(p.file_url.url));
+      if (videoEvidence && nativeVideo) throw new Error("Video fixture reached provider as raw MP4");
+      if (videoEvidence && schemaName === "JudgeCaseScores" && (parts.some(p => p.type !== "text") || JSON.stringify(body.messages).includes(process.env.E2E_VIDEO_IDENTITY))) throw new Error("Video evaluator received binary or real identity");
+      const trackedRequest = { task: schemaName, provider, model: body.model, multimodal, nativeVideo };
       requests.push(trackedRequest);
+      if (videoEvidence && schemaName === "VideoFrameObservations") {
+        const timestamps = parts.filter(p => p.type === "text" && p.text.startsWith("timestamp: ")).map(p => Number(p.text.slice(11)));
+        if (timestamps.length > 1 || timestamps.includes(0)) return send(response, 400, { error: { message: "Injected optional bad frame" } });
+        return send(response, 200, createCompletionResponse({ frames: timestamps.map(timestamp => ({ timestamp, sceneDescription: "E2E blue synthetic fixture", visibleText: [process.env.E2E_VIDEO_IDENTITY], productMention: [process.env.E2E_VIDEO_IDENTITY], uiElement: [], obviousIssue: null, relevanceToInput: "Synthetic video fixture only" })) }));
+      }
       if (schemaName === failOnceTask && !injectedFailure) {
         injectedFailure = true;
         return send(response, 400, { error: { message: "Injected isolated E2E failure" } });
@@ -73,6 +83,9 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
     baseUrl: `http://127.0.0.1:${address.port}`,
     stats: () => ({
       total: requests.length,
+      kimiWritingRequests: requests.filter(r => r.provider === "moonshot" && r.model === "kimi-k3").length,
+      nativeVideoRequests: requests.filter(r => r.nativeVideo).length,
+      videoEvaluatorProviders: requests.filter(r => r.task === "JudgeCaseScores").map(r => r.provider),
       taskCounts: Object.fromEntries([...Map.groupBy(requests, (item) => item.task)].map(([task, items]) => [task, items.length])),
       realAiTaskCounts: Object.fromEntries([...Map.groupBy(requests.filter((item) => item.realAi), (item) => item.task)].map(([task, items]) => [task, items.length])),
       multimodalJudgeRequests: requests.filter((item) => item.task === "JudgeCaseScores" && item.multimodal).length,
@@ -88,7 +101,7 @@ export async function startE2EProviderMock({ realAiTasks = [], providerApiKeys =
 async function proxyRealProviderRequest(provider, apiKey, body, response) {
   const endpoint = provider === "zhipu"
     ? "https://api.z.ai/api/paas/v4/chat/completions"
-    : "https://api.deepseek.com/chat/completions";
+    : provider === "moonshot" ? "https://api.moonshot.cn/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
   const upstream = await fetch(endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -116,6 +129,10 @@ function createSearchResponse(body) {
 }
 
 function buildStructuredOutput(schemaName, messages) {
+  if (schemaName === "CommunityPostTitle") {
+    const input = findJsonMessage(messages, value => value.articleBody && value.avoidTitles);
+    return { reviewSummary: { testPurpose: "任务输出实测", mainResult: "输出可核对" }, title: `${input.products[0]}：本轮任务输出实测` };
+  }
   if (schemaName === "ProductResearch") {
     const sources = extractSources(messages);
     return {
@@ -169,7 +186,7 @@ function buildStructuredOutput(schemaName, messages) {
         prompt: `请根据给定目标完成第 ${index + 1} 个标准化任务，并直接输出最终结果。`,
         inputDescription: null,
         inputArtifacts: [],
-        expectedOutputTypes: [textOnlyEvidence ? "text" : "image"],
+        expectedOutputTypes: [videoEvidence ? "video" : textOnlyEvidence ? "text" : "image"],
         evidenceRequirements: [textOnlyEvidence ? "上传未经编辑的完整原始文本结果" : "上传未经裁剪或后期编辑的完整原始截图"],
         observationFocus: ["任务完成度", "信息结构", "视觉可读性"],
         executionRules: ["使用默认设置", "仅生成一次", "不人工美化"],
@@ -315,46 +332,27 @@ function buildStructuredOutput(schemaName, messages) {
       ],
     };
   }
+  if (schemaName === "CommunityStoryBrief") {
+    const input = findJsonMessage(messages, v => v.selectedIdea && v.factLedger);
+    const f = input.factLedger[0];
+    return { readerQuestion: input.selectedIdea.angle, targetReader: "考虑使用该工具的人", spine: input.selectedIdea.insight,
+      supportingPoints: [{ claim: input.selectedIdea.insight, readerValue: f.interpretation, findingIds: [f.id], evidenceArtifactIds: f.evidenceArtifactIds, detail: f.observation, role: "main" }],
+      corePromiseGaps: [], scope: "只限当前任务", ending: "可用来完成这项任务，使用前仍应核对结果", avoidClaims: [], comparison: false };
+  }
   if (schemaName === "CommunityPostDraft") {
-    const input = findJsonMessage(messages, (value) => value.selectedIdea && value.config && value.sourceType);
-    const idea = input.selectedIdea;
-    const findings = input.factLedger ?? [];
-    const observation = findings[0]?.observation ?? idea.insight;
-    return {
-      title: idea.title,
-      writingPlan: { template: input.template, scopeNotes: input.scopeNotes ?? [], sections: [{ heading: idea.title, sourceIds: [findings[0].id], observationQuote: observation, judgment: idea.insight }] },
-      body: [
-        `本次测试先聚焦一个具体问题：${idea.angle}。测试把这一要求写入锁定的用例，并逐项检查产品有没有走到可核对的结果，因此这里讨论的是任务执行过程，而不是产品页面列出的功能数量。`,
-        `${observation} 对应的原始输出已保存在本次测试记录和证据材料中，读者可以回到同一任务的截图或输出核实这条描述，也能区分哪些信息来自测试，哪些仍需进一步判断。`,
-        "从真实体验看，任务能够推进会减少重复操作；不过，如果结果缺少背景或细节，用户仍需要检查原始证据材料，再决定是否继续编辑或采用。完成任务不等于所有内容都可以直接采信。",
-        "所以这次观察只适用于当前版本、既定测试方案和这组条件，不代表同类产品的整体能力，也不能外推到其他任务。你在选择工具时，会先看它能否交付结果，还是先看结果是否方便验证？",
-      ].join("\n\n"),
-      tags: ["AI产品", "真实体验", "产品观察"],
-      interactionQuestion: "你更在意 AI 少让你操作几步，还是更在意结果方便核对？",
-      screenshotRecommendations: [],
-      contentBrief: {
-        coreViewpoint: idea.insight,
-        opening: "先从这次真实测试里最明显的一件事讲起。",
-        supportingPoints: [
-          { finding: observation, userMeaning: "用户能直接看到任务有没有推进到可核对的结果。" },
-          { finding: "结果仍需要回到原始证据确认。", userMeaning: "省掉操作不等于省掉判断。" },
-        ],
-        ending: "最后只给当前测试范围内的使用判断。",
-        voice: "第一人称、短句、具体，不写成测评报告。",
-        avoidPhrases: ["总体而言", "值得注意的是", "综上所述"],
-      },
-    };
+    const input = findJsonMessage(messages, v => v.storyBrief && v.config && v.factLedger);
+    return { title: `${input.products[0].name}：任务输出可以核对`, body: `我用${input.products[0].name}处理这项任务。${input.factLedger[0].observation}这份输出可以作为整理材料的起点，实际采用前仍要核对具体内容。`, tags: ["AI工具"], interactionQuestion: "" };
   }
-  if (schemaName === "ReviewedCommunityPost") {
-    const input = findJsonMessage(messages, value => value.source && value.draft);
-    return { ...input.draft, articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] }, factCheck: { status: "passed", revisedClaimCount: 0, notes: [] } };
+  if (schemaName === "CommunityPostReview") {
+    return { articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: false, issues: ["缺少结尾建议"] }, issues: [{ field: "body", quote: null, kind: "structure", reason: "缺少结尾建议", instruction: "增加有依据的使用建议" }] };
   }
-  if (schemaName === "HumanizedCommunityPost") {
-    const input = findJsonMessage(messages, value => value.config && value.draft);
-    return { title: input.draft.title, body: input.draft.body, interactionQuestion: input.draft.interactionQuestion };
+  if (schemaName === "CommunityPostRevision") {
+    const input = findJsonMessage(messages, v => v.config && v.draft);
+    return { ...input.draft, body: input.draft.body + "可以先用同样的任务试一次，再决定是否继续使用。" };
   }
   if (schemaName === "EvidenceCheckedCommunityPost") {
     return {
+      issues: [],
       articleReview: { concreteScenes: true, boundedInterpretation: true, nonRepetitive: true, usefulConclusion: true, issues: [] },
       stylePreservation: { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] },
       screenshotRecommendations: [],

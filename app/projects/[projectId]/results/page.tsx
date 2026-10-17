@@ -181,6 +181,7 @@ function ProfessionalMode({ projectId, professional, unavailable }: { projectId:
         <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">完整结果分析和深度报告独立生成，不会阻塞 Findings 和社区内容。</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" asChild><Link href={`/projects/${projectId}/review`}>查看评分明细</Link></Button>
         {unavailable ? <div className="text-xs text-red-600"><p role="alert">专业评分暂时无法读取，测评发现仍可继续。</p><Link className="mt-1 inline-block underline" href={`/projects/${projectId}/review`}>查看专业评分</Link></div>
           : !professional && <ResultAnalysisAction projectId={projectId} retry={false} />}
         {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}

@@ -15,7 +15,7 @@ for (const path of tracked) {
 
 const envText = await readFile(new URL(".env.local", root), "utf8").catch(() => "");
 const env = parseEnv(envText);
-for (const key of ["ZAI_API_KEY", "DEEPSEEK_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"]) {
+for (const key of ["ZAI_API_KEY", "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"]) {
   const secret = env[key];
   if (!secret || secret.length < 16) continue;
   assert.deepEqual([...textFiles].filter(([, text]) => text.includes(secret)).map(([path]) => path), [], `${key} leaked into a tracked file`);
@@ -25,15 +25,15 @@ const realBoundary = [...textFiles].filter(([path]) => path.startsWith("app/proj
 const mockPattern = /@\/lib\/mock|mockResearchResponse|mockProtocol|mockJudgeResults|mockFinalResultAnalysis|mockBenchmarkReport|mockCommunityPost/;
 assert.deepEqual(realBoundary.filter(([, text]) => mockPattern.test(text)).map(([path]) => path), [], "Real flow imports Mock data");
 
-const providerSpecificPattern = /\b(?:callGlm|callDeepSeek|OpenAIClient|OpenAIService|openaiProvider)\b|\b(?:glm-|deepseek-v)\w*/i;
+const providerSpecificPattern = /\b(?:callGlm|callDeepSeek|OpenAIClient|OpenAIService|openaiProvider)\b|\b(?:glm-|deepseek-v|kimi-)\w*/i;
 assert.deepEqual(realBoundary.filter(([, text]) => providerSpecificPattern.test(text)).map(([path]) => path), [], "Business layer depends on a provider or model");
 
-const clientSecretPattern = /@\/lib\/(?:env\/server|supabase\/server)|\b(?:ZAI_API_KEY|DEEPSEEK_API_KEY|SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY)\b/;
+const clientSecretPattern = /@\/lib\/(?:env\/server|supabase\/server)|\b(?:ZAI_API_KEY|DEEPSEEK_API_KEY|MOONSHOT_API_KEY|SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY)\b/;
 const clientLeaks = [...textFiles].filter(([, text]) => /^\s*["']use client["'];/m.test(text) && clientSecretPattern.test(text)).map(([path]) => path);
 assert.deepEqual(clientLeaks, [], "Client module imports server credentials");
 
 const example = textFiles.get(".env.example") ?? "";
-for (const key of ["ZAI_API_KEY", "DEEPSEEK_API_KEY", "SUPABASE_SECRET_KEY"]) {
+for (const key of ["ZAI_API_KEY", "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "SUPABASE_SECRET_KEY"]) {
   assert.match(example, new RegExp(`^${key}=$`, "m"), `${key} must be name-only in .env.example`);
 }
 

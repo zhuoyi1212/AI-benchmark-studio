@@ -7,9 +7,9 @@ import { z } from 'zod';
 async function load(path, dependencies) {
   const source = await readFile(new URL(path, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const module = { exports: {} };
-  new Function('require', 'module', 'exports', code)(name => { assert.ok(name in dependencies, name); return dependencies[name]; }, module, module.exports);
-  return module.exports;
+  const fixtureModule = { exports: {} };
+  new Function('require', 'module', 'exports', code)(name => { assert.ok(name in dependencies, name); return dependencies[name]; }, fixtureModule, fixtureModule.exports);
+  return fixtureModule.exports;
 }
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 class RepositoryError extends Error {}

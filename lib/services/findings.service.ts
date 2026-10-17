@@ -1,20 +1,25 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { extractPdfText, maxPdfEvidenceBytes, maxPdfEvidencePages, PdfEvidenceError, renderPdfEvidence } from "@/lib/pdf-evidence";
 import type { AIMessageContent } from "@/lib/ai/types";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
-import { experienceFindingsOutputSchema, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
+import { confirmedFindingsOutputSchema, experienceFindingsOutputSchema, type ConfirmedFindingsOutput, type ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
 import { aiTaskService } from "@/lib/ai/task-service";
 import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/judge-evidence-selection";
 import { findingsRepository } from "@/lib/repositories/findings.repository";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { createInputSignature } from "@/lib/signatures";
+import { buildVideoEvidence, mediaEvidenceText } from "@/lib/media/video-evidence";
+import { MediaProcessingError, mediaPolicyVersion, videoEvaluationRules } from "@/lib/media/media-evidence";
+import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 import { getProjectMode, type ProjectMode } from "@/lib/project-mode";
 import { getHumanReviewWorkspace } from "@/lib/services/human-review.service";
 import { getResearchWorkspace } from "@/lib/services/research.service";
 import { getTestExecutionWorkspace } from "@/lib/services/test-execution.service";
+import { screenshotObservationRules, screenshotObservationRepairInstruction } from '@/lib/screenshot-observations';
 import type { ExperienceFindingRow, Json } from "@/lib/types/database";
 import type { TestArtifact, TestExecutionWorkspace } from "@/lib/types/test-run";
 
@@ -53,7 +58,7 @@ export type ExperienceFindingsWorkspace = {
     completedAt: string | null;
     humanConfirmedAt: string | null;
     aiOutput: ExperienceFindingsOutput | null;
-    effectiveOutput: ExperienceFindingsOutput | null;
+    effectiveOutput: ConfirmedFindingsOutput | null;
   } | null;
 };
 
@@ -65,6 +70,10 @@ export class FindingsExecutionError extends Error {
 }
 
 export async function getExperienceFindingsWorkspace(projectId: string): Promise<ExperienceFindingsWorkspace | null> {
+  return memoPageRead(`findings:${projectId}`, () => readExperienceFindingsWorkspace(projectId));
+}
+
+async function readExperienceFindingsWorkspace(projectId: string): Promise<ExperienceFindingsWorkspace | null> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
     getResearchWorkspace(projectId),
@@ -115,7 +124,9 @@ export async function generateExperienceFindings(projectId: string): Promise<str
   let findingsId: string | null = null;
 
   try {
-    findingsId = await findingsRepository.begin(projectId, test.protocol.id, snapshot, inputSignature);
+    const scope = quickExecution.getStore();
+    const active = scope?.job.kind === "findings" ? (await findingsRepository.list(projectId, test.protocol.id)).find(row => row.status === "pending" && row.created_at >= scope.job.created_at && row.input_signature === inputSignature) : null;
+    findingsId = active?.id ?? await findingsRepository.begin(projectId, test.protocol.id, snapshot, inputSignature);
     const persisted = (await findingsRepository.list(projectId, test.protocol.id)).find((row) => row.id === findingsId);
     if (!persisted) throw new RepositoryError("findings.requirePersisted", { message: "Findings not found" });
     if (persisted.status === "completed") return persisted.id;
@@ -138,6 +149,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
             "若问题可能来自测试环境、输入文件或证据缺失，要明确写进 limitation，不能直接归因为产品能力。",
             "Research 只作为产品定位背景，不能覆盖真实 Artifact。",
             "输出简体中文。finding id 使用简短的英文小写 slug。",
+            videoEvaluationRules,
           ].join("\n"),
         },
         { role: "user", content },
@@ -152,6 +164,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
     await findingsRepository.complete(persisted.id, normalized, result.usage);
     return persisted.id;
   } catch (error) {
+    if (error instanceof QuickYield) throw error;
     if (error instanceof AIProviderError) {
       console.error("[FindingsProviderError]", {
         provider: error.provider,
@@ -189,14 +202,22 @@ async function readHumanReview(projectId: string) {
 
 export async function buildRawFindingsEvidenceContent(
   projectId: string,
-  options: { preferPdfText?: boolean } = {},
+  options: { preferPdfText?: boolean; testCaseIds?: string[]; artifactIds?: string[] } = {},
 ): Promise<AIMessageContent> {
   const [test, research] = await Promise.all([
     getTestExecutionWorkspace(projectId),
     getResearchWorkspace(projectId),
   ]);
   if (!test || !research?.completedResult) throw new FindingsExecutionError("无法读取当前真实测试证据。");
-  const evidence = selectFindingsEvidence(test);
+  const scoped: TestExecutionWorkspace = {
+    ...test,
+    protocol: { ...test.protocol, testCases: test.protocol.testCases.filter(c => !options.testCaseIds || options.testCaseIds.includes(c.id)) },
+    testRuns: test.testRuns.filter(r => !options.testCaseIds || options.testCaseIds.includes(r.testCaseId)).map(r => ({
+      ...r, artifacts: r.artifacts.filter(a => !options.artifactIds || options.artifactIds.includes(a.id)),
+    })),
+  };
+  if (!scoped.testRuns.length || scoped.testRuns.some(r => !r.artifacts.length)) throw new FindingsExecutionError("所选内容缺少当前来源的原始证据。");
+  const evidence = selectFindingsEvidence(scoped);
   return buildArtifactContent(evidence.test, research.completedResult, options, evidence.transport);
 }
 
@@ -205,7 +226,7 @@ export async function confirmExperienceFindings(projectId: string, findingsId: s
   if (!workspace?.latest || workspace.latest.id !== findingsId || workspace.latest.status !== "completed") {
     throw new FindingsExecutionError("当前 Findings 不存在或还未生成完成。");
   }
-  const output = experienceFindingsOutputSchema.parse(value);
+  const output = confirmedFindingsOutputSchema.parse(value);
   const allowedProducts = new Set(workspace.products.map((item) => item.id));
   const allowedCases = new Set(workspace.testCases.map((item) => item.id));
   const artifacts = new Map(workspace.artifacts.map((item) => [item.artifactId, item]));
@@ -289,6 +310,7 @@ function buildSnapshot(
 ): Json {
   return JSON.parse(JSON.stringify({
     evidenceTransport,
+    mediaPolicyVersion,
     project: { id: test.project.id, name: test.project.name },
     protocol: {
       id: test.protocol.id,
@@ -375,6 +397,7 @@ async function buildArtifactContent(
         })),
       },
       evidenceTransport,
+      mediaPolicyVersion,
     }),
   }];
 
@@ -384,6 +407,7 @@ async function buildArtifactContent(
     if (!product || !testCase) throw new FindingsExecutionError("TestRun 与当前测试计划不一致。");
 
     const hasTextArtifact = run.artifacts.some((artifact) => textMimeTypes.has(normalizeMimeType(artifact.fileType)));
+    const hasVideoArtifact = run.artifacts.some((artifact) => normalizeMimeType(artifact.fileType).startsWith("video/"));
     for (const artifact of run.artifacts) {
       const mimeType = normalizeMimeType(artifact.fileType);
       if (mimeType === "application/pdf" && hasTextArtifact) {
@@ -408,7 +432,7 @@ async function buildArtifactContent(
           content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
         }
       } else if (mimeType.startsWith("image/")) {
-        if (hasTextArtifact) {
+        if (hasTextArtifact && !hasVideoArtifact) {
           console.info("[FindingsEvidence] Image omitted because this TestRun has a text Artifact", {
             testRunId: run.id,
             artifactId: artifact.id,
@@ -435,6 +459,9 @@ async function buildArtifactContent(
       } else if (mimeType === "application/pdf") {
         console.info("[FindingsEvidence] PDF retained as native file evidence", { testRunId: run.id, artifactId: artifact.id });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
+      } else if (mimeType.startsWith("video/")) {
+        const evidence = await buildVideoEvidence({ artifactId: artifact.id, url: artifact.fileUrl, sizeBytes: artifact.sizeBytes, sha256: artifact.sha256 }, { prompt: testCase.prompt, objective: testCase.objective, auxiliaryEvidenceAvailable: hasTextArtifact || run.artifacts.some(a => normalizeMimeType(a.fileType).startsWith("image/")) });
+        content.push({ type: "text", text: mediaEvidenceText(evidence) });
       } else {
         console.info("[FindingsEvidence] Artifact retained as native file evidence", { testRunId: run.id, artifactId: artifact.id, mimeType });
         content.push({ type: "file_url", file_url: { url: artifact.fileUrl } });
@@ -468,12 +495,13 @@ async function buildArtifactContent(
         messages: [
           {
             role: "system",
-            content: `逐张读取截图，只描述画面中可直接观察到的产品输出、成功、问题和限制。按 Screenshot 1 到 Screenshot ${batch.length} 的顺序返回 observations 字符串数组，长度必须是 ${batch.length}；不要评分，不要猜测截图外的信息。`,
+            content: screenshotObservationRules(batch.length),
           },
           { role: "user", content: batchContent },
         ],
         maxTokens: 2400,
         maxAttempts: 2,
+        validationRepairInstruction: screenshotObservationRepairInstruction(batch.length),
       });
       for (const [observationIndex, observation] of data.observations.entries()) {
         const image = batch[observationIndex]!;
@@ -580,7 +608,7 @@ function flattenArtifacts(test: TestExecutionWorkspace): FindingsArtifact[] {
 
 function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["latest"] {
   const aiOutput = row.output ? experienceFindingsOutputSchema.parse(row.output) : null;
-  const humanOutput = row.human_output ? experienceFindingsOutputSchema.parse(row.human_output) : null;
+  const humanOutput = row.human_output ? confirmedFindingsOutputSchema.parse(row.human_output) : null;
   return {
     id: row.id,
     version: row.version,
@@ -594,6 +622,7 @@ function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return `Findings validation failed: ${error.schemaName}`;
   if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIProviderError) {
@@ -617,6 +646,7 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIValidationError) return "AI 提炼的 Findings 未通过真实证据引用校验，请重试。";
   if (error instanceof AIProviderError) {

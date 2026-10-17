@@ -19,8 +19,8 @@ export function AppShell({ children, recentProject, readOnly }: { children: Reac
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const sidebar = (
-    <aside className="flex h-full w-[248px] shrink-0 flex-col border-r bg-[#fbfbfc] px-3.5 py-4">
-      <div className="flex items-center justify-between px-2 py-1">
+    <aside className="flex h-full overflow-hidden w-[248px] shrink-0 flex-col border-r bg-[#fbfbfc] px-3.5 py-4">
+      <div className="flex shrink-0 items-center justify-between px-2 py-1">
         <Link href="/projects" className="flex items-center gap-2.5">
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-950 text-white"><FlaskConical className="h-4 w-4" /></span>
           <div><div className="text-sm font-semibold tracking-tight">AI Benchmark</div><div className="text-[10px] text-muted-foreground">STUDIO</div></div>
@@ -28,8 +28,8 @@ export function AppShell({ children, recentProject, readOnly }: { children: Reac
         <Button className="md:hidden" variant="ghost" size="icon" onClick={() => setMobileOpen(false)}><X className="h-4 w-4" /></Button>
       </div>
 
-      <div className="mt-6 px-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">AI 测评工作台</div>
-      <nav className="mt-2 space-y-0.5">
+      <div className="mt-6 shrink-0 px-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">AI 测评工作台</div>
+      <nav className="mt-2 shrink-0 space-y-0.5">
         {nav.map((item) => {
           const active = pathname === item.href || (item.href === "/projects" && pathname.startsWith("/projects"));
           return (
@@ -40,10 +40,10 @@ export function AppShell({ children, recentProject, readOnly }: { children: Reac
         })}
       </nav>
 
-      <div className="mt-7 px-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">最近项目</div>
-      <div onClick={() => setMobileOpen(false)}>{recentProject}</div>
+      <div className="mt-7 shrink-0 px-2 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">最近项目</div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3" onClick={() => setMobileOpen(false)}>{recentProject}</div>
 
-      <div className="mt-auto border-t pt-3">
+      <div className="mt-auto shrink-0 border-t pt-3">
         {readOnly ? (
           <a href="/admin" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-slate-100">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-500"><Eye className="h-3.5 w-3.5" /></span>

@@ -43,8 +43,11 @@ export async function enqueueQuickWriting(projectId: string, findingsId: string,
   }
   const jobs = await quickJobsRepository.list(projectId);
   const prior = [...jobs].reverse().find(job => job.kind === 'publish');
-  const previous = z.object({ config: publishConfigSchema }).safeParse(prior?.payload);
-  const selected = publishConfigSchema.parse(config ?? (previous.success ? previous.data.config : {
+  const previous = z.object({ config: publishConfigSchema, findingsId: z.string().optional() }).safeParse(prior?.payload);
+  // Reuse formatting preferences across Findings, but keep author judgments with their source.
+  const previousConfig = previous.success ? { ...previous.data.config } : undefined;
+  if (previousConfig && previous.success && previous.data.findingsId !== findingsId) delete previousConfig.authorPerspective;
+  const selected = publishConfigSchema.parse(config ?? (previousConfig ?? {
     ...defaultPublishConfig, structure: '自由结构', length: '250–500 字，材料少则缩短', imageCount: 3,
   }));
   const scope = createInputSignature({ findingsId, findings: findings.latest.effectiveOutput, config: selected });
@@ -58,6 +61,12 @@ export async function getQuickWorkflowJobs(projectId: string) {
 export async function retryQuickWorkflowJob(projectId: string, jobId: string) {
   const project = await getProjectSummary(projectId);
   if (project?.evaluationMode !== 'quick') throw new Error('快速项目不存在。');
+  const jobs = await quickJobsRepository.list(projectId);
+  const job = jobs.find(item => item.id === jobId);
+  if (!job || job.status !== 'failed') throw new Error('任务状态已变化，请刷新查看。');
+  if (['discovery', 'publish'].includes(job.kind) && jobs.some(next => ['discovery', 'publish'].includes(next.kind) && Date.parse(next.created_at) > Date.parse(job.created_at))) {
+    throw new Error('已有更新的文章任务，请刷新查看；旧任务不能重试。');
+  }
   await quickJobsRepository.retry(projectId, jobId);
 }
 

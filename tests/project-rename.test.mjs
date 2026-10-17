@@ -9,9 +9,9 @@ class RepositoryError extends Error { constructor(code){super('private database 
 async function load(path,deps){
   const source=await readFile(new URL(path,import.meta.url),'utf8');
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const module={exports:{}};
-  new Function('require','module','exports',code)(name=>{assert.ok(name in deps,name);return deps[name];},module,module.exports);
-  return module.exports;
+  const fixtureModule={exports:{}};
+  new Function('require','module','exports',code)(name=>{assert.ok(name in deps,name);return deps[name];},fixtureModule,fixtureModule.exports);
+  return fixtureModule.exports;
 }
 async function action(renameProject){
   const refresh=[];

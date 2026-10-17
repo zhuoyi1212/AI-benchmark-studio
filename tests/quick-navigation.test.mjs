@@ -3,20 +3,21 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 import { deriveWorkflowState } from '../lib/workflow-navigation-state.ts';
+import { selectQuickWorkspaceJobs } from '../lib/quick/workspace-jobs.ts';
 
 const jsx = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
 const ui = new Proxy({}, { get: (_, key) => String(key) });
 async function load(path, dependencies) {
   const source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const module = { exports: {} };
+  const fixtureModule = { exports: {} };
   new Function('require', 'module', 'exports', code)(name => {
     if (name in dependencies) return dependencies[name];
     if (name === 'react/jsx-runtime') return jsx;
     if (name === 'lucide-react' || name.startsWith('@/components/')) return ui;
     throw new Error(`Unexpected import: ${name}`);
-  }, module, module.exports);
-  return module.exports;
+  }, fixtureModule, fixtureModule.exports);
+  return fixtureModule.exports;
 }
 function nodes(value) {
   if (Array.isArray(value)) return value.flatMap(nodes);
@@ -79,7 +80,8 @@ test('running and failed quick pages retain navigation outside the hidden embedd
       '@/lib/services/quick-workflow.service': { getQuickWorkflowJobs: async () => [{ id: 'job', kind: 'publish', status }] },
       '@/lib/services/protocols.service': { getProtocolWorkspace: async () => ({ protocol: { id: 'protocol', status: 'locked' } }) },
       '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => state(true) },
-      '@/lib/services/findings.service': {}, '@/lib/services/human-review.service': {}, '@/lib/services/publish.service': {},
+      '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => null }, '@/lib/services/human-review.service': {}, '@/lib/services/publish.service': {},
+      '@/lib/quick/workspace-jobs': { selectQuickWorkspaceJobs },
       '@/lib/quick/types': { quickStageLabels: { publish: '生成文章' } },
       './action-button': ui, '../results/findings-editor': ui, '../publish/publish-editor': ui,
       '../review/human-review-panel': ui, '../test/page': ui,

@@ -21,13 +21,13 @@ function loadPage({ findings = workspace, revealed = false, professional = async
     '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => workflow ? { stages: { review: { completed: revealed } } } : null },
     '@/lib/services/result-analysis.service': { getResultsWorkspace: async () => { professionalReads++; return professional(); } },
   };
-  const module = { exports: {} };
+  const fixtureModule = { exports: {} };
   new Function('require', 'module', 'exports', code)(name => {
     if (name in dependencies) return dependencies[name];
     if (name.startsWith('@/components/') || name.startsWith('@/app/')) return ui;
     throw new Error(`Unexpected dependency: ${name}`);
-  }, module, module.exports);
-  return { render: () => module.exports.default({ params: Promise.resolve({ projectId: 'project' }) }), reads: () => professionalReads };
+  }, fixtureModule, fixtureModule.exports);
+  return { render: () => fixtureModule.exports.default({ params: Promise.resolve({ projectId: 'project' }) }), reads: () => professionalReads };
 }
 
 function nodes(value) {

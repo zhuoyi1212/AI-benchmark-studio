@@ -1,0 +1,12 @@
+node_modules/
+.git/
+.vercel/
+.next*/
+outputs/
+AI-Benchmark-Studio_Codex-Goal-Pack.zip
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+coverage/

@@ -1,4 +1,7 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
+import { getProjectSummary } from "@/lib/services/projects.service";
+import { getLockedProtocolContext } from "@/lib/services/protocols.service";
 
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -9,7 +12,6 @@ import {
   testExecutionRepository,
   type RunExecutionMetadata,
 } from "@/lib/repositories/test-execution.repository";
-import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { PreparedArtifactUpload, TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
 
@@ -104,9 +106,13 @@ export async function getTestExecutionReadiness(projectId: string) {
 }
 
 export async function getTestExecutionWorkspace(projectId: string): Promise<TestExecutionWorkspace | null> {
-  const protocolWorkspace = await getProtocolWorkspace(projectId);
-  const protocol = protocolWorkspace?.protocol;
-  if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
+  return memoPageRead(`test:${projectId}`, () => readTestExecutionWorkspace(projectId));
+}
+
+async function readTestExecutionWorkspace(projectId: string): Promise<TestExecutionWorkspace | null> {
+  const [context, project] = await Promise.all([getLockedProtocolContext(projectId), getProjectSummary(projectId)]);
+  const protocol = context?.protocol;
+  if (!context || !project || !protocol) return null;
 
   try {
     const rows = await testExecutionRepository.listRuns(protocol.id);
@@ -116,10 +122,10 @@ export async function getTestExecutionWorkspace(projectId: string): Promise<Test
     const mappedRuns = await Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? [])));
     return {
       project: {
-        id: protocolWorkspace.research.project.id,
-        name: protocolWorkspace.research.project.name,
-        evaluationMode: protocolWorkspace.research.project.evaluationMode,
-        products: protocolWorkspace.research.project.products.map(({ id, name, initials }) => ({ id, name, initials })),
+        id: project.id,
+        name: project.name,
+        evaluationMode: project.evaluationMode,
+        products: project.products.map(({ id, name, initials }) => ({ id, name, initials })),
       },
       protocol,
       testRuns: mappedRuns,
@@ -311,7 +317,7 @@ async function mapTestRun(row: TestRunRow, artifactRows: TestArtifactRow[]): Pro
 }
 
 async function mapArtifact(row: TestArtifactRow): Promise<TestArtifact> {
-  const signedUrl = await testExecutionRepository.createSignedUrl(row.storage_path);
+  const signedUrl = await memoPageRead(`artifact-url:${row.storage_path}`, () => testExecutionRepository.createSignedUrl(row.storage_path));
   return {
     id: row.id,
     kind: row.kind,

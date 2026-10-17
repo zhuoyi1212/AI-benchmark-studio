@@ -119,3 +119,19 @@
 2026-10-06 可选配图降级：最终保真检查返回的 screenshotRecommendations 由服务端按真实图片 Artifact、最终正文逐字片段、段落编号、去重和 imageCount 确定性过滤并重排。视频、文档、无效段落或无原文对应的推荐直接丢弃，不把非图片伪装成截图，也不因可选配图错误阻断已经通过事实与内容审计的正文；最终保存前继续执行完整引用断言。
 
 2026-10-08 公开只读工作台：取消浏览页面的密码要求，真实项目、产品和已生成内容可直接查看；不新增独立首页。所有非 GET/HEAD 请求、Server Actions、`/api`、创建项目、项目设置、全局设置及内部 Demo 继续要求管理员 Basic Auth。`/admin` 作为显式登录入口，页面由 Proxy 覆盖的内部标记显示“只读浏览”；生产密码缺失时只读页面可用，写操作 fail closed。该访问层不改变数据库权限、Blind、Artifact、评分或内容生成规则。
+
+
+2026-10-11 Claude 内容方案第一迭代：用户授权按附带方案重构，并允许万彩AI视频/确认发现作本地新旧链路对照。先完成下游：读者问题与证据分量策划 Story Brief、原始细节写作、只读初审、有问题才定向修订、独立只读最终复核。取消强制 writingPlan 结构和无条件整体润色，不改已确认实验、Blind、Protocol Lock、人工执行、immutable AI Score 或 append-only Review。继续 structured JSON 和既有集中模型配置；纯文本创作、换模型、上游读者问题、测试者记录表单及 Findings 拆分留待后续评测。所有新生成标题含产品名；标题刷新继续独立创建版本。视频下游修正为 native video_url，先一次视觉细节提取，再由文本模型策划/写作/审核；不拆上游已确认 Findings。此决定优先于旧版冲突的 Publish 结构、审核越权和润色要求。
+
+
+## 视频媒体证据架构（2026-10-11）
+
+按本次用户要求，替代此前直接传输 video_url 的视频策略：视频由独立 Node/FFmpeg 预处理，限量关键帧视觉观察、原生字幕与可替换 ASR 汇总为 MediaEvidence；Judge、Findings、Publish 读取证据，不发送原始 MP4。视频 Case 的辅助截图也先形成观察，服务端对已知产品身份脱敏，再用集中 judge_video_evidence 文本路由评分；原生图片/PDF Case 仍保留既有多模态路由。局部提取/ASR/Vision 失败只记 warning，有有效证据就继续。Locked Rubric、同 Case 路由一致、immutable AI Score、人工执行与 append-only Review 不变，不重写历史记录。详见 [视频媒体证据架构](docs/video-media-evidence.md)。
+
+2026-10-12 标题主次调整：按用户最新要求，以清楚概括测评内容优先于钩子。共享标题规则覆盖选题/策划/写作/修订/审核/标题刷新；刷新以已核验正文为事实与主次依据，不继承历史局部问题角度，不额外读取原始媒体。产品名和测试用途优先保留，主要结果须有证据；重大失败不掩盖，小摩擦不夸大。升版Prompt与内容规则；不换模型、不改正文流程、不加DB migration、不重写历史。
+
+2026-10-12 文章编辑持久化：用户明确要求正文可重生成，手动修改可保存。新增service-only原子create_publish_revision RPC，manual复制生成来源并创建新ready版本，记录manualEdit/aiReviewed=false；regenerate原子创建draft版本与固定packId的publish任务，复用队列、阶段检查点、AI路由和独立审核。专业项目仅显式文章重生成可使用此队列，其余任务保持quick-only，保留E2E隔离。旧稿不可变；人工文案不强行接受AI写作语义门禁，但保留长度/结构/内部ID/真实Artifact校验。去掉失效段落证据锚点，不制造替代截图。
+
+2026-10-16 作者判断与自然表达：按用户“提升最后人味”的要求，确认Findings/写作配置可选填goal、focus、tradeoff、verdict，每项最多600字。它们只代表人工偏好，不进入AI Findings输出或事实账本；已确认来源继承到新文章配置，显式文章输入可覆盖或清空，不跨Findings复用。现有文章补充后以regenerate创建新版本并原子入队，不能更新旧稿。Brief、初稿、修订和独立审核共享判断边界，允许有据的偏好与不对称篇幅，减少模板结构、重复限制和空泛总结；不编造经历、情绪、数字或产品能力。复用既有路由/模型/检查点，只升版Prompt与扩展JSON/RPC校验。工程验证不代表“人味”效果已提高，真实样稿盲评另行完成。
+
+2026-10-17 Kimi K3 写作：用户明确要求将最终内容生成切换为 Kimi K3，并配置 Moonshot Key、充值后验证调用。新增服务端 MoonshotProvider，社区正文、按需修订及标题默认 kimi-k3，MOONSHOT_WRITING_MODEL 可覆盖；独立文本审稿与视觉核验保持原集中路由。K3 standard 使用 low（始终开启思考），不沿用 Flash 的 non-thinking 参数；预算包含思考，输出继续 JSON/runtime validation，任何重试不跨 Provider。仅扩展 Publish 的 provider 元数据约束和既有两个 RPC 的 Provider 白名单，保留权限、历史版本、Blind、评分、审核及证据规则。此前 Flash 写作限定由本决定替代；不承诺自然程度提升，真实文章效果另行评测。

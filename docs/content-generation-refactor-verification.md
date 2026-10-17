@@ -1,0 +1,50 @@
+# 内容生成重构：实现与验证记录
+
+日期：2026-10-11。分支：`codex/quick-backend-workflow`。
+
+## 本次交付
+
+Claude 方案的下游第一迭代：读者问题 → Story Brief → 原始细节写作 → 只读初审 → 按问题修订 → 独立只读复核 → 保存新版本。视频先增加一次原生视觉细节读取，随后交由文本模型策划与核验。没有实施上游读者问题表单、测试者记录表单、Findings 拆分、纯文本输出或换模型。
+
+| 项目 | 结果 |
+|---|---|
+| 架构 | Page → Service → Repository/API → DB/AI；复用 AI Task Service、集中路由和 Provider |
+| 数据库 | 使用既有 publish_packs、publish_pack_artifacts、quick_jobs、quick_job_steps；无 migration |
+| AI | 文本策划 DeepSeek v4 Pro；正文/定向修订/文本核验 DeepSeek v4 Flash；视觉细节/图片文档核验 GLM-4.6V，实际模型仍可由环境集中配置 |
+| 审计 | 保存 Brief、初审、原稿/最终稿、质量与保真、4–6 阶段模型/Prompt/签名/usage；不存思维链 |
+| Blind | 未改变揭盲门槛或评分输入；Publish 仍要求已确认 Findings 或已完成专业来源 |
+| Human Review | 未修改 immutable AI Score、独立人工事件或 append-only 审计 |
+| Storage | 原始文件不变；视频以 video_url 提交；没有新增文件或把二进制写入 Postgres |
+| Mock | 只在隔离测试 Provider 使用；生产失败不回退 Mock、不产生假 ready |
+| History | 兼容历史 JSON；重生成与标题刷新创建新版本，不批量改写旧文 |
+
+## 工程验证
+
+- 全仓测试 319/319 通过，包含视频读取失败、视频同媒体族传输、一次读取后下游复用、定向修订、引用权限和最终实际保存稿。
+- `npm run typecheck`、`npm run build`、`git diff --check` 通过。
+- `npm run audit:final` 验证 Secrets、客户端边界、Provider 中立与生产 Mock 边界。
+- 真实 Supabase/Storage 完整 E2E：`mv3n6vs8-5085083a`，从创建到社区文章与专业报告；单产品、可比较和不可比较回归通过，3 个夹具软删除。
+- 后台恢复 E2E：`mv3nd97o-3320e54c`。修订阶段注入失败后重启服务，策划/初稿/初审各调用 1 次，修订 2 次，最终复核 1 次，成功保存第 2 个版本；夹具已归档。
+- 上述 E2E 的数据库与文件是真实服务，AI 是隔离测试响应，不冒充真实产品测评结论。
+
+## 真实模型对照的限制
+
+用户已明确允许万彩AI视频和确认发现外发到现有模型作本地对照。没有修改历史文章。
+
+旧链路在内容核验结构校验失败。早期新版探测发现目标时长被当作结果、机制推断和旧选题偏置，已补充针对性提示与回归门禁，没有把该稿视为合格样稿。原生视频曾成功返回具体画面内容，但随后多次出现智谱 HTTP 400 / 1210 媒体解析错误；同一约 47 MB 私有视频在本机 HEAD 检查为 200、video/mp4。签名下载形式也没有解除供应商错误，且有独立 TLS 连接重置。
+
+因此没有获得可验收的新旧稿对，不能宣称文章质量已显著提升、所有视频稳定可用，或达到方案提出的 65% 人工盲评胜率。视频读取失败会显示“读取视频细节”阶段并停止，不生成假成功文章。后续需定位供应商视频解析问题，并用多项目、每项目多次生成及人工成对偏好验证质量。
+
+## 验收范围
+
+本轮是内容链下游增量验收，不是对全项目全部 Acceptance Criteria 的重新认证。原始测试不足、没有真实作者感受及未测试核心承诺仍然是素材缺口，提示词不能凭空补齐。
+
+## 线上发布
+
+- 实现提交：`3f816d407076c7bcae133f1d1b28e74196bafe19`。
+- Vercel 部署：`dpl_GCrSxBbqEc6VVjuYbXVYTG4Vr1ji`，production / READY；云端元数据确认项目、分支、提交一致。
+- 暂存生产部署的 `/projects` 返回 200，并显示只读标记；`/projects/new` 返回 401。
+- 已 promote；平台 alias 列表确认 `ai-benchmark-studio-sand.vercel.app` 指向新部署。
+- 公开域名 `/projects` 无凭据访问 200；真实浏览器显示工作台、4个历史项目及只读标记。没有触发线上 AI 生成或修改用户文章。
+
+用户需要重新生成新文章才能看到新规则；历史文章保留原文。上述视频媒体解析限制仍未解除。

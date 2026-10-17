@@ -1,0 +1,585 @@
+{
+  "schemaVersion": "local-article-candidates.v1",
+  "generatedAt": "2026-10-17T08:00:50.805Z",
+  "codeCommit": "1c6bcf7c14a58bd85654dbd4fad6c17272d0f613",
+  "status": "local_candidates_not_saved_to_app",
+  "databaseWrites": 0,
+  "allSourcesRechecked": true,
+  "projects": [
+    {
+      "key": "jimeng",
+      "name": "即梦AI",
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "sourcePackId": "9182ba30-bc3d-449b-8d26-ac54adb66706",
+      "sourceVersion": 11,
+      "sourceHash": "afd273be08f8a915603ca550b749f1119eec18082a972153a582456df5c98de4",
+      "artifactCount": 4,
+      "baseline": {
+        "title": "即梦AI咖啡海报实测：中文可读但导出带水印",
+        "body": "用免费账号在即梦AI生成咖啡市集海报，我最先看的不是风格，是中文会不会乱。结果提示词里的“周末咖啡市集”和“周六 10:00—18:00”，四张都能读出来，没看到错字或缺字。其中两张标题拆成两行，另外两张是一行，字形正常。\n\n这轮用的是免费账号可用的Seedream4.0，3:4，一次出四张，没有加参考图。第一、第二、第四张填满画幅：暖米色背景，一杯拿铁放木桌上，桌上有两枚咖啡豆，整体是水彩手绘感觉，标题和活动时间在上方。这三张的主体、背景和风格基本贴合活动海报要求。\n\n但有几件事得先说清。第一张到第四张下载下来的PNG，右下角都带“即梦AI”品牌水印。提示词里写了“不要添加任何品牌标志”，这并不能保证免费账号导出没有平台水印；导出设置也说明会保留品牌水印。也就是说，中文虽然能读，但不能直接当成无品牌物料交付，实际发布前要先核对导出权益。\n\n还有一个容易被文件比例骗过去的点：四张文件外框都是3:4，1728×2304，但第三张画面左右有明显黑色留边，等于海报只占中间狭长区域，没有填满画幅。另外三张是满的。验收时不能只看文件比例，得打开原图看内部画面有没有填满；如果要求满版竖版，这张就不适合直接用。\n\n如果你只是内部预览、先看中文排版和大致构图，这组图可以筛出候选。要对外发布，建议先确认会员权益和导出设置，再逐张打开检查是否满版，尤其是水印和黑边这两项。",
+        "tags": [
+          "即梦AI",
+          "AI海报",
+          "文生图",
+          "咖啡市集海报",
+          "免费账号"
+        ],
+        "interactionQuestion": "你们用免费账号导出时，会先检查水印还是先检查画面是否满版？"
+      },
+      "final": {
+        "title": "即梦AI免费版做中文咖啡海报：字全对但带水印",
+        "body": "用一个提示词让即梦AI生成3:4竖版咖啡市集海报，要求暖米色背景、手绘风、标题“周末咖啡市集”加时间“周六 10:00—18:00”，且不加任何品牌标志。免费账号默认模型被会员入口拦住，改用可用的Seedream4.0，首轮出4张。\n\n先说好消息：四张的标题和时间都能读清，本轮没有观察到错字缺字；其中三张暖米色背景、拿铁加两枚咖啡豆和木桌在下半部分，水彩手绘感，构图符合提示词。但文字对不代表整体可以直接用。\n\n问题有两个。一是四个文件虽然都是1728×2304的3:4，但只有第三张海报缩在中间、左右是明显黑边，没填满画幅，其余三张满版；要满版交付就先筛掉这张。二是四张下载图右下角都带“即梦AI”品牌水印，导出设置说明会保留平台品牌水印，所以提示词里写“不要Logo”没能拿到无品牌导出。\n\n结论：这四张不能直接作为无品牌海报交付。建议先从三张满版候选里挑图，再根据发布渠道确认去水印权益；我没买会员，去水印后的效果没验证，也没实际发布。",
+        "interactionQuestion": "你们用免费账号出图时，会怎么处理平台水印？",
+        "tags": [
+          "即梦AI",
+          "AI海报",
+          "文生图",
+          "咖啡海报",
+          "AI工具实测"
+        ]
+      },
+      "pipelineTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v7-reader-angle",
+          "inputSignature": "06b59aeb5fcc83f20dcb05236f6d73b31cd201abc9dec9c2f13a87416cbd67dd",
+          "usage": {
+            "inputTokens": 10258,
+            "outputTokens": 1158,
+            "latencyMs": 13659,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "c7a4fde584152f9f9da3cfa5562bba06a360ad78d67d2c763e4bb11b11dfe35f",
+          "usage": {
+            "inputTokens": 7641,
+            "outputTokens": 343,
+            "latencyMs": 15365,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "3b14d5fd0cf56c069924c9d5714d12ba7e2427a25beda7761353467cd7916c03",
+          "usage": {
+            "inputTokens": 11001,
+            "outputTokens": 444,
+            "latencyMs": 3031,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "inputSignature": "e59a6c37bc151e157242605272599fde7079226442fc5d8654fbf1247bea054e",
+          "usage": {
+            "inputTokens": 8120,
+            "outputTokens": 391,
+            "latencyMs": 12963,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "4333fcfc6d1608f5b762977dc87020991beeda577bbebb4ee514935f487f6b15",
+          "usage": {
+            "inputTokens": 12274,
+            "outputTokens": 337,
+            "latencyMs": 2066,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalTrace": [
+        {
+          "stage": "supplemental_revision",
+          "task": "community_post_humanize",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "capability": "structured_text",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 120000,
+          "maxAttempts": 2,
+          "inputSignature": "eec753e7d5d5dd20dcf17882b8c69e5827ea7dff06954fe570c2af18ccfc5a60",
+          "usage": {
+            "inputTokens": 7813,
+            "outputTokens": 346,
+            "latencyMs": 10562,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "supplemental_audit",
+          "task": "community_post_evidence_check_text",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "capability": "structured_text",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 90000,
+          "maxAttempts": 2,
+          "inputSignature": "8875ee343bcb412bdd0c57f425341ab60d5e2d8bca0e44789dae8c76fa8e726e",
+          "usage": {
+            "inputTokens": 11950,
+            "outputTokens": 343,
+            "latencyMs": 2439,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalIssues": [
+        {
+          "field": "body",
+          "quote": "中文文案这块，本轮未见错漏，但文字对不代表整体可以直接用。",
+          "reason": "同段重复中文未见错漏的观察",
+          "instruction": "与本段第一句合并，保留一次中文结果；结尾只保留具体选择和必要条件，不再概括同一结论。",
+          "kind": "language"
+        }
+      ],
+      "finalArticleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "finalPreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "verification": {
+        "sourceHash": "afd273be08f8a915603ca550b749f1119eec18082a972153a582456df5c98de4",
+        "oldArticleUnchanged": true,
+        "sourceUnchanged": true,
+        "databaseWrites": 0,
+        "databaseReads": 139,
+        "signedDownloads": 24,
+        "providerResponses": 7,
+        "finalSourceRechecked": true,
+        "finalDeterministicChecksPassed": true,
+        "finalSourceHash": "afd273be08f8a915603ca550b749f1119eec18082a972153a582456df5c98de4"
+      },
+      "fileName": "即梦AI.md",
+      "sha256": "6891cc67b4e0278e4051bd8776b85d132b348cb4867fc4b2569b733b20f0d0ec"
+    },
+    {
+      "key": "dongni",
+      "name": "懂你AI",
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "sourcePackId": "ac9f3921-f561-4c35-930a-abc88b6d2277",
+      "sourceVersion": 9,
+      "sourceHash": "0b3ef0b91807861fe56f7926046a5e4024cf89fa1846c5f6dcae7e6b7871432e",
+      "artifactCount": 1,
+      "baseline": {
+        "title": "懂你AI加薪沟通实测：结论先行、预算回应与行动清单",
+        "body": "懂你AI在这类场景里给出的第一条建议是：你紧张，是因为把自己放在“求”老板的位置上，但你不是去求，是去结账。它把重点放在“结论先行，别铺垫”，给出的开场话术是：“张总，XX项目刚结束，我想跟您谈一下我的薪资，占用您15分钟。”说完停住，等他说“说吧”——先给一个清晰议题，别一口气倒一堆话。\n\n如果老板甩出“现在预算紧张”，产品原文没有让你接这个球，而是给出一句把话题从“公司有没有钱”转到“我值多少钱”的回应：“我理解预算是按节奏走的。那我想确认两件事：第一，从这次结果看，我的贡献配不配一个调整；第二，如果现在不是窗口期，那咱们定个时间点和标准——到什么节点、我做到什么，这个调整就落地。”按产品的说法，关键是不逼他马上掏钱，逼他给一个承诺和标准；产品还建议，如果他“再看看吧”，补一句把模糊变成日期：“您给我个时间——比如季末复盘的时候，把这个作为一个明确议题过一遍。”\n\n场合上它提醒两个别做：别当众提，别在饭局上顺嘴提，强势的人会觉得你在给他下套。行动清单也具体：写下项目的3个硬数字——提升多少、省了多少、超了多少；想好目标数字和可接受底线，还有一个区间；提前约15分钟，选上午、选他松弛的时候。\n\n这次测试只基于“强势、注重结果、时间观念强”这一种老板画像，也没验证它能否根据你的具体项目数据做得更个性化。如果你也要用懂你AI准备加薪沟通，可以把老板的性格和项目结果写清楚，再照着它给的清单准备硬数字和话术，重点练“预算紧张”那句怎么接。",
+        "tags": [
+          "懂你AI",
+          "加薪沟通",
+          "职场话术",
+          "强势老板"
+        ],
+        "interactionQuestion": "你在加薪沟通里用过“结论先行”或“把预算转成贡献”这类做法吗？效果怎么样？"
+      },
+      "final": {
+        "title": "懂你AI加薪沟通实测：开场话术与预算回应",
+        "body": "面对强势、重结果、时间观念强的老板，怎么开口谈加薪？我拿这个场景测了懂你AI，输入老板性格画像和项目背景，它给出的开场和预算回应都贴着这类老板的风格。\n\n开场就一句：结论先行，别铺垫。原话是“张总，XX项目刚结束，我想跟您谈一下我的薪资，占用您15分钟”，说完停住，等他说“说吧”。它给的理由是这类老板最烦绕弯子——这是产品的解释，真实老板什么反应还得看现场。\n\n“预算紧张”怎么接是这次的关键。它没让接预算这个球，而是把话题从“公司有没有钱”转到“我值多少钱”：确认贡献配不配调整，再要求定时间点和标准——到什么节点、做到什么，调整就落地。老板要是还含糊，连标准都问不到，那说明他不打算给，你也该有数了。这个把模糊承诺变成明确节点的思路，比背话术本身更有用。\n\n时机场合也有现实考量：项目热度还在时提，正式约15分钟一对一，别当众提、别在饭局顺嘴提，因为“强势的人会觉得你在给他下套”。行动清单具体到写下3个硬数字、定好目标区间和底线。\n\n紧张情绪它也没绕开，开头直接说“你不是去求，你是去结账”。最后它还想追问老板血型生日来细分强势类型，这部分效果本次没验证。\n\n如果你也面对这类老板，可以把它的输出当准备参考：话术和清单能直接拿去用，但谈不谈得成还是看真实互动，尤其要把自己的业绩数据填进去。",
+        "interactionQuestion": "你和强势老板谈过加薪吗？“预算紧张”这个回应你是直接认了，还是试过要标准和时间点？",
+        "tags": [
+          "懂你AI",
+          "加薪谈判",
+          "职场沟通",
+          "谈薪话术",
+          "AI工具"
+        ]
+      },
+      "pipelineTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v7-reader-angle",
+          "inputSignature": "f9ed16128970a8fdeaf5821ea74f8dd77ae3920d9d4e43ac27287d5f90df8aad",
+          "usage": {
+            "inputTokens": 5895,
+            "outputTokens": 1633,
+            "latencyMs": 21087,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "cb83b3b94fef7809e61db00b1fd711e17474c76edac918916f77ede57eebc9b0",
+          "usage": {
+            "inputTokens": 5632,
+            "outputTokens": 410,
+            "latencyMs": 15215,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "6a94a14698c617c13ed74eeda9ba4f798878d4f265b1ea23a1b5e53f64801b79",
+          "usage": {
+            "inputTokens": 7115,
+            "outputTokens": 40,
+            "latencyMs": 981,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "034264d0b7a2c7b530c90b56fbc5f804fd6326d8d3597c7f89cee1cc34130175",
+          "usage": {
+            "inputTokens": 8011,
+            "outputTokens": 81,
+            "latencyMs": 1551,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalTrace": [
+        {
+          "stage": "supplemental_revision",
+          "task": "community_post_humanize",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "capability": "structured_text",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 120000,
+          "maxAttempts": 2,
+          "inputSignature": "377740c5a5b23eeaf6016c520f801f423b094d7c1ee3cff283fb4782c80bcd1e",
+          "usage": {
+            "inputTokens": 6027,
+            "outputTokens": 421,
+            "latencyMs": 13424,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "supplemental_audit",
+          "task": "community_post_evidence_check_text",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "capability": "structured_text",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 90000,
+          "maxAttempts": 2,
+          "inputSignature": "ba3049bc381b5d723991bf1ae008fffed93d0620e9e72be793fe8c80fa3a0c64",
+          "usage": {
+            "inputTokens": 8312,
+            "outputTokens": 81,
+            "latencyMs": 898,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalIssues": [
+        {
+          "field": "body",
+          "quote": "我最在意的是“预算紧张”怎么接。",
+          "reason": "没有作者输入支持这项私人偏好",
+          "instruction": "用本次任务关心的具体问题组织，不代作者声称私人偏好。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "这个判断方法我觉得比话术本身更值。",
+          "reason": "没有作者输入支持比较性的个人取舍",
+          "instruction": "删除这项个人价值排序，以有据的任务影响替代，不补写新的偏好或收益。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "对我来说它更像个临时参谋",
+          "reason": "没有作者输入支持私人使用定位",
+          "instruction": "改成有边界的使用建议，不描述为作者实际用法。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "它给出的不是通用模板",
+          "reason": "本次没有与通用模板做实测对照",
+          "instruction": "只描述回复结合既定老板画像给出开场和预算回应，不引入没有测过的对照。",
+          "kind": "scope"
+        },
+        {
+          "field": "body",
+          "quote": "给他清晰议题，他就进入“处理事情”模式。",
+          "reason": "产品给出的沟通推断不能写成实际心理效果",
+          "instruction": "如保留，明确这只是产品的建议和解释；不能保证真实老板的反应。",
+          "kind": "scope"
+        }
+      ],
+      "finalArticleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "finalPreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "verification": {
+        "sourceHash": "0b3ef0b91807861fe56f7926046a5e4024cf89fa1846c5f6dcae7e6b7871432e",
+        "oldArticleUnchanged": true,
+        "sourceUnchanged": true,
+        "databaseWrites": 0,
+        "databaseReads": 136,
+        "signedDownloads": 6,
+        "providerResponses": 4,
+        "finalSourceRechecked": true,
+        "finalDeterministicChecksPassed": true,
+        "finalSourceHash": "0b3ef0b91807861fe56f7926046a5e4024cf89fa1846c5f6dcae7e6b7871432e"
+      },
+      "fileName": "懂你AI.md",
+      "sha256": "1356cfa6f95046495b2bdf34e3882188648cb09e169dccf16d15cbdde502d762"
+    },
+    {
+      "key": "metaso",
+      "name": "秘塔AI搜索",
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "sourcePackId": "74843c00-d801-402b-b9d0-f4acde91c8bc",
+      "sourceVersion": 5,
+      "sourceHash": "340101315aa483aa6c0365cf5cb743abbd3a05e4705ba6c6cd92cec14c0a2365",
+      "artifactCount": 12,
+      "baseline": {
+        "title": "秘塔AI搜索做学术检索：大纲和导图很好用，但引用对不上号",
+        "body": "我用秘塔AI搜索跑了一次「大语言模型在医疗诊断中的应用现状与挑战」的调研。结论先说：结构化输出很好用，信息覆盖也够，但引用标注对不上号，这点让我没法放心直接拿去用。\n\n好用的部分，是深度搜索和结构化结果。\n\n我提的要求是：优先近三年中英文学术文献，覆盖主要应用场景、技术方法、临床验证效果、伦理与监管问题、当前局限这几个方面。它确实检索了中英文文献、学术报告和指南，上面几个方面都覆盖到了，没看到明显缺口。想快速了解一个领域的话，这个覆盖面是够的。\n\n更好用的是结构化输出。它生成了一份按一级、二级标题组织的研究大纲，逻辑清楚，我基本不用再手动重排。配套的思维导图结构也对得上，扫一眼就能看清整个领域的分支。我平时自己整理这类资料，光搭框架就要花不少时间，这块确实省了。\n\n一般的地方：引用标注对不上号。\n\n大纲和思维导图里有一堆引用标记，[[1]][[2]][[3]]这类。问题是我找不到这些标记对应的来源说明，没法顺着去查具体是哪篇文献。\n\n更麻烦的是，像[[43]][[44]]这样的标记，在关键信息来源表格里根本找不到对应记录。标记在正文里挂着，表格里却没有这条来源。\n\n这对学术检索来说不是小毛病。做研究的人看结果，第一件事就是看来源能不能追溯。标记和来源断了，我就没法判断这句话是从哪来的，只好自己再回去查一遍原始文献。结构化的效率优势，到这里被抵消掉一部分。\n\n难用的地方，其实也在这里。\n\n不是功能不能用，而是我不敢直接信。结构化结果看起来完整，但引用链断了之后，可信度就打折了。想引用其中任何一条，我都得自己再核一次，等于多了一道人工校验。\n\n我的感受是：秘塔AI搜索适合用来快速搭一个领域框架，看大纲和导图很好用；但如果是要写论文、要做正式引用，引用标注这块目前还撑不住，需要自己补验证。",
+        "tags": [
+          "秘塔AI搜索",
+          "AI搜索",
+          "学术检索",
+          "文献引用",
+          "真实体验"
+        ],
+        "interactionQuestion": "你在用AI搜索做学术检索时，会逐条核对引用来源吗？"
+      },
+      "final": {
+        "title": "秘塔AI搜索医疗文献调研实测：大纲完整，来源编号对不上",
+        "body": "研究生做文献综述，最省事的幻想是：AI搜一遍，大纲直接能用。这次用秘塔AI搜索跑的任务是\"大语言模型在医疗诊断中的应用现状与挑战\"，要求覆盖近三年中英文文献、权威报告和指南，输出大纲、思维导图和来源标注。重点看一件事——它标注的来源到底能不能回溯。\n\n先说结论：大纲结构完整，引用不能直接信。\n\n它确实一口气把活儿干完了。返回的研究大纲按六个一级标题组织：主要应用场景、核心技术方法、临床验证效果、伦理与监管、当前局限、未来方向，下面再分二级条目。应用场景里细分了常见病诊断、罕见病识别、多模态影像诊断、基于EHR的临床决策支持、医学教育，任务要求的五个方面全部覆盖。末尾还附了思维导图图片链接和一份研究摘要，展示框架的素材是齐的。\n\n问题出在引用编号上。大纲里\"常见病诊断\"后面标了[[43]]，\"罕见病识别\"后面标了[[44]]，但翻到文末的关键信息来源表格，只有9条记录，编号从[[77]]排到[[85]]——43和44根本不存在。也就是说这两条结论的出处是断的，想核验只能自己重新去数据库搜。摘要部分也有类似情况：正文里标了[[86]]到[[99]]一串编号，但来源表格就到[[85]]为止，这些标记后面没有对应的论文标题、作者、年份，无法直接追溯。\n\n但也不是全都不能用。表格里列出的9条带着具体名称：Singhal et al. 的 \"Large Language Models Encode Clinical Knowledge\"（标注Nature 2022）、标注为PEN期刊2025年的112篇文献系统综述、Stanford的MedAgentBench等。这些是原回答给出的信息，本文没有逐条打开原文核验，是否真实存在、年份内容是否准确仍需自己查证——但至少它们有完整的检索线索，不像缺失编号那样无从下手。\n\n据此给一个使用建议：把秘塔的大纲当选题地图，不当文献列表。框架和分块可以直接参考；但只要某一条要写进论文，先看它后面的编号在来源表格里有没有对应记录——有，去核对原文；没有，就当这条线索不存在，回PubMed或知网重新检索确认。\n\n这次只测了学术检索这一个任务，PPT和思维导图只确认了链接能打开，没有逐页核对内容。如果主要需求是快速摸底一个陌生领域，它够用；如果指望引用开箱即查，会失望。",
+        "interactionQuestion": "你用AI搜索整理文献时，遇到过引用编号对不上的情况吗？最后是怎么核实的？",
+        "tags": [
+          "秘塔AI搜索",
+          "AI搜索",
+          "文献综述",
+          "研究生",
+          "学术写作",
+          "医疗AI",
+          "论文工具",
+          "科研效率"
+        ]
+      },
+      "pipelineTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v7-reader-angle",
+          "inputSignature": "1af31283fca7bb8ff1c9b9dcb8dbe3f1d302c4b92d0545a84ed94471e90a31b8",
+          "usage": {
+            "inputTokens": 10026,
+            "outputTokens": 1225,
+            "latencyMs": 17419,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "bcf763c43e5cb48c4a01946e755c5dee4d77ee8917b858453b0ea808e05eece6",
+          "usage": {
+            "inputTokens": 7982,
+            "outputTokens": 685,
+            "latencyMs": 26092,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "041ece6edc1d6715c1731971f83ad806ca2adc6bbe902c7b996bd8713f4c772e",
+          "usage": {
+            "inputTokens": 11116,
+            "outputTokens": 332,
+            "latencyMs": 2738,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "inputSignature": "fdbddabe386b09980263905369dacc61171bd27cf146953e474846bd79f62f19",
+          "usage": {
+            "inputTokens": 8654,
+            "outputTokens": 684,
+            "latencyMs": 18936,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "89192a11c1993d9fe531e84b7d7871b21a90e5524eaa5b0bcbe1f9eec2a0a294",
+          "usage": {
+            "inputTokens": 12558,
+            "outputTokens": 399,
+            "latencyMs": 2277,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalTrace": [
+        {
+          "stage": "supplemental_revision",
+          "task": "community_post_humanize",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "capability": "structured_text",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 120000,
+          "maxAttempts": 2,
+          "inputSignature": "d517ec9c52e6a128225d335234de819f09091533063b7ab59c89dcd85d8e3a00",
+          "usage": {
+            "inputTokens": 8656,
+            "outputTokens": 700,
+            "latencyMs": 22500,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "supplemental_audit",
+          "task": "community_post_evidence_check_text",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "capability": "structured_text",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "reasoning": "standard",
+          "repairReasoning": "standard",
+          "timeoutMs": 90000,
+          "maxAttempts": 2,
+          "inputSignature": "2b52fd4553e067955cbcde97a7da2c2bd28193aa2bffe9d458d20cd540d3f161",
+          "usage": {
+            "inputTokens": 12856,
+            "outputTokens": 81,
+            "latencyMs": 843,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "supplementalIssues": [
+        {
+          "field": "body",
+          "quote": "我拿秘塔AI搜索试了",
+          "reason": "当前材料没有作者亲自操作的独立记录，不代作者新增第一人称亲测经历",
+          "instruction": "整篇改为依据现有测试记录的观察者口吻：不要使用“我拿”“我的用法”“我只确认”等亲历或私人偏好。保留真实测试任务、留存输出和范围，不改为作者自己完成的经历。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "它给得又快又全，这一步能省好几个小时。",
+          "reason": "没有生成耗时或编辑工时记录，不能断言快或省下几个小时",
+          "instruction": "删除速度与具体省时结论，仅保留可观察的大纲结构用途，不用同义词保留该收益。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "表格里那9条是具体可查的",
+          "reason": "记录只证明原回答列出了条目，没有独立核验论文和引文",
+          "instruction": "不把原回答声称的文献或研究数字当作本文核实的事实。可说明表格列出编号与条目，但存在性、年份、内容仍需核验；与引用对应问题无关的医学准确率数字可省略。",
+          "kind": "fact"
+        },
+        {
+          "field": "body",
+          "quote": "所以我的用法是",
+          "reason": "没有作者输入支持这项私人使用经历或偏好",
+          "instruction": "改为有边界的编辑建议；不要新增导师沟通、真实论文使用等经历。",
+          "kind": "fact"
+        }
+      ],
+      "finalArticleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "finalPreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "verification": {
+        "sourceHash": "340101315aa483aa6c0365cf5cb743abbd3a05e4705ba6c6cd92cec14c0a2365",
+        "oldArticleUnchanged": true,
+        "sourceUnchanged": true,
+        "databaseWrites": 0,
+        "databaseReads": 136,
+        "signedDownloads": 72,
+        "providerResponses": 5,
+        "finalSourceRechecked": true,
+        "finalDeterministicChecksPassed": true,
+        "finalSourceHash": "340101315aa483aa6c0365cf5cb743abbd3a05e4705ba6c6cd92cec14c0a2365"
+      },
+      "fileName": "秘塔AI搜索.md",
+      "sha256": "772c7400ff37e6410534c6a8abbc359fe83eb4725b49eb1300350da0552b4df5"
+    }
+  ]
+}

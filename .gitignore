@@ -21,3 +21,9 @@ coverage
 .vercel
 .idea
 .vscode
+
+# Private failure backups may contain original model inputs and signed URLs
+outputs/badcase-archive/
+outputs/article-compilation-private/
+outputs/reader-candidates-private/
+outputs/natural-voice-private/
