@@ -141,7 +141,7 @@ export function unsupportedPublicationClaims(copy: CommunityStyleEdit, facts: Wr
   const source = [...facts.flatMap(f => [f.observation, f.interpretation]), ...scopeNotes].join("\n").replace(/\s+/g, "");
   // “容易踩的坑” names a topic; “容易出错” asserts observed behavior.
   // Other semantic claims still go through both evidence reviews.
-  const pattern = /(?:省去|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|稳定|容易(?:出错|失败|误判|丢失|卡住|崩溃))[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
+  const pattern = /(?:省(?:去|掉|下|了|时间|工夫|力气)|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|最常(?:用|见|发生)|稳定|容易(?:出错|失败|误判|丢失|卡住|崩溃))[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:生成|输出|检索|搜索)(?:速度)?(?:是)?(?:确实|真的|真是|很|特别|非常|挺|就是)?(?:快|慢)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
   const issues = [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
     const text = [copy.title, copy.body].join("\n");
     const prefix = text.slice(Math.max(0, match.index! - 20), match.index);

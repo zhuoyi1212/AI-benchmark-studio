@@ -38,7 +38,8 @@ test('repository passes style snapshots and independent review to existing atomi
   });
   const styleEdit = { original, edited: original, changed: false };
   const stylePreservation = { facts: true, scope: true, stance: true, experience: true, advice: true, evidence: true, issues: [] };
-  await load('@/lib/repositories/publish.repository').publishRepository.complete('pack-fixture', { ...original, tags: ['创作'], screenshotRecommendations: [], styleEdit, stylePreservation, storyBrief: { readerQuestion: 'fixture' }, draftReview: { issues: [] }, contentPolicyVersion: 'community-content.v1', writingPlan: { template: 'single_scene', sections: [] }, contentBrief: { coreViewpoint: 'fixture' }, languagePass: { status: 'unchanged', notes: [] } }, {});
+  const naturalVoiceAudit = { initialIssues: ['测试流程用语'], remainingIssues: [], originalTags: ['创作'], tagsTrimmed: false };
+  await load('@/lib/repositories/publish.repository').publishRepository.complete('pack-fixture', { ...original, tags: ['创作'], screenshotRecommendations: [], styleEdit, stylePreservation, naturalVoiceAudit, storyBrief: { readerQuestion: 'fixture' }, draftReview: { issues: [] }, contentPolicyVersion: 'community-content.v1', writingPlan: { template: 'single_scene', sections: [] }, contentBrief: { coreViewpoint: 'fixture' }, languagePass: { status: 'unchanged', notes: [] } }, {});
   assert.equal(request.name, 'complete_publish_pack');
   assert.deepEqual(request.input.p_community_post.styleEdit, styleEdit);
   assert.deepEqual(request.input.p_community_post.stylePreservation, stylePreservation);
@@ -48,4 +49,5 @@ test('repository passes style snapshots and independent review to existing atomi
   assert.equal(request.input.p_community_post.languagePass.status, 'unchanged');
   assert.deepEqual(request.input.p_community_post.storyBrief, { readerQuestion: 'fixture' });
   assert.deepEqual(request.input.p_community_post.draftReview, { issues: [] });
+  assert.deepEqual(request.input.p_community_post.naturalVoiceAudit, naturalVoiceAudit);
 });

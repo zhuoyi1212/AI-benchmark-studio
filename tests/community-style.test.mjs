@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { buildFindingSections, communityExpressionIssues, experienceWritingRules, communityExpressionRules } from '../lib/community-experience.ts';
+import { harness as policyHarness } from './helpers/publication.mjs';
+const { buildFindingSections, communityExpressionIssues, experienceWritingRules, communityExpressionRules } = policyHarness().load('@/lib/community-experience');
 import { formatCommunityBody, formatPersonalRating } from '../lib/community-post-formatter.ts';
 import { publishConfigSchema, communityPostOutputSchema } from '../lib/ai/schemas/publish.schemas.ts';
 

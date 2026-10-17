@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { communityEditorialPlanSchema, communityPostGenerationSchema, publishConfigSchema } from '../lib/ai/schemas/publish.schemas.ts';
 import { editorialPlanIssues, editorialArticleIssues, deepObservationRules, editorialPlanningRules } from '../lib/community-editorial.ts';
-import { communityExpressionIssues } from '../lib/community-experience.ts';
+import { harness as policyHarness } from './helpers/publication.mjs';
+const { communityExpressionIssues } = policyHarness().load('@/lib/community-experience');
 import { publishWritingPresets, applyWritingPreset, defaultPublishConfig } from '../lib/publish-config.ts';
 import { sceneFindings, dimensionFindings, planFor, postFor } from './fixtures/community-editorial.mjs';
 

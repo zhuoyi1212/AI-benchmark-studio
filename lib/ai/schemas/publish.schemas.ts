@@ -293,6 +293,12 @@ export const communityPostContentSchema = z.object({
   contentBrief: contentBriefSchema.optional(),
   storyBrief: storyBriefSchema.optional(),
   draftReview: storyReviewSchema.optional(),
+  naturalVoiceAudit: z.object({
+    initialIssues: z.array(z.string()),
+    remainingIssues: z.array(z.string()),
+    originalTags: z.array(text.max(40)).max(12),
+    tagsTrimmed: z.boolean(),
+  }).optional(),
   languagePass: languagePassSchema.optional(),
   editorialPlan: editorialPlanSchema.optional(),
   factCheck: factCheckSchema.optional(),
