@@ -533,3 +533,5 @@ Quick Findings Flow ✅ 2026-09-20 将社区主流程调整为 Research → 测�
 470/470 tests、typecheck、lint（0errors/26既有warnings）、build（含隔离媒体实际抽帧/提音）与diff检查通过；首轮TS直载测试导入问题已修正，未删除或跳过测试，本轮无原生依赖环境失败。详见docs/project-articles/v9实现与验证记录.md。未push/部署/发布，不重做无关M0–M15或宣称全产品AC重新认证；用户既有作品集编辑、模板删除及未跟踪资料保持原状。
 
 v9最终边界审计：暂存索引隔离快照471个tracked文件/74个真实流程文件通过Secret、客户端、Provider与Mock检查，实际配置密钥内存比对无泄漏；保留用户原有模板删除，不通过恢复用户文件来让审计运行。最终diff检查通过。
+
+2026-10-17 v9生产发布：用户明确授权写入App、push、部署，并在自动审批拦下密钥配置后单独同意把现有Moonshot密钥作为目标项目Production加密服务端变量配置。三项目当前确认Findings/任务/Protocol/Artifact与冻结来源逐项核对一致；使用现有Publish Repository生命周期追加懂你AI v10、即梦AI v12、秘塔 v6，完整产物与本地候选相同，分别保留5/4/1条旧记录及原始证据，无新模型调用、无迁移或Storage写入。运行提交a3cab8e正常push当前codex/quick-backend-workflow分支，干净Git归档远程生产构建通过（含TypeScript和媒体实际自检），部署dpl_5ihed3GmNFg12EH8zcre7R6GnGUa已推广正式域名并核验READY及SHA。候选快速入口的秘塔默认显示测试页，初始批量验收失败未阻止同批推广命令；随后三篇实际/publish页均HTTP200且完整正文标题逐字匹配，记录偏差，不改上游Review状态。再次470/470tests、typecheck和diff检查通过；30分钟部署error日志查询为空。本机DNS/直连问题通过使用现有系统代理解决，浏览器自动化超时，未宣称浏览器全E2E；临时分享链接工具被拒后未使用。详细数据/网络/审批/验收边界见docs/project-articles/v9发布记录.md及同目录对照文件夹App发布核验.json；自然度盲评仍待做，未改核心产品规则、路由或用户无关本地资料。发布记录单独提交，与已部署代码一致但不重建仅文档差异。
