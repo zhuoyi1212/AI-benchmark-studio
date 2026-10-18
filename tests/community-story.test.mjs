@@ -156,3 +156,29 @@ test('human test notes support semantic experience review; uploaded answers cann
   assert.deepEqual(firstPersonExperienceIssues({ body: '花了我十分钟。' }, { executionFacts: facts, experienceRecords }), []);
   assert.deepEqual(manualTestNoteRecords([label('花了我十分钟')], []), []);
 });
+
+test('remaining-project K3 delivery preserves article bytes, writing provenance and immutable source lineage', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { createHash } = await import('node:crypto');
+  const root = new URL('../docs/project-articles/2026-10-18-K3补齐/', import.meta.url);
+  const record = JSON.parse(await readFile(new URL('生成与App写入记录.json', root), 'utf8'));
+  assert.match(record.scope, /latest.*preserve historical/);
+  assert.deepEqual(record.articles.map(a => a.key).sort(), ['comparison', 'kimi', 'wancai', 'yuanbao']);
+  for (const article of record.articles) {
+    assert.notEqual(article.packId, article.sourcePackId);
+    assert.equal(article.version, article.sourceVersion + 1);
+    assert.equal(article.status, 'ready');
+    assert.equal(article.model, 'kimi-k3');
+    assert.ok(article.generationTrace.some(stage => stage.stage === 'writing' && stage.provider === 'moonshot' && stage.model === 'kimi-k3'));
+    assert.ok(article.generationTrace.some(stage => stage.stage === 'fact_check'));
+    for (const field of ['facts', 'scope', 'stance', 'experience', 'advice', 'evidence']) assert.equal(article.stylePreservation[field], true);
+    assert.deepEqual(article.stylePreservation.issues, []);
+    assert.equal(article.originalArtifactsUnchanged, true);
+    assert.equal(article.pageVerification.fullBodyPresent, true);
+    assert.equal(article.bodyHashEncoding, 'UTF-8 JSON.stringify(body)');
+    assert.equal(createHash('sha256').update(JSON.stringify(article.body)).digest('hex'), article.bodyHash);
+    const copy = await readFile(new URL(article.articleFile, root), 'utf8');
+    assert.equal(createHash('sha256').update(copy).digest('hex'), article.articleFileHash);
+    assert.ok(copy.startsWith(`# ${article.title}\n\n${article.body}\n`));
+  }
+});
