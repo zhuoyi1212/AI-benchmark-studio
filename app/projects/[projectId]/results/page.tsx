@@ -1,5 +1,6 @@
 import { withPageReads } from "@/lib/supabase/read-scope";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, FileText, FlaskConical, ShieldCheck, Sparkles } from "lucide-react";
@@ -16,6 +17,7 @@ import type { ExperienceFindingItem } from "@/lib/ai/schemas/findings.schemas";
 import { getExperienceFindingsWorkspace, type ExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { getResultsWorkspace } from "@/lib/services/result-analysis.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
+import { isReportHiddenFromVisitors } from "@/lib/portfolio-visibility";
 
 export const maxDuration = 300;
 
@@ -28,6 +30,7 @@ const categoryMeta = {
 async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
+  const reportHidden = isReportHiddenFromVisitors(projectId, (await headers()).get("x-ai-benchmark-access"));
   const [workspace, workflowState] = await Promise.all([
     getExperienceFindingsWorkspace(projectId),
     getProjectWorkflowState(projectId),
@@ -64,7 +67,7 @@ async function ResultsPage({ params }: { params: Promise<{ projectId: string }> 
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
-    <ProfessionalMode projectId={projectId} professional={professional} unavailable={professionalUnavailable} />
+    {!reportHidden && <ProfessionalMode projectId={projectId} professional={professional} unavailable={professionalUnavailable} />}
   </div>;
 }
 

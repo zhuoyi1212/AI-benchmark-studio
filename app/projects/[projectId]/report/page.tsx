@@ -1,5 +1,6 @@
 import { withPageReads } from "@/lib/supabase/read-scope";
 import { NavigationLink as Link } from "@/components/navigation-link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft, ArrowUpRight, Check, Clock3, Database, FileText, FlaskConical, Quote, Send, Sparkles, Trophy } from "lucide-react";
@@ -13,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { getReportWorkspace, type ReportEvidence, type ReportWorkspace } from "@/lib/services/report.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 import type { ProjectWorkflowState } from "@/lib/types/workflow-navigation";
+import { isReportHiddenFromVisitors } from "@/lib/portfolio-visibility";
 
 export const maxDuration = 300;
 const comparisonToc = ["TL;DR", "最终排名", "为什么测试", "我们怎么测试", "Case 复盘", "产品优缺点", "最终推荐", "测试限制"];
@@ -21,6 +23,7 @@ const singleToc = ["TL;DR", "体验得分", "为什么体验", "我们怎么体�
 async function ReportPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
+  if (isReportHiddenFromVisitors(projectId, (await headers()).get("x-ai-benchmark-access"))) redirect(`/projects/${projectId}/results`);
   const [workspace, workflowState] = await Promise.all([
     getReportWorkspace(projectId),
     getProjectWorkflowState(projectId),

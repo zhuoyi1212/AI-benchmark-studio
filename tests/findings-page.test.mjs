@@ -20,6 +20,8 @@ function loadPage({ findings = workspace, revealed = false, professional = async
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => findings },
     '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => workflow ? { stages: { review: { completed: revealed } } } : null },
     '@/lib/services/result-analysis.service': { getResultsWorkspace: async () => { professionalReads++; return professional(); } },
+    'next/headers': { headers: async () => new Headers({ 'x-ai-benchmark-access': 'admin' }) },
+    '@/lib/portfolio-visibility': { isReportHiddenFromVisitors: () => false },
   };
   const fixtureModule = { exports: {} };
   new Function('require', 'module', 'exports', code)(name => {

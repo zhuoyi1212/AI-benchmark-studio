@@ -31,3 +31,17 @@ test('public visitors do not see raw execution notes or internal writing plans',
   assert.match(read('app/projects/[projectId]/test/page.tsx'), /run\.notes && <AdminOnly>/);
   assert.match(read('app/projects/[projectId]/publish/publish-editor.tsx'), /!quick && !readOnly && <aside/);
 });
+
+test('portfolio report hiding applies to visitors only and leaves other projects visible', () => {
+  const { isReportHiddenFromVisitors } = load('@/lib/portfolio-visibility');
+  const jimeng = '77ac52ae-cb4c-477b-9783-688dead41c12';
+  const yuanbao = '85cc4ea9-9902-4e10-aacc-e2320cbac926';
+  for (const id of [jimeng, yuanbao]) {
+    assert.equal(isReportHiddenFromVisitors(id, 'read-only'), true);
+    assert.equal(isReportHiddenFromVisitors(id, null), true);
+    assert.equal(isReportHiddenFromVisitors(id, 'admin'), false);
+  }
+  assert.equal(isReportHiddenFromVisitors('030347a8-6e7e-494a-bbe0-08e505e10718', 'read-only'), false);
+  assert.match(read('app/projects/[projectId]/report/page.tsx'), /isReportHiddenFromVisitors\(projectId, \(await headers\(\)\)\.get\("x-ai-benchmark-access"\)\)\) redirect\(`\/projects\/\$\{projectId\}\/results`\)/);
+  assert.match(read('app/projects/[projectId]/results/page.tsx'), /\{!reportHidden && <ProfessionalMode/);
+});
