@@ -136,7 +136,7 @@ test("Protocol input omits raw Research snippets and JSON mode stays explicit", 
   assert.match(router, /Return exactly one valid JSON object/);
   assert.match(router, /Do not use Markdown or code fences/);
   assert.match(router, /Do not stop before closing the root JSON object/);
-  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v12-quick-input-constraints"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v13-quick-compliance-baseline"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
   assert.match(protocolService, /\[ProtocolPerformance\]/);
   assert.match(protocolService, /attempts: generated\.attemptPerformance/);
 });

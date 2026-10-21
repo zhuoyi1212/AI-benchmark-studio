@@ -8,7 +8,7 @@ const goal = await readFile(new URL("../docs/prompt-refactor-final-goal.md", imp
 
 test("three-file refactor kit contains prompts, project flow, and an open redesign goal", () => {
   assert.match(prompts, /生产提示词清单/);
-  assert.match(prompts, /community-post\.v11-reader-editing/);
+  assert.match(prompts, /community-post\.v12-compliance-baseline/);
 
   for (const stage of ["产品调研", "生成测试方案", "人工执行测试", "匿名分析与人工确认", "发现内容选题", "生成社区内容"]) {
     assert.match(flow, new RegExp(stage));

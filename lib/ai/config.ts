@@ -51,7 +51,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v12-quick-input-constraints",
+    promptVersion: "protocol.v13-quick-compliance-baseline",
     reasoning: "standard",
     repairReasoning: "standard",
     timeoutMs: standardTimeoutMs,
@@ -61,7 +61,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol_professional: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v13-professional-input-constraints",
+    promptVersion: "protocol.v14-professional-compliance-baseline",
     reasoning: "high",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -107,7 +107,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   findings: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "findings.v4-media-evidence",
+    promptVersion: "findings.v5-compliance-baseline",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -125,7 +125,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   content_discovery: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "content-discovery.v7-reader-angle",
+    promptVersion: "content-discovery.v8-compliance-baseline",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post.v11-reader-editing",
+    promptVersion: "community-post.v12-compliance-baseline",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -162,7 +162,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v10-reader-editing-text",
+    promptVersion: "community-post-evidence-check.v11-compliance-baseline-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -171,7 +171,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v10-reader-editing-vision",
+    promptVersion: "community-post-evidence-check.v11-compliance-baseline-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

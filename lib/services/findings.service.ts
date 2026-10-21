@@ -1,5 +1,6 @@
 import "server-only";
 import { memoPageRead } from "@/lib/supabase/read-scope";
+import { complianceBaselineRules } from "@/lib/compliance-baseline";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -150,6 +151,7 @@ export async function generateExperienceFindings(projectId: string): Promise<str
             "Research 只作为产品定位背景，不能覆盖真实 Artifact。",
             "输出简体中文。finding id 使用简短的英文小写 slug。",
             videoEvaluationRules,
+            complianceBaselineRules,
           ].join("\n"),
         },
         { role: "user", content },
