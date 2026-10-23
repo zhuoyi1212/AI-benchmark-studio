@@ -82,7 +82,7 @@ test('effective Findings prefer a versioned editorial correction while raw AI an
 });
 
 test('revision migration keeps history immutable, guards stale sources and grants no public writes', () => {
-  const sql=read('supabase/migrations/20261023070022_portfolio_editorial_history.sql');
+  const sql=read('supabase/migrations/20261023071738_portfolio_editorial_history.sql');
   assert.match(sql,/before update or delete on public\.experience_finding_revisions/);
   assert.match(sql,/before update on public\.experience_findings/);
   assert.match(sql,/current_version<>p_expected_version/);
@@ -96,7 +96,7 @@ test('revision migration keeps history immutable, guards stale sources and grant
 });
 
 test('future discovery and explicit regeneration retain their effective Findings revision source', () => {
-  const binding=read('supabase/migrations/20261023073339_bind_findings_editorial_sources.sql');
+  const binding=read('supabase/migrations/20261023073415_bind_findings_editorial_sources.sql');
   assert.match(binding,/human_confirmed_at is not null for update/);
   assert.match(binding,/findings_id, findings_revision_id, version/);
   assert.match(binding,/case when p_mode='regenerate' then \(select id from public\.experience_finding_revisions/);

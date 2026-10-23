@@ -37,4 +37,6 @@
 
 本轮全部旧行逐项对比：10个Protocol、10个TestCase、9个TestRun、23个Artifact、22个Findings、原33个PublishPack/22条配图关联、20个JudgeScore、1个复核事件、4个Report完整相同（新nullable列与项目更新时间除外）；只将Kimi超时分析的status/error/updated_at按既有生命周期更新。第二份追加migration为后续选题/显式重生成绑定当前发现修订；真实数据库子事务验证后全部回滚，没有入队持久测试任务。
 
-Supabase安全检查只有INFO：新表无公共RLS policy是刻意的service-only边界，匿名/认证角色没有表或RPC权限；原31项未覆盖FK索引等INFO未扩大，本轮没有新增安全WARN/ERROR。生产部署结果完成后补充。此次为作品集增量，不宣称重跑全部原始产品测试或完成自然度读者盲评。
+Supabase安全检查只有INFO：新表无公共RLS policy是刻意的service-only边界，匿名/认证角色没有表或RPC权限；原31项未覆盖FK索引等INFO未扩大，本轮没有新增安全WARN/ERROR。生产发布完成：运行提交 `c321419cea24abdc2a4b1b3662a9d636555d6987`，正常push `codex/quick-backend-workflow`，未改main。495个tracked文件/75个真实流程文件的边界审计与实际配置密钥值扫描通过；发布只含干净Git索引快照，不含.env、私密备份或用户未提交资料。Vercel原项目 `prj_hbBp4mC9Tb20UgpNJmDni06w7ORS`、团队z-z-y1生产候选 `dpl_H2E3nhoC5H92SWfoBWA52GNsJaU9` 远端构建READY，Linux媒体隔离自检通过。候选56项GET全部通过后promote，正式sand域名及z-z-y1域名alias均指向该部署；正式域名56项再次全部通过。部署最近10分钟error/fatal日志为空。CLI请求使用本机现有代理及已有Vercel认证，未改变部署保护；初始未走代理的只读请求已终止，不以超时当作业务失败。
+
+部署后的IAB浏览器读取两次超时，因此生产交互验收采用上述HTTP/完整HTML/RSC/日志证据；实际浏览器点击、编辑切换与历史记录已在本地真实数据页面验证，未宣称完成部署后的浏览器点击。当前预览截图为本地验证。发布记录与迁移文件名对齐会作为跟进提交推送，不重建相同的运行代码。本次两份migration文件名按远端已应用版本对齐为20261023071738、20261023073415，SQL完全相同，未改远端历史或重复执行迁移。此次为作品集增量，不宣称重跑全部原始产品测试或完成自然度读者盲评。
