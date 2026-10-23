@@ -106,6 +106,8 @@ test('running and failed quick pages retain navigation outside the hidden embedd
     const { default: Page } = await load('app/projects/[projectId]/quick/page.tsx', {
       '@/lib/supabase/read-scope': { withPageReads: page => page },
       'next/server': { connection: async () => {} },
+      'next/headers': { headers: async () => new Headers({'x-ai-benchmark-access':'admin'}) },
+      '@/lib/publish-presentation': { publishPresentation: value => value },
       'next/navigation': { notFound: () => { throw new Error('not found'); }, redirect: () => { throw new Error('redirect'); } },
       '@/lib/services/projects.service': { getProjectSummary: async () => ({ name: 'Project', evaluationMode: 'quick' }) },
       '@/lib/services/quick-workflow.service': { getQuickWorkflowJobs: async () => [{ id: 'job', kind: 'publish', status }] },
@@ -124,4 +126,29 @@ test('running and failed quick pages retain navigation outside the hidden embedd
     assert.ok(!nodes(embedded).some(node => node.type === 'WorkflowSteps'));
     assert.equal(directChildren.find(node => node.type === 'WorkflowSteps').props.activeStage, 'publish');
   }
+});
+
+test('legacy confirmed projects open their ready article before consulting missing Review records', async () => {
+  const workflow=state(true);
+  workflow.stages.review.completed=false;
+  workflow.stages.publish.completed=true;
+  const workspace={ projectId:'project',findingsId:'finding',pack:{id:'pack',status:'ready',post:{title:'Saved article'}} };
+  const fail=()=>{throw new Error('Legacy ready article must not re-enter testing or Judge');};
+  const {default:Page}=await load('app/projects/[projectId]/quick/page.tsx',{
+    '@/lib/supabase/read-scope':{withPageReads:page=>page},
+    'next/server':{connection:async()=>{}},'next/headers':{headers:async()=>new Headers({'x-ai-benchmark-access':'read-only'})},
+    'next/navigation':{notFound:fail,redirect:fail},
+    '@/lib/publish-presentation':{publishPresentation:value=>value},
+    '@/lib/services/projects.service':{getProjectSummary:async()=>({name:'Legacy',evaluationMode:'quick'})},
+    '@/lib/services/quick-workflow.service':{getQuickWorkflowJobs:async()=>[]},
+    '@/lib/services/protocols.service':{getProtocolWorkspace:async()=>({protocol:{id:'protocol',status:'locked'}})},
+    '@/lib/services/workflow-navigation.service':{getProjectWorkflowState:async()=>workflow},
+    '@/lib/services/publish.service':{getPublishWorkspace:async()=>workspace},
+    '@/lib/services/findings.service':{getExperienceFindingsWorkspace:fail},
+    '@/lib/services/human-review.service':{getHumanReviewWorkspace:fail},
+    '@/lib/quick/workspace-jobs':{selectQuickWorkspaceJobs},'@/lib/quick/types':{quickStageLabels:{}},
+    './action-button':ui,'../results/findings-editor':ui,'../publish/publish-editor':ui,'../review/human-review-panel':ui,'../test/page':{default:fail},
+  });
+  const tree=nodes(await Page({params:Promise.resolve({projectId:'project'})}));
+  assert.equal(tree.find(node=>node.type==='PublishEditor').props.workspace.pack.post.title,'Saved article');
 });

@@ -4,11 +4,19 @@ import type { ConfirmedFindingsOutput, ExperienceFindingsOutput } from "@/lib/ai
 import type { AITaskRoute, AIUsage } from "@/lib/ai/types";
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { ExperienceFindingRow, Json } from "@/lib/types/database";
+import type { ExperienceFindingRow, FindingRevisionRow, Json } from "@/lib/types/database";
 
 const columns = "id, project_id, protocol_id, version, status, input_snapshot, input_signature, output, human_output, provider, model, prompt_version, error_message, started_at, completed_at, human_confirmed_at, created_at, updated_at, input_tokens, output_tokens, latency_ms, estimated_cost";
 
 export const findingsRepository = {
+  async listRevisions(findingsId: string): Promise<FindingRevisionRow[]> {
+    const { data, error } = await getSupabaseServerClient().from("experience_finding_revisions")
+      .select("id,findings_id,version,kind,editor_kind,reason,output,provenance,created_at")
+      .eq("findings_id", findingsId).order("version", { ascending: false });
+    if (error) throwRepositoryError("findings.listRevisions", error);
+    return data;
+  },
+
   async begin(projectId: string, protocolId: string, inputSnapshot: Json, inputSignature: string): Promise<string> {
     const { data, error } = await getSupabaseServerClient().rpc("begin_experience_findings", {
       p_project_id: projectId,

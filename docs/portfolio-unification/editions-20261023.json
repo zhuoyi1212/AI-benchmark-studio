@@ -1,0 +1,820 @@
+[
+  {
+    "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+    "sourceFindingId": "365c8ae5-2036-4bba-904b-310cfed3b62e",
+    "sourcePackId": "f96de6c6-b236-4633-bb7c-3818540ee02c",
+    "sourcePackVersion": 13,
+    "findings": {
+      "summary": "免费账号使用Seedream4.0生成咖啡市集海报，一轮四张。四张中文标题和活动时间都可读，三张画面满版，第三张左右有黑边。适合先做活动海报草稿，再按实际画面挑选。",
+      "findings": [
+        {
+          "id": "accurate-event-copy",
+          "title": "四张海报的标题和活动时间均可读",
+          "impact": "中文活动文案可以直接用，不用再手动补字。",
+          "category": "good",
+          "productId": "93194d04-1810-493c-9b68-d2df84da15f9",
+          "confidence": 0.95,
+          "testCaseId": "f16b8d24-5e82-445c-a582-fc605e0eed40",
+          "observation": "四张都能读出“周末咖啡市集”和“周六 10:00—18:00”，没有错字或缺字；第二、三张标题排成两行，第一、四张是一行。",
+          "evidenceArtifactIds": [
+            "8bb6b22d-a5c9-48b3-98e0-3a6f9cbcf49f",
+            "9cccb333-0438-436f-8b18-2db0074e2fda",
+            "1806165d-7294-4e2b-8b1b-70b766743143",
+            "d9bb7ca5-c9b4-400e-a5bf-0e14662c472d"
+          ]
+        },
+        {
+          "id": "on-topic-illustration",
+          "title": "三张满版候选的主体、背景与手绘风格符合场景",
+          "impact": "三张都能直接当活动海报草稿用。",
+          "category": "good",
+          "productId": "93194d04-1810-493c-9b68-d2df84da15f9",
+          "confidence": 0.95,
+          "testCaseId": "f16b8d24-5e82-445c-a582-fc605e0eed40",
+          "observation": "第一、二、四张是暖米色背景，拿铁、两枚咖啡豆和木桌在下半部分，水彩手绘感，标题和时间在上方，画面填满。",
+          "evidenceArtifactIds": [
+            "8bb6b22d-a5c9-48b3-98e0-3a6f9cbcf49f",
+            "9cccb333-0438-436f-8b18-2db0074e2fda",
+            "d9bb7ca5-c9b4-400e-a5bf-0e14662c472d"
+          ]
+        },
+        {
+          "id": "black-side-borders",
+          "title": "第三张有明显左右黑边",
+          "impact": "要满版海报就先筛掉这张；挑图时打开原图看画面，别只看文件比例。",
+          "category": "problem",
+          "productId": "93194d04-1810-493c-9b68-d2df84da15f9",
+          "confidence": 0.95,
+          "testCaseId": "f16b8d24-5e82-445c-a582-fc605e0eed40",
+          "observation": "四张文件都是1728×2304的3:4，但第三张的画面缩在中间，左右是明显的黑边，没有填满画幅。",
+          "evidenceArtifactIds": [
+            "1806165d-7294-4e2b-8b1b-70b766743143"
+          ]
+        },
+        {
+          "id": "export-brand-watermark",
+          "title": "下载图右下角带平台标志",
+          "impact": "对外使用前需要确认平台的生成标识与发布要求；仅凭品牌字样，不能判断具体法律性质。",
+          "category": "neutral",
+          "productId": "93194d04-1810-493c-9b68-d2df84da15f9",
+          "confidence": 0.95,
+          "testCaseId": "f16b8d24-5e82-445c-a582-fc605e0eed40",
+          "observation": "四张下载图右下角都有“即梦AI”标志。",
+          "evidenceArtifactIds": [
+            "8bb6b22d-a5c9-48b3-98e0-3a6f9cbcf49f",
+            "9cccb333-0438-436f-8b18-2db0074e2fda",
+            "1806165d-7294-4e2b-8b1b-70b766743143",
+            "d9bb7ca5-c9b4-400e-a5bf-0e14662c472d"
+          ]
+        }
+      ],
+      "limitations": [
+        "本次只测一条提示词、一轮四张图，不能由此推算整体出图成功率。",
+        "使用免费可用的Seedream4.0；未比较会员模型，也未记录可用于速度比较的耗时。"
+      ]
+    },
+    "copy": {
+      "title": "即梦AI咖啡海报：四张中文全对，三张满版",
+      "body": "用即梦AI做中文活动海报，这次最值得看的是文字和画幅。免费账号可用Seedream4.0，设为3:4竖版，一次生成四张。\n\n四张的“周末咖啡市集”和“周六 10:00—18:00”都能读清，没有错字或缺字。第一、二、四张是暖米色背景，拿铁、两枚咖啡豆和木桌放在下半部，水彩手绘感，画面填满，可以挑来当活动海报草稿。\n\n第三张要单独筛一下：文件同样是1728×2304，但画面缩在中间，左右是明显的黑边。文件比例正确，不代表画面已经铺满，挑图时还是要打开原图看。\n\n四张右下角都有“即梦AI”标志。作为使用须知一并展示；对外使用前，还需要确认平台的生成标识与发布要求。\n\n本次只测一轮四张，不能据此推算稳定性。就这组结果而言，中文文案可以用，画幅还需要人来挑。",
+      "tags": [
+        "即梦AI",
+        "AI海报",
+        "文生图"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 2,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "结果概括",
+      "angle": "免费账号使用Seedream4.0生成咖啡市集海报，一轮四张。四张中文标题和活动时间都可读，三张画面满版，第三张左右有黑边。适合先做活动海报草稿，再按实际画面挑选。",
+      "title": "即梦AI咖啡海报：四张中文全对，三张满版",
+      "insight": "免费账号使用Seedream4.0生成咖啡市集海报，一轮四张。四张中文标题和活动时间都可读，三张画面满版，第三张左右有黑边。适合先做活动海报草稿，再按实际画面挑选。",
+      "confidence": 0.95,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.85,
+      "relatedArtifactIds": [
+        "8bb6b22d-a5c9-48b3-98e0-3a6f9cbcf49f",
+        "9cccb333-0438-436f-8b18-2db0074e2fda",
+        "1806165d-7294-4e2b-8b1b-70b766743143",
+        "d9bb7ca5-c9b4-400e-a5bf-0e14662c472d"
+      ],
+      "relatedTestCaseIds": [
+        "f16b8d24-5e82-445c-a582-fc605e0eed40"
+      ],
+      "supportingEvidence": [
+        "四张都能读出“周末咖啡市集”和“周六 10:00—18:00”，没有错字或缺字；第二、三张标题排成两行，第一、四张是一行。",
+        "第一、二、四张是暖米色背景，拿铁、两枚咖啡豆和木桌在下半部分，水彩手绘感，标题和时间在上方，画面填满。",
+        "四张文件都是1728×2304的3:4，但第三张的画面缩在中间，左右是明显的黑边，没有填满画幅。"
+      ],
+      "discussionPotential": 0.75
+    },
+    "recommendations": [
+      {
+        "artifactId": "9cccb333-0438-436f-8b18-2db0074e2fda",
+        "order": 1,
+        "reason": "本次测试保存的原始图片",
+        "supportsClaim": "画面填满",
+        "supportsParagraph": 2
+      },
+      {
+        "artifactId": "1806165d-7294-4e2b-8b1b-70b766743143",
+        "order": 2,
+        "reason": "本次测试保存的原始图片",
+        "supportsClaim": "左右是明显的黑边",
+        "supportsParagraph": 3
+      }
+    ]
+  },
+  {
+    "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+    "sourceFindingId": "83702ae3-594e-46fc-b864-c2063b1523fa",
+    "sourcePackId": "56aad556-c550-47dc-90f9-864a681ec447",
+    "sourcePackVersion": 9,
+    "findings": {
+      "summary": "腾讯元宝在默认“快速回答”中，逐项回答了Notion免费版的文件上传、页面历史和工作区块数限制。三项都附官方链接、英文引文和查询日期；适合拿来定位待核对的参数。",
+      "findings": [
+        {
+          "id": "file-and-history-verified",
+          "title": "上传上限和页面历史均给出可核对的结论",
+          "impact": "能够快速定位两个具体限制，读者可沿官方入口核验，避免只收到无来源的数字。",
+          "category": "good",
+          "productId": "97ca7eac-55ed-473e-b923-972bb916db8a",
+          "confidence": 0.95,
+          "testCaseId": "20d35720-2b80-456a-a15a-2f55f693266e",
+          "observation": "回复写明单文件5MB、页面历史7天，两项都附 https://www.notion.so/pricing 和原文依据；打开定价页，Free栏目能对上这两项。",
+          "evidenceArtifactIds": [
+            "4a945502-4514-4105-8732-b76fabca4378"
+          ]
+        },
+        {
+          "id": "workspace-distinction-verified",
+          "title": "说明了个人与多人工作区的块数差异",
+          "impact": "没有把单人的“无限”套到多人场景上。回复没展开guest协作方式，多人使用前可以再看一眼官方文档。",
+          "category": "good",
+          "productId": "97ca7eac-55ed-473e-b923-972bb916db8a",
+          "confidence": 0.95,
+          "testCaseId": "20d35720-2b80-456a-a15a-2f55f693266e",
+          "observation": "回复区分了单人工作区块数无限、2人及以上免费工作区限1000块，引用 https://www.notion.so/help/understanding-block-usage，还注明官方用的是“workspace owner”表述；对照帮助文档的表格和脚注，内容一致。",
+          "evidenceArtifactIds": [
+            "4a945502-4514-4105-8732-b76fabca4378"
+          ]
+        },
+        {
+          "id": "concise-source-backed-answer",
+          "title": "三个问题逐项回答，统一标明日期且未超字数",
+          "impact": "按问题就能查，日期和来源也方便以后核对政策有没有变。",
+          "category": "good",
+          "productId": "97ca7eac-55ed-473e-b923-972bb916db8a",
+          "confidence": 0.95,
+          "testCaseId": "20d35720-2b80-456a-a15a-2f55f693266e",
+          "observation": "回复开头写了查询日期2026-10-14，三个问题各有结论、官方地址和引用，全文532字符，没超过600字的要求。",
+          "evidenceArtifactIds": [
+            "4a945502-4514-4105-8732-b76fabca4378"
+          ]
+        }
+      ],
+      "limitations": [
+        "只测Notion的三个问题；参数反映2026-10-14的这次回答，使用前应核对现行官方说明。",
+        "证据保存了原回复文本和当时的核对备注，没有官方页面截图，也没有在Notion实际上传文件或邀请成员。",
+        "底层模型和联网工具未确认；没有可用于速度比较的耗时记录。"
+      ]
+    },
+    "copy": {
+      "title": "腾讯元宝查Notion：三个限制都附来源",
+      "body": "查Notion免费版，容易把上传上限、页面历史和协作限制混在一起。这次把三个问题交给腾讯元宝，用默认“快速回答”，只问一轮。\n\n回复标了查询日期2026-10-14。单文件上限写5MB，页面历史写7天，两项都给出定价页链接和英文引文。不是只报一个数字，读者能沿着入口继续查。\n\n第三项更有用：它区分单人工作区与多人工作区，写明单人块数无限、2人及以上的免费工作区限1,000块，还提醒官方用的是“workspace owner”这个表述，而不是笼统的普通成员。来源指向Understanding block usage帮助文档。\n\n这条532字符的回复，适合当参数核对的起点。它提供了可追查的入口，但这次没有在Notion里实际上传或邀请成员。参数还要以使用时的官方说明为准。",
+      "tags": [
+        "腾讯元宝",
+        "Notion",
+        "免费版"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 0,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "结果概括",
+      "angle": "腾讯元宝在默认“快速回答”中，逐项回答了Notion免费版的文件上传、页面历史和工作区块数限制。三项都附官方链接、英文引文和查询日期；适合拿来定位待核对的参数。",
+      "title": "腾讯元宝查Notion：三个限制都附来源",
+      "insight": "腾讯元宝在默认“快速回答”中，逐项回答了Notion免费版的文件上传、页面历史和工作区块数限制。三项都附官方链接、英文引文和查询日期；适合拿来定位待核对的参数。",
+      "confidence": 0.95,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.85,
+      "relatedArtifactIds": [
+        "4a945502-4514-4105-8732-b76fabca4378"
+      ],
+      "relatedTestCaseIds": [
+        "20d35720-2b80-456a-a15a-2f55f693266e"
+      ],
+      "supportingEvidence": [
+        "回复写明单文件5MB、页面历史7天，两项都附 https://www.notion.so/pricing 和原文依据；打开定价页，Free栏目能对上这两项。",
+        "回复区分了单人工作区块数无限、2人及以上免费工作区限1000块，引用 https://www.notion.so/help/understanding-block-usage，还注明官方用的是“workspace owner”表述；对照帮助文档的表格和脚注，内容一致。",
+        "回复开头写了查询日期2026-10-14，三个问题各有结论、官方地址和引用，全文532字符，没超过600字的要求。"
+      ],
+      "discussionPotential": 0.7
+    },
+    "recommendations": []
+  },
+  {
+    "projectId": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+    "sourceFindingId": "7872ea8b-7686-4c4a-8941-fd2f73e5d54f",
+    "sourcePackId": "95140f91-36f7-4753-8c20-da8cd7d5ad8d",
+    "sourcePackVersion": 4,
+    "findings": {
+      "summary": "Kimi对剪映、百度度加和来画做了一轮短视频工具选型整理，按流程、字幕配音、动画、导出水印与价格组织材料。查不到的关键项明确标为待核验，适合列候选和待查清单，不能直接当采购结论。",
+      "findings": [
+        {
+          "id": "structured-research-coverage",
+          "title": "三款工具按同一组问题整理，方便初筛",
+          "impact": "可以直接拿来列候选工具和要核对的事项，不用从零整理。",
+          "category": "good",
+          "productId": "90c9c462-6b8e-438d-b0cb-daed37d4845c",
+          "confidence": 0.9,
+          "testCaseId": "155aefad-0528-427a-b404-026cc5432f84",
+          "observation": "回复分别讲了剪映/CapCut、百度度加、来画LAiPIC的操作流程、字幕配音、动画、导出水印和价格，附了官方首页、教程和定价页链接，全文1211字符，最后按预算和场景给了建议。",
+          "evidenceArtifactIds": [
+            "e414528b-1105-4269-adb1-840e29cad38e"
+          ]
+        },
+        {
+          "id": "uncertainty-marked",
+          "title": "没有把查不到的价格和水印限制编成确定答案",
+          "impact": "有助于读者区分已给出的说明与待确认限制。这是信息边界提示，不能据此认定这些工具没有相应功能。",
+          "category": "good",
+          "productId": "90c9c462-6b8e-438d-b0cb-daed37d4845c",
+          "confidence": 0.9,
+          "testCaseId": "155aefad-0528-427a-b404-026cc5432f84",
+          "observation": "剪映的导出分辨率、水印策略和会员价，度加的导出、水印和价格，都标了“未找到官方来源可核验”；剪映部分能力和来画的批量效率标了“官网宣传，未实测”。",
+          "evidenceArtifactIds": [
+            "e414528b-1105-4269-adb1-840e29cad38e"
+          ]
+        },
+        {
+          "id": "decision-input-gaps",
+          "title": "采购关键限制还需要用户继续核对",
+          "impact": "适合当选型起点，但光看这份报告还算不出3人团队的总成本和批量产能，价格和协作条件要按官网再核一遍。",
+          "category": "neutral",
+          "productId": "90c9c462-6b8e-438d-b0cb-daed37d4845c",
+          "confidence": 0.9,
+          "testCaseId": "155aefad-0528-427a-b404-026cc5432f84",
+          "observation": "剪映、度加的导出、水印和价格还是空白；来画给了具体价格和配额，还提醒Pro只有1个账号，3人同时用要确认多账号或企业版。",
+          "evidenceArtifactIds": [
+            "e414528b-1105-4269-adb1-840e29cad38e"
+          ]
+        },
+        {
+          "id": "source-label-inconsistent",
+          "title": "官网能力介绍的未实测标记不完全一致",
+          "impact": "官网描述只能说明官方怎么介绍，不代表实际成片效果；这次只是选型研究，没有实际试用这些视频工具。",
+          "category": "neutral",
+          "productId": "90c9c462-6b8e-438d-b0cb-daed37d4845c",
+          "confidence": 0.9,
+          "testCaseId": "155aefad-0528-427a-b404-026cc5432f84",
+          "observation": "报告对剪映部分能力和来画批量效率标注官网宣传未实测；对度加输入文案成片、台词音色编辑和来画字幕配音等能力使用官方描述或教程，但未逐项附相同的未实测标记。",
+          "evidenceArtifactIds": [
+            "e414528b-1105-4269-adb1-840e29cad38e"
+          ]
+        }
+      ],
+      "limitations": [
+        "本次从深度研究入口提交，但完成后界面显示快速/进阶，专用深度研究模式及具体模型未确认；结论只归于这次Kimi回复。",
+        "保存了原回复文本，部分官方链接曾核对，未逐条验证全部引用，也没有实际试用这几款视频工具。",
+        "单次研究，耗时与套餐未充分记录，不比较速度或付费档位表现。"
+      ]
+    },
+    "copy": {
+      "title": "Kimi筛短视频工具：查不到的先留待核验",
+      "body": "给3人营销团队选文案转短视频工具，先让Kimi整理一轮：操作流程、字幕配音、动画、导出水印和价格，每项带官方链接。它给了剪映、百度度加和来画三款候选，原回复共1211字符。\n\n值得保留的是它对未知项的处理。剪映的导出分辨率、水印策略和会员价，度加的导出、水印和价格，都写了“未找到官方来源可核验”；部分能力还标出“官网宣传，未实测”。没有答案的地方，至少不会被一组确定数字掩盖。\n\n来画的价格写得具体：普通会员¥398/年，Pro¥4998/年。回复同时提醒，价格表里的Pro账号数为1，3人并发使用还要确认多账号或企业版。这些是当时回复引用的价格，不能直接当作今天的团队成本。\n\n标注也不完全一致。度加的文案成片、台词音色编辑和来画的字幕配音同样来自官网，却没有逐项附上“未实测”。有官网描述，不等于已经看过成片效果。\n\n本次实际使用的专用模式没有确认，因此这里只评价这次Kimi回复，不将其作为专用深度研究能力的验证。候选和待查事项可以拿来起步，采购前仍需核对现行价格、账号和导出条件。",
+      "tags": [
+        "Kimi",
+        "短视频工具",
+        "工具选型"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 0,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "结果概括",
+      "angle": "Kimi对剪映、百度度加和来画做了一轮短视频工具选型整理，按流程、字幕配音、动画、导出水印与价格组织材料。查不到的关键项明确标为待核验，适合列候选和待查清单，不能直接当采购结论。",
+      "title": "Kimi筛短视频工具：查不到的先留待核验",
+      "insight": "Kimi对剪映、百度度加和来画做了一轮短视频工具选型整理，按流程、字幕配音、动画、导出水印与价格组织材料。查不到的关键项明确标为待核验，适合列候选和待查清单，不能直接当采购结论。",
+      "confidence": 0.9,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.75,
+      "relatedArtifactIds": [
+        "e414528b-1105-4269-adb1-840e29cad38e"
+      ],
+      "relatedTestCaseIds": [
+        "155aefad-0528-427a-b404-026cc5432f84"
+      ],
+      "supportingEvidence": [
+        "回复分别讲了剪映/CapCut、百度度加、来画LAiPIC的操作流程、字幕配音、动画、导出水印和价格，附了官方首页、教程和定价页链接，全文1211字符，最后按预算和场景给了建议。",
+        "剪映的导出分辨率、水印策略和会员价，度加的导出、水印和价格，都标了“未找到官方来源可核验”；剪映部分能力和来画的批量效率标了“官网宣传，未实测”。",
+        "剪映、度加的导出、水印和价格还是空白；来画给了具体价格和配额，还提醒Pro只有1个账号，3人同时用要确认多账号或企业版。"
+      ],
+      "discussionPotential": 0.6
+    },
+    "recommendations": []
+  },
+  {
+    "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+    "sourceFindingId": "7badc009-8595-44fc-a262-79a3fa268f46",
+    "sourcePackId": "f4409589-f93c-4c7e-ab3d-d1f530763ef1",
+    "sourcePackVersion": 13,
+    "findings": {
+      "summary": "万彩AI把一篇智能手环营销文章转成了视频。标题环节出现“长度不能超过15字”的提示，原测试备注记录需要手动缩短；视频素材中能看到对应的产品主题。本次更适合评价生成流程，不能凭局部画面证明全片准确。",
+      "findings": [
+        {
+          "id": "auto-title-length-limit",
+          "title": "AI自动生成标题长度限制需手动修改",
+          "impact": "自动起标题之后仍需人工处理长度，使用时应检查各页标题。",
+          "category": "problem",
+          "productId": "3ef9face-7b29-4c5e-af8d-82842afa7fe9",
+          "confidence": 0.9,
+          "testCaseId": "0af36b69-e7a6-417d-8f93-a3583b96f301",
+          "observation": "原始截图出现“结尾页 - 标题 长度不能超过15字”的提示，测试备注记录AI自动标题需要手动修改。",
+          "evidenceArtifactIds": [
+            "142aa6bf-21b4-4110-896a-a0a442247558"
+          ]
+        },
+        {
+          "id": "good-content-consistency",
+          "title": "视频中保留了智能手环产品信息",
+          "impact": "可以作为文章转视频的初稿，仍需逐项核对原文和成片。",
+          "category": "good",
+          "productId": "3ef9face-7b29-4c5e-af8d-82842afa7fe9",
+          "confidence": 0.8,
+          "testCaseId": "0af36b69-e7a6-417d-8f93-a3583b96f301",
+          "observation": "已保存的视频包含本次智能手环营销材料对应的产品信息；可回看原视频检查具体呈现。",
+          "evidenceArtifactIds": [
+            "4c3901bc-37f7-430c-bc5d-1100207ff08b"
+          ]
+        },
+        {
+          "id": "good-theme-matching",
+          "title": "主题画面可作为初稿参考",
+          "impact": "主题匹配可以辅助挑选素材，但不能代替对全片画面和声音的检查。",
+          "category": "good",
+          "productId": "3ef9face-7b29-4c5e-af8d-82842afa7fe9",
+          "confidence": 0.85,
+          "testCaseId": "0af36b69-e7a6-417d-8f93-a3583b96f301",
+          "observation": "本次选择科技产品主题，保存的视频与智能手环场景相关。",
+          "evidenceArtifactIds": [
+            "4c3901bc-37f7-430c-bc5d-1100207ff08b"
+          ]
+        }
+      ],
+      "limitations": [
+        "只测一篇营销文章，标题提示不代表每次都会出现。",
+        "保存视频时长约103秒，超过任务期望的60秒；没有可核验的字幕轨或完整语音转写，不对配音和全片一致性下结论。"
+      ]
+    },
+    "copy": {
+      "title": "万彩AI文章转视频：自动标题还得手动缩短",
+      "body": "把《智能手环 Pro 产品介绍》交给万彩AI，目标是生成不超过60秒、带动画的短视频。这次最明确的体验问题出现在标题环节。\n\n标题由系统自动生成，界面随后提示“结尾页 - 标题 长度不能超过15字”。原始截图保留了这条提示，测试备注也记录了手动改标题的过程。自动生成之后，用户仍得检查各页标题长度。\n\n视频文件也保存下来了，时长约103秒，超过了这次任务期望的60秒。因此，即使内容和科技产品主题能够对应，也不能说它完整满足了交付要求；时长同样需要在导出后检查。\n\n本次没有可核验的字幕轨或完整语音转写，不把局部画面里的产品信息扩大成“全片无遗漏”或“配音质量过关”。就这次样本而言，它能把文章推进到视频初稿，但标题和时长还需要人工收尾。",
+      "tags": [
+        "万彩AI",
+        "AI视频生成",
+        "文章转视频"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 1,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "体验问题",
+      "angle": "万彩AI把一篇智能手环营销文章转成了视频。标题环节出现“长度不能超过15字”的提示，原测试备注记录需要手动缩短；视频素材中能看到对应的产品主题。本次更适合评价生成流程，不能凭局部画面证明全片准确。",
+      "title": "万彩AI文章转视频：自动标题还得手动缩短",
+      "insight": "万彩AI把一篇智能手环营销文章转成了视频。标题环节出现“长度不能超过15字”的提示，原测试备注记录需要手动缩短；视频素材中能看到对应的产品主题。本次更适合评价生成流程，不能凭局部画面证明全片准确。",
+      "confidence": 0.9,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.7,
+      "relatedArtifactIds": [
+        "142aa6bf-21b4-4110-896a-a0a442247558",
+        "4c3901bc-37f7-430c-bc5d-1100207ff08b"
+      ],
+      "relatedTestCaseIds": [
+        "0af36b69-e7a6-417d-8f93-a3583b96f301"
+      ],
+      "supportingEvidence": [
+        "原始截图出现“结尾页 - 标题 长度不能超过15字”的提示，测试备注记录AI自动标题需要手动修改。",
+        "已保存的视频包含本次智能手环营销材料对应的产品信息；可回看原视频检查具体呈现。",
+        "本次选择科技产品主题，保存的视频与智能手环场景相关。"
+      ],
+      "discussionPotential": 0.8
+    },
+    "recommendations": [
+      {
+        "artifactId": "142aa6bf-21b4-4110-896a-a0a442247558",
+        "order": 1,
+        "reason": "本次测试保存的原始图片",
+        "supportsClaim": "结尾页 - 标题 长度不能超过15字",
+        "supportsParagraph": 2
+      }
+    ]
+  },
+  {
+    "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+    "sourceFindingId": "fc8863a1-4d01-4ab9-94cd-390035b50b1b",
+    "sourcePackId": "e3017059-6154-447b-9a10-95730dcc2e49",
+    "sourcePackVersion": 10,
+    "findings": {
+      "summary": "懂你AI针对“强势、注重结果、时间观念强的老板”这一加薪沟通场景，给出开场话术、预算回应和准备清单。建议足够具体，可以用来演练；这次没有真实谈薪结果，不能据此判断成功率。",
+      "findings": [
+        {
+          "id": "structured-communication-strategy",
+          "title": "结构化沟通策略生成，贴合用户画像",
+          "impact": "可以据此演练开场与预算回应，实际效果仍取决于真实沟通。",
+          "category": "good",
+          "productId": "bf019415-8965-4e20-b797-325bb82c3271",
+          "confidence": 0.9,
+          "testCaseId": "0e5dbcaf-0f06-4270-8953-0e17e4ac9875",
+          "observation": "产品生成的沟通策略明确针对老板“强势、注重结果、时间观念强”的性格画像，建议用户“结论先行，别铺垫”，并提供了具体的开场话术和应对老板说“预算紧张”的回应话术，将沟通焦点从“公司有没有钱”转移到“我值多少钱”，体现了对用户画像的精准理解。",
+          "evidenceArtifactIds": [
+            "546af2f4-6e0b-47e7-be97-d517c1cae32f"
+          ]
+        },
+        {
+          "id": "actionable-advice-with-emotion-support",
+          "title": "提供可执行的行动清单及情绪支持建议",
+          "impact": "准备事项清楚，适合整理成谈话前的检查清单；并未实测情绪或谈判效果。",
+          "category": "good",
+          "productId": "bf019415-8965-4e20-b797-325bb82c3271",
+          "confidence": 0.9,
+          "testCaseId": "0e5dbcaf-0f06-4270-8953-0e17e4ac9875",
+          "observation": "产品不仅提供了沟通话术，还给出了具体的行动清单（如“写下项目的3个硬数字”、“提前约15分钟”、“想好目标数字和区间”等），并针对用户的紧张情绪，通过心理建设（“你刚交了一个超预期的核心项目，这是你手里最硬的牌，凭啥紧张？”）和具体方法（如“把模糊变成日期”）来降低焦虑，使建议更具可操作性和实用性。",
+          "evidenceArtifactIds": [
+            "546af2f4-6e0b-47e7-be97-d517c1cae32f"
+          ]
+        },
+        {
+          "id": "realistic-power-dynamics-consideration",
+          "title": "体现对职场权力关系和风险的现实考量",
+          "impact": "提示了场合与承诺标准，读者仍需根据实际关系判断是否适用。",
+          "category": "good",
+          "productId": "bf019415-8965-4e20-b797-325bb82c3271",
+          "confidence": 0.8,
+          "testCaseId": "0e5dbcaf-0f06-4270-8953-0e17e4ac9875",
+          "observation": "产品在建议中体现了对职场权力关系的现实考量，例如建议“别当众提，别在饭局上顺嘴提——强势的人会觉得你在给他下套”，并指导用户如何应对老板的“挡箭牌”（如“预算紧张”），通过将话题转向“承诺和标准”来识别老板的真实意图，帮助用户做出更明智的判断。",
+          "evidenceArtifactIds": [
+            "546af2f4-6e0b-47e7-be97-d517c1cae32f"
+          ]
+        }
+      ],
+      "limitations": [
+        "只测一个模拟加薪场景和一种老板画像，没有实际谈薪结果，不代表能提高加薪成功率。",
+        "未比较其他性格类型或加入真实项目数据后的个性化效果。"
+      ]
+    },
+    "copy": {
+      "title": "懂你AI谈薪建议：把模糊回应变成日期",
+      "body": "面对强势、注重结果又没耐心的老板，谈加薪该怎么开口？这次给懂你AI的是一个模拟场景：核心模块刚超预期交付，但提问者很紧张。\n\n它先建议“结论先行，别铺垫”，开场话术直接说明想谈薪资、占用15分钟，说完等对方接话。这个回答围绕老板的时间观念展开，比泛泛地说“自信表达”具体。\n\n遇到“预算紧张”，它把讨论转向贡献是否配得上调整，以及什么时间、达到什么标准可以推进。原话“把模糊变成日期”，是这份回答最值得留的一点：先把下一步谈清楚，而不是把一句含糊的回应当作承诺。\n\n准备清单也很明确：写下项目的3个硬数字、想好目标区间和底线、提前约15分钟；场合上提醒别当众提，也别在饭局上顺嘴提。\n\n这些话术可以用来准备和演练，但这次只测了模拟场景，没有真实谈薪结果，也没比较其他老板画像。建议具体，不等于已经证明能加薪成功。",
+      "tags": [
+        "加薪谈判",
+        "职场沟通",
+        "懂你AI"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 0,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "场景测评",
+      "angle": "懂你AI针对“强势、注重结果、时间观念强的老板”这一加薪沟通场景，给出开场话术、预算回应和准备清单。建议足够具体，可以用来演练；这次没有真实谈薪结果，不能据此判断成功率。",
+      "title": "懂你AI谈薪建议：把模糊回应变成日期",
+      "insight": "懂你AI针对“强势、注重结果、时间观念强的老板”这一加薪沟通场景，给出开场话术、预算回应和准备清单。建议足够具体，可以用来演练；这次没有真实谈薪结果，不能据此判断成功率。",
+      "confidence": 0.9,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.85,
+      "relatedArtifactIds": [
+        "546af2f4-6e0b-47e7-be97-d517c1cae32f"
+      ],
+      "relatedTestCaseIds": [
+        "0e5dbcaf-0f06-4270-8953-0e17e4ac9875"
+      ],
+      "supportingEvidence": [
+        "产品生成的沟通策略明确针对老板“强势、注重结果、时间观念强”的性格画像，建议用户“结论先行，别铺垫”，并提供了具体的开场话术和应对老板说“预算紧张”的回应话术，将沟通焦点从“公司有没有钱”转移到“我值多少钱”，体现了对用户画像的精准理解。",
+        "产品不仅提供了沟通话术，还给出了具体的行动清单（如“写下项目的3个硬数字”、“提前约15分钟”、“想好目标数字和区间”等），并针对用户的紧张情绪，通过心理建设（“你刚交了一个超预期的核心项目，这是你手里最硬的牌，凭啥紧张？”）和具体方法（如“把模糊变成日期”）来降低焦虑，使建议更具可操作性和实用性。",
+        "产品在建议中体现了对职场权力关系的现实考量，例如建议“别当众提，别在饭局上顺嘴提——强势的人会觉得你在给他下套”，并指导用户如何应对老板的“挡箭牌”（如“预算紧张”），通过将话题转向“承诺和标准”来识别老板的真实意图，帮助用户做出更明智的判断。"
+      ],
+      "discussionPotential": 0.75
+    },
+    "recommendations": []
+  },
+  {
+    "projectId": "92a77a0c-558e-4242-ac5e-3691e3884c07",
+    "sourceFindingId": "fcc8a33a-878b-43f2-ba03-da8a1d8540c7",
+    "sourcePackId": "7c8ab6cd-3594-43d6-9ab3-e35acf6f125f",
+    "sourcePackVersion": 3,
+    "findings": {
+      "summary": "同一份销售CSV，DeepSeek给出较多文字解读，豆包提供更集中的表格和图表。两份报告的总销售额却不一致；目前能比较的是呈现方式，不能据此确认计算准确或经营建议可直接执行。",
+      "findings": [
+        {
+          "id": "deepseek-report-completeness",
+          "title": "报告内容完整，包含详细分析",
+          "impact": "适合参考报告结构，数据与建议仍需核对，不能直接当决策依据。",
+          "category": "good",
+          "productId": "ae34fd88-7ba7-45d8-9136-108864b08e66",
+          "confidence": 0.9,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "DeepSeek 生成的报告完整覆盖了总体概况、关键指标表现、趋势与异常分析、结论与建议四个部分，每个部分都提供了详细的数据解读和具体分析，例如对电子产品销售波动的具体日期和金额描述，以及对服装品类客单价稳定性的深入分析。",
+          "evidenceArtifactIds": [
+            "70119729-0cd2-44ea-ac13-e02b415a1fc2"
+          ]
+        },
+        {
+          "id": "deepseek-data-insight-depth",
+          "title": "解释较多，但原因仍属于产品推测",
+          "impact": "促销活动、价格敏感度等只是报告提出的解释，原CSV没有证明因果关系。",
+          "category": "good",
+          "productId": "ae34fd88-7ba7-45d8-9136-108864b08e66",
+          "confidence": 0.9,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "报告中的数据解读不仅停留在表面数字，还深入分析了数据背后的原因和影响，例如指出电子产品销售波动可能与促销活动有关，服装品类客单价低可能反映用户价格敏感度高，这些洞察为用户理解数据提供了更深层次的理解。",
+          "evidenceArtifactIds": [
+            "70119729-0cd2-44ea-ac13-e02b415a1fc2"
+          ]
+        },
+        {
+          "id": "deepseek-format-clarity",
+          "title": "报告格式清晰，结构合理",
+          "impact": "标题、列表和加粗让信息更容易定位，格式清晰不代表数据准确。",
+          "category": "good",
+          "productId": "ae34fd88-7ba7-45d8-9136-108864b08e66",
+          "confidence": 0.8,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "报告采用清晰的标题和子标题结构，内容分段明确，使用加粗和列表等方式突出重点，使得报告易于阅读和理解。例如，关键指标表现部分使用小标题和项目符号，使数据呈现更加直观。",
+          "evidenceArtifactIds": [
+            "70119729-0cd2-44ea-ac13-e02b415a1fc2"
+          ]
+        },
+        {
+          "id": "douba-report-conciseness",
+          "title": "报告内容简洁，重点突出",
+          "impact": "用户可以快速获取关键信息，适合需要快速了解整体情况的场景，但对于需要深入分析的用户来说，信息量可能不足。",
+          "category": "neutral",
+          "productId": "fefadb06-fa97-4b63-8793-dca7897a0d9b",
+          "confidence": 0.8,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "豆包生成的报告相对简洁，重点突出核心指标和结论，例如在总体概况部分直接给出总销售额、订单量和平均客单价，并在关键指标表现部分使用表格清晰展示各品类的销售数据。报告没有包含过多的细节分析，如具体日期的销售波动或异常点识别。",
+          "evidenceArtifactIds": [
+            "c16a37b7-4f7c-411d-b13f-2eca27767416"
+          ]
+        },
+        {
+          "id": "douba-data-interpretation",
+          "title": "豆包更偏重指标汇总",
+          "impact": "适合先看指标概况；更深入的原因判断仍需额外数据。",
+          "category": "neutral",
+          "productId": "fefadb06-fa97-4b63-8793-dca7897a0d9b",
+          "confidence": 0.7,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "豆包使用总量、品类表格与图表组织主要信息，文字解读比DeepSeek简短。",
+          "evidenceArtifactIds": [
+            "c16a37b7-4f7c-411d-b13f-2eca27767416"
+          ]
+        },
+        {
+          "id": "douba-format-visual-aids",
+          "title": "报告包含图表，提升可读性",
+          "impact": "可以比较图表呈现方式，图表中的数值仍需与原CSV核对。",
+          "category": "good",
+          "productId": "fefadb06-fa97-4b63-8793-dca7897a0d9b",
+          "confidence": 0.8,
+          "testCaseId": "82f1f60d-bf89-4756-924f-d0526b8dc79b",
+          "observation": "报告中使用饼图展示三大品类销售额占比，使用折线图展示近30天各品类日销售额趋势，这些视觉元素使数据呈现更加直观，有助于用户快速理解数据分布和变化趋势。",
+          "evidenceArtifactIds": [
+            "c16a37b7-4f7c-411d-b13f-2eca27767416"
+          ]
+        }
+      ],
+      "limitations": [
+        "豆包写总销售额266,100元，DeepSeek写约25.47万元；未独立复算CSV，不判断哪一份正确。",
+        "只测一个CSV样本，不把报告里的促销、价格敏感等解释当成已证实原因。"
+      ]
+    },
+    "copy": {
+      "title": "DeepSeek与豆包：报告形式不同，总量也不同",
+      "body": "同一份近30天销售CSV、同一段提示词，分别交给DeepSeek和豆包，要求输出总体概况、关键指标、趋势异常与建议。两份报告放在一起，先看到的是呈现方式不同。\n\nDeepSeek按四个部分展开，细分标题、列表和加粗较多，还会提出电子产品销售波动与促销、服装客单价与价格敏感度有关的解释。这些是报告里的推测，CSV本身没有证明因果。\n\n豆包更集中：开头给总量，品类指标放进表格，再用饼图和折线图展示占比与趋势。想先浏览指标和图表，它的排布更直观。\n\n但两份报告的总销售额也不一致：豆包写266,100元，DeepSeek写约25.47万元。本次没有独立复算原CSV，无法判断哪份正确。这个差异比谁写得更长更值得先核对。\n\n因此，这次可以比较文字解读和图表形式，不能把任一份报告直接当经营结论。选好呈现方式之后，还得核对总量、指标口径和异常解释。",
+      "tags": [
+        "DeepSeek",
+        "豆包",
+        "数据分析"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "分享真实体验",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 0,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-1",
+      "type": "功能对比",
+      "angle": "同一份销售CSV，DeepSeek给出较多文字解读，豆包提供更集中的表格和图表。两份报告的总销售额却不一致；目前能比较的是呈现方式，不能据此确认计算准确或经营建议可直接执行。",
+      "title": "DeepSeek与豆包：报告形式不同，总量也不同",
+      "insight": "同一份销售CSV，DeepSeek给出较多文字解读，豆包提供更集中的表格和图表。两份报告的总销售额却不一致；目前能比较的是呈现方式，不能据此确认计算准确或经营建议可直接执行。",
+      "confidence": 0.9,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.85,
+      "relatedArtifactIds": [
+        "70119729-0cd2-44ea-ac13-e02b415a1fc2",
+        "c16a37b7-4f7c-411d-b13f-2eca27767416"
+      ],
+      "relatedTestCaseIds": [
+        "82f1f60d-bf89-4756-924f-d0526b8dc79b"
+      ],
+      "supportingEvidence": [
+        "DeepSeek 生成的报告完整覆盖了总体概况、关键指标表现、趋势与异常分析、结论与建议四个部分，每个部分都提供了详细的数据解读和具体分析，例如对电子产品销售波动的具体日期和金额描述，以及对服装品类客单价稳定性的深入分析。",
+        "报告中的数据解读不仅停留在表面数字，还深入分析了数据背后的原因和影响，例如指出电子产品销售波动可能与促销活动有关，服装品类客单价低可能反映用户价格敏感度高，这些洞察为用户理解数据提供了更深层次的理解。",
+        "报告采用清晰的标题和子标题结构，内容分段明确，使用加粗和列表等方式突出重点，使得报告易于阅读和理解。例如，关键指标表现部分使用小标题和项目符号，使数据呈现更加直观。"
+      ],
+      "discussionPotential": 0.75
+    },
+    "recommendations": []
+  },
+  {
+    "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+    "sourceFindingId": "73214da3-ecfb-473a-bf6f-991ada29b58d",
+    "sourcePackId": "52d66093-95be-40a0-9b10-8b1d2ec3d0da",
+    "sourcePackVersion": 6,
+    "findings": {
+      "summary": "秘塔AI搜索为“大语言模型在医疗诊断中的应用现状与挑战”整理了分层大纲、思维导图和PPT。结构覆盖较完整，但保存的文本大纲与末尾来源表存在引用编号不对应的问题，更适合搭框架，具体文献仍需逐条核验。",
+      "findings": [
+        {
+          "id": "structured-output-generation",
+          "title": "结构化结果生成能力",
+          "impact": "可作为检索提纲和材料分类的起点，不能据此确认引用正确或研究结论完整。",
+          "category": "good",
+          "productId": "f06bbc5e-c5aa-47ad-a318-611e70cd8335",
+          "confidence": 0.9,
+          "testCaseId": "b1fe106c-7271-46e6-bc26-4c90c26d782c",
+          "observation": "产品成功生成了条理清晰的研究大纲，按一级、二级标题组织信息，覆盖了主要应用场景、技术方法、临床验证效果、伦理与监管问题、当前局限等要求的所有方面。同时生成了对应的思维导图，结构准确，便于快速理解。",
+          "evidenceArtifactIds": [
+            "1f545aa8-a98c-4c02-a26d-053e5a417f95"
+          ]
+        },
+        {
+          "id": "information-annotation",
+          "title": "信息标注与来源引用",
+          "impact": "需要回到对应文献核对具体论点；这条观察只针对保存的文本版本，不概括所有页面的引用系统。",
+          "category": "problem",
+          "productId": "f06bbc5e-c5aa-47ad-a318-611e70cd8335",
+          "confidence": 0.8,
+          "testCaseId": "b1fe106c-7271-46e6-bc26-4c90c26d782c",
+          "observation": "保存的文本大纲使用[43]到[76]等编号，末尾“关键信息来源”表集中列出[77]到[85]，无法仅靠这张表对应前文引用。",
+          "evidenceArtifactIds": [
+            "1f545aa8-a98c-4c02-a26d-053e5a417f95"
+          ]
+        },
+        {
+          "id": "depth-search-capability",
+          "title": "覆盖多个研究主题，权威性仍需核验",
+          "impact": "能帮助列检索清单；列出来源名称不等于每篇论文或每项结论已经独立核实。",
+          "category": "good",
+          "productId": "f06bbc5e-c5aa-47ad-a318-611e70cd8335",
+          "confidence": 0.85,
+          "testCaseId": "b1fe106c-7271-46e6-bc26-4c90c26d782c",
+          "observation": "输出包含应用场景、技术方法、临床验证、伦理监管和局限等主题，并列出文献与机构名称。",
+          "evidenceArtifactIds": [
+            "1f545aa8-a98c-4c02-a26d-053e5a417f95"
+          ]
+        }
+      ],
+      "limitations": [
+        "只检查保存文本的结构与引用对应关系，未逐条核验所有文献和医学数据，不评价临床诊断效果。",
+        "配图是本次保存的PPT原始页面，文本大纲与PPT的引用编号不能混为一套。"
+      ]
+    },
+    "copy": {
+      "title": "秘塔AI搜索文献调研：大纲有了，引用还得查",
+      "body": "让秘塔AI搜索整理“大语言模型在医疗诊断中的应用现状与挑战”，要求覆盖应用场景、技术方法、临床验证、伦理监管和局限，并生成大纲与思维导图。\n\n它把材料按层级排开，应用场景下有疾病诊断辅助、医学文本和多模态影像等小节，也生成了对应的PPT。作为陌生主题的检索提纲，这套结构可以拿来起步。配图展示的是本次保存的PPT原始页面。\n\n更需要留意的是文本大纲的引用。比如“疾病诊断辅助”下面用了[43][44]，末尾“关键信息来源”表却集中列出[77]到[85]九条记录。仅靠这张表，找不到前文编号与具体文献的对应关系。\n\n这条问题针对保存的文本版本，不把PPT与文本的编号混为一套，也不据此断言所有引用都无效。产品列出的论文名称、百分比和监管说法没有逐条核实，这里不转述为已证实的医学结论。\n\n我的使用建议是把大纲当作检索清单，再回到论文原文核对论点和来源。能生成框架，与能交付一份引用完整的综述，是两件需要分别检查的事。",
+      "tags": [
+        "秘塔AI搜索",
+        "AI搜索",
+        "文献调研"
+      ],
+      "interactionQuestion": ""
+    },
+    "config": {
+      "goal": "提供深度洞察",
+      "tone": "具体、自然、克制；保留必要的事实边界。",
+      "length": "250–600字，按材料需要",
+      "channel": "小红书",
+      "structure": "自由结构",
+      "imageCount": 2,
+      "stylePreset": "真实体验",
+      "interactionGoal": "可省略",
+      "personalRatingScale": 5,
+      "personalRatingEnabled": false
+    },
+    "selectedIdea": {
+      "id": "idea-2",
+      "type": "问题分析",
+      "angle": "秘塔AI搜索为“大语言模型在医疗诊断中的应用现状与挑战”整理了分层大纲、思维导图和PPT。结构覆盖较完整，但保存的文本大纲与末尾来源表存在引用编号不对应的问题，更适合搭框架，具体文献仍需逐条核验。",
+      "title": "秘塔AI搜索文献调研：大纲有了，引用还得查",
+      "insight": "秘塔AI搜索为“大语言模型在医疗诊断中的应用现状与挑战”整理了分层大纲、思维导图和PPT。结构覆盖较完整，但保存的文本大纲与末尾来源表存在引用编号不对应的问题，更适合搭框架，具体文献仍需逐条核验。",
+      "confidence": 0.8,
+      "recommended": true,
+      "whyInteresting": "从这次样本中说明一项可观察的使用取舍，不扩大为产品整体结论。",
+      "informationValue": 0.75,
+      "relatedArtifactIds": [
+        "1f545aa8-a98c-4c02-a26d-053e5a417f95"
+      ],
+      "relatedTestCaseIds": [
+        "b1fe106c-7271-46e6-bc26-4c90c26d782c"
+      ],
+      "supportingEvidence": [
+        "产品成功生成了条理清晰的研究大纲，按一级、二级标题组织信息，覆盖了主要应用场景、技术方法、临床验证效果、伦理与监管问题、当前局限等要求的所有方面。同时生成了对应的思维导图，结构准确，便于快速理解。",
+        "保存的文本大纲使用[43]到[76]等编号，末尾“关键信息来源”表集中列出[77]到[85]，无法仅靠这张表对应前文引用。",
+        "输出包含应用场景、技术方法、临床验证、伦理监管和局限等主题，并列出文献与机构名称。"
+      ],
+      "discussionPotential": 0.9
+    },
+    "recommendations": [
+      {
+        "artifactId": "5b7cce67-373f-4431-94d7-f704826d3370",
+        "order": 1,
+        "reason": "本次测试保存的原始图片",
+        "supportsClaim": "配图展示的是本次保存的PPT原始页面",
+        "supportsParagraph": 2
+      },
+      {
+        "artifactId": "ba0ca112-544c-4778-8cfa-4a32c5f1802f",
+        "order": 2,
+        "reason": "本次测试保存的原始图片",
+        "supportsClaim": null,
+        "supportsParagraph": null
+      }
+    ]
+  }
+]

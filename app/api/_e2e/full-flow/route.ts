@@ -340,17 +340,29 @@ async function verifySingleRoutes(origin: string, projectId: string, reportTitle
     ["review", ["产品身份已揭晓"], []],
     ["results", ["测评发现", "专业报告（后台生成）"], ["产品体验结果", "综合体验得分", "证据化 Case 素材"]],
     ["report", ["体验报告已生成", reportTitle], ["综合冠军", "最终排名", "第一名"]],
-    ["publish", ["已准备好", postTitle], ["综合冠军", "最终排名", "第一名"]],
+    ["publish", ["社区文章", postTitle], ["综合冠军", "最终排名", "第一名"]],
   ] as const;
   const verified: string[] = [];
+  const authorization = `Basic ${Buffer.from(`${process.env.APP_ACCESS_USERNAME || "studio"}:${process.env.APP_ACCESS_PASSWORD}`).toString("base64")}`;
   for (const [route, required, forbidden] of checks) {
-    const response = await fetch(`${origin}/projects/${projectId}/${route}`, { cache: "no-store" });
+    const response = await fetch(`${origin}/projects/${projectId}/${route}`, { cache: "no-store", headers: { authorization } });
     assert(response.ok, `${route} route returned ${response.status}`);
     const html = await response.text();
     for (const text of required) assert(html.includes(text), `${route} route did not render ${text}`);
     for (const text of forbidden) assert(!html.includes(text), `${route} route exposed comparison-only copy: ${text}`);
     verified.push(route);
   }
+  const publicResults = await fetch(`${origin}/projects/${projectId}/results`, { cache: "no-store" });
+  const resultsHtml = await publicResults.text();
+  assert(publicResults.ok && resultsHtml.includes("测评发现") && !resultsHtml.includes("专业报告（后台生成）"), "Public Findings must use the portfolio view");
+  const publicReport = await fetch(`${origin}/projects/${projectId}/report`, { cache: "no-store", redirect: "manual" });
+  const redirectHtml = await publicReport.text();
+  const redirectsInHeaders = publicReport.status === 307 && publicReport.headers.get("location")?.endsWith(`/projects/${projectId}/results`);
+  const redirectsInStream = publicReport.status === 200 && redirectHtml.includes('http-equiv="refresh"') && redirectHtml.includes(`url=/projects/${projectId}/results`);
+  assert(redirectsInHeaders || redirectsInStream, "Public report must redirect to Findings");
+  const publicPost = await fetch(`${origin}/projects/${projectId}/publish`, { cache: "no-store" });
+  const publicHtml = await publicPost.text();
+  assert(publicPost.ok && publicHtml.includes(postTitle) && publicHtml.includes("社区文章") && !publicHtml.includes("保存修改") && !publicHtml.includes('"generationTrace"'), "Public article must omit editor/source-audit controls");
   return verified;
 }
 

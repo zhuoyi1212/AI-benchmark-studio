@@ -61,6 +61,7 @@ export type PublishWorkspace = {
   sourceType: "findings" | "report";
   reportId: string | null;
   findingsId: string | null;
+  findingsRevisionId?: string | null;
   products: Array<{ id: string; name: string }>;
   testCases: Array<{ id: string; title: string }>;
   screenshots: PublishScreenshot[];
@@ -89,12 +90,15 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
   if (!source) return null;
   const packs = await listPacks(source, 1);
   const latest = packs[0] ?? null;
-  const links = latest?.status === "ready" ? await publishRepository.listArtifacts(latest.id) : [];
+  let links = latest?.status === "ready" ? await publishRepository.listArtifacts(latest.id) : [];
   const ideas = latest ? parseIdeas(latest.content_ideas) : [];
   const selectedIdea = latest?.selected_idea ? selectedContentIdeaSchema.parse(latest.selected_idea) : null;
   const storedConfig = latest && hasKeys(latest.config) ? publishConfigSchema.parse(latest.config) : defaultPublishConfig;
   const config = withAvailableImageCount(withAuthorPerspective(storedConfig, source), source.screenshots.length);
   const storedPost = latest?.community_post ? storedPostSchema(latest.community_post) : null;
+  if (latest?.status !== "ready" && storedPost?.regeneration) {
+    links = await publishRepository.listArtifacts(storedPost.regeneration.sourcePackId);
+  }
   const post = storedPost ? communityPostOutputSchema.parse({
     ...storedPost,
     screenshotRecommendations: links.map((link) => ({
@@ -115,6 +119,7 @@ export async function getPublishWorkspace(projectId: string): Promise<PublishWor
     sourceType: source.kind,
     reportId: source.reportId,
     findingsId: source.findingsId,
+    findingsRevisionId: source.kind === "findings" ? source.findingsRevisionId : null,
     products: source.products,
     testCases: source.testCases,
     screenshots: source.screenshots,
@@ -456,7 +461,7 @@ export async function saveCommunityPostEdit(projectId: string, sourcePackId: str
     throw new PublishExecutionError('文章格式无效，请移除内部标识或检查内容长度后再保存。');
   }
   try {
-    return await publishRepository.createRevision(projectId, pack.id, 'manual', copy as unknown as Json, recommendations as unknown as Json);
+    return await publishRepository.createRevision(projectId, pack.id, 'manual', { ...copy, ...(workspace.findingsRevisionId ? { findingsRevisionId: workspace.findingsRevisionId } : {}) } as unknown as Json, recommendations as unknown as Json);
   } catch {
     throw new PublishExecutionError('保存未完成，文章可能已有新版本，请刷新核对后重试。你的输入仍保留在编辑器中。');
   }
@@ -532,6 +537,7 @@ async function getPublishSource(projectId: string) {
       kind: "findings" as const,
       sourceId: quick.latest.id,
       findingsId: quick.latest.id,
+      findingsRevisionId: quick.latest.editorialRevisionId ?? null,
       reportId: null,
       projectName: quick.projectName,
       projectIntent: quick.projectIntent,

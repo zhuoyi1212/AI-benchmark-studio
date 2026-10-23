@@ -105,7 +105,7 @@ test('public visitors cannot reach mutation services, and authenticated save fai
   assert.equal(calls, 0); assert.equal(form.get('body'), '人工编辑正文');
 });
 
-test('both article views render save/regenerate for admins, persisted human copy and a public read-only view', async () => {
+test('both article views default to the same article preview and expose admin editing separately', async () => {
   const readyPack = await readyFixture();
   readyPack.community_post.manualEdit = { sourcePackId: id, savedAt: '2026-10-12T00:00:00Z', aiReviewed: false };
   const service = harness({ readyPack });
@@ -120,7 +120,8 @@ test('both article views render save/regenerate for admins, persisted human copy
   const { PublishEditor } = load('@/app/projects/[projectId]/publish/publish-editor.tsx');
   for (const quickView of [true, false]) {
     const html = renderToStaticMarkup(React.createElement(PublishEditor, { workspace, workflowState: { stages: {} }, quick: quickView }));
-    assert.match(html, /保存修改/); assert.match(html, /重新生成文章/); assert.match(html, /已保存人工编辑/);
+    assert.match(html, /编辑文章/); assert.match(html, /版本记录/); assert.match(html, /社区文章/);
+    assert.doesNotMatch(html, /textarea|最终复核|事实核对/);
     assert.ok(html.includes(workspace.pack.post.body));
     assert.doesNotMatch(html, /已通过<\/span>/);
   }
@@ -128,12 +129,13 @@ test('both article views render save/regenerate for admins, persisted human copy
   withImage.pack.post.body = '开头已修改。\n\n材料准备建议在这一段。';
   withImage.pack.post.screenshotRecommendations = [{ artifactId: id, order: 1, reason: '原始证据', supportsClaim: '材料准备建议', supportsParagraph: 99 }];
   const marked = renderToStaticMarkup(React.createElement(PublishEditor, { workspace: withImage, workflowState: { stages: {} }, quick: true }));
-  assert.match(marked, /正文第 2 段/); assert.doesNotMatch(marked, /正文第 99 段/);
+  assert.match(marked, /材料准备建议/); assert.doesNotMatch(marked, /正文第 \d+ 段/);
   withImage.pack.post.body = '原来的证据短句已被删除。';
   const unmarked = renderToStaticMarkup(React.createElement(PublishEditor, { workspace: withImage, workflowState: { stages: {} }, quick: true }));
   assert.doesNotMatch(unmarked, /正文第 \d+ 段/);
   readOnly = true;
   const html = renderToStaticMarkup(React.createElement(PublishEditor, { workspace, workflowState: { stages: {} }, quick: true }));
   assert.doesNotMatch(html, /保存修改/); assert.doesNotMatch(html, /重新生成文章/);
-  assert.match(html, /readOnly=""/);
+  assert.doesNotMatch(html, /textarea|编辑文章|版本记录|从截图库选择/);
+  assert.match(html, /社区文章/);
 });

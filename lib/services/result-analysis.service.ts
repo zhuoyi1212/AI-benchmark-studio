@@ -1,4 +1,5 @@
 import "server-only";
+import { analysisExecutionExpired } from "@/lib/analysis-lifecycle";
 
 import { memoPageRead } from "@/lib/supabase/read-scope";
 import { createHash } from "node:crypto";
@@ -96,9 +97,9 @@ async function readResultsWorkspace(projectId: string): Promise<ResultsWorkspace
     latestAnalysis: latest ? {
       id: latest.id,
       attempt: latest.attempt,
-      status: latest.status,
+      status: analysisExecutionExpired(latest) ? "failed" : latest.status,
       stale: latest.final_score_signature !== finalScoreSignature,
-      errorMessage: latest.error_message,
+      errorMessage: analysisExecutionExpired(latest) ? "分析任务已超时，可重新生成；本次记录已保留。" : latest.error_message,
       provider: latest.provider,
       model: latest.model,
       promptVersion: latest.prompt_version,
@@ -143,6 +144,8 @@ export async function generateFinalResultAnalysis(projectId: string): Promise<st
   if (!review || review.status !== "revealed") throw new ResultAnalysisError("产品身份揭晓后才能生成最终结果分析。");
   let analysisId: string | null = null;
   try {
+    const previous = (await resultAnalysisRepository.listByReview(review.reviewSessionId, 1))[0];
+    if (previous && analysisExecutionExpired(previous)) await resultAnalysisRepository.fail(previous.id, "分析任务已超时，保留本次记录并允许重试。");
     analysisId = await resultAnalysisRepository.begin(projectId, review.reviewSessionId);
     const persisted = (await resultAnalysisRepository.listByReview(review.reviewSessionId)).find((analysis) => analysis.id === analysisId);
     if (!persisted) throw new RepositoryError("resultAnalysis.requirePersisted", { message: "ResultAnalysis not found" });

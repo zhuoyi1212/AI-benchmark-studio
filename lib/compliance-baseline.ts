@@ -1,10 +1,9 @@
-// Behaviour that a product is required to show by law or platform rules is a
-// usage condition for readers, never a product defect. Shared by protocol,
-// findings, story planning and writing so each stage applies the same boundary.
-export const complianceBaselineVersion = "compliance-baseline.v1";
+// Shared interpretation boundary. A visible logo alone does not establish its
+// legal purpose; preserve locked historical criteria and raw scores separately.
+export const complianceBaselineVersion = "compliance-baseline.v2-context";
 
-export const complianceBaselineRules = `合规基线：以下行为是法规或平台强制要求，不是产品缺陷。
-- AI 生成的图片、视频、音频按《人工智能生成合成内容标识办法》（2025-09-01 施行）须带显式标识，下载和导出的文件也要带；用户可按平台协议申请无显式标识版本，但发布时仍须声明是 AI 生成，且不得恶意删除标识。
-- 医疗、法律、金融类回答里的风险提示或免责声明，同样属于合规要求。
-设计测试时，不把“不得出现平台生成标识/水印”这类与合规冲突的要求写成成功标准；可以改测标识是否影响画面使用、无标识版本怎么申请。
-提炼发现和写文章时，合规标识不归入问题或缺点，不扣分，不作为文章主线；需要时用一句话作为使用须知说明，不写成“需要开会员去掉”。`;
+export const complianceBaselineRules = `合规基线：区分已确认的合规要求、平台规则与本次可见现象，不凭外观推断法律性质。
+- 生成标识、产品品牌标志和装饰水印不是同一概念。只看到平台名称时，只描述位置和使用影响；不能断言它就是法定显式标识，也不能保证付费后可以移除。
+- 设计新测试时，不把去除已确认必须保留的标识作为成功标准；可以观察标识是否遮挡内容、说明是否清楚。必要的风险提示本身不等于回答质量差，其准确性、相关性和是否妨碍任务可以具体分析。
+- 不笼统宣称所有图片、音视频或医疗、法律、金融回答都适用同一项规定；缺少适用依据时，不新增法律结论或统一免责声明。
+- Judge 必须遵循已锁定的 Rubric，不追溯改分；若历史标准与当前展示解释不同，明确记录标准差异，保留原始评分和证据。新 Findings 和文章描述观察与使用边界，不把历史扣分直接改写成当前结论。`;

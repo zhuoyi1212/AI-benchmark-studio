@@ -51,7 +51,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v13-quick-compliance-baseline",
+    promptVersion: "protocol.v14-quick-context-baseline",
     reasoning: "standard",
     repairReasoning: "standard",
     timeoutMs: standardTimeoutMs,
@@ -61,7 +61,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   protocol_professional: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "protocol.v14-professional-compliance-baseline",
+    promptVersion: "protocol.v15-professional-context-baseline",
     reasoning: "high",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -71,7 +71,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   judge_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "judge.v2-media-evidence",
+    promptVersion: "judge.v3-context-baseline",
     reasoning: "high",
     timeoutMs: judgeTextTimeoutMs,
     maxAttempts: judgeTaskMaxAttempts,
@@ -80,7 +80,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   judge_multimodal: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "judge.v2-media-evidence",
+    promptVersion: "judge.v3-context-baseline",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: judgeTaskMaxAttempts,
@@ -89,7 +89,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   judge_video_evidence: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "judge-video.v1-media-evidence",
+    promptVersion: "judge-video.v2-context-baseline",
     reasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -107,7 +107,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   findings: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "findings.v5-compliance-baseline",
+    promptVersion: "findings.v6-context-baseline",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -125,7 +125,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   content_discovery: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "content-discovery.v8-compliance-baseline",
+    promptVersion: "content-discovery.v9-context-baseline",
     reasoning: "standard",
     repairReasoning: "high",
     timeoutMs: reasoningHeavyTimeoutMs,
@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post.v12-compliance-baseline",
+    promptVersion: "community-post.v13-context-baseline",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -162,7 +162,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v11-compliance-baseline-text",
+    promptVersion: "community-post-evidence-check.v12-context-baseline-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -171,7 +171,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v11-compliance-baseline-vision",
+    promptVersion: "community-post-evidence-check.v12-context-baseline-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

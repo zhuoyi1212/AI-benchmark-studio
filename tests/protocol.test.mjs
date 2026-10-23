@@ -88,7 +88,7 @@ test("models native product capabilities before designing realistic tasks", () =
   assert.match(service, /Coding Agent\/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent\/Skill/);
   assert.match(service, /不得索取私有思维链/);
   assert.doesNotMatch(service, /DeepSeek Harness|Cursor|Claude Code|Perplexity|Midjourney|NotebookLM|Manus|Lovable|Gamma/);
-  assert.match(aiConfig, /promptVersion: "protocol\.v13-quick-compliance-baseline"/);
+  assert.match(aiConfig, /promptVersion: "protocol\.v14-quick-context-baseline"/);
   assert.match(aiConfig, /protocol:[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
 });
 

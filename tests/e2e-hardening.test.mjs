@@ -76,7 +76,7 @@ test("professional analysis and quick Findings both preserve Review reveal", () 
   assert.match(reviewService, /只有锁定最终评分后才能揭晓产品身份/);
   assert.match(resultService, /review\.status !== "revealed"/);
   assert.match(resultsPage, /getExperienceFindingsWorkspace/);
-  assert.match(resultsPage, /已完成的 Blind Judge/);
+  assert.match(resultsPage, /!workflowState\.stages\.review\.completed/);
   assert.match(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
 });
 

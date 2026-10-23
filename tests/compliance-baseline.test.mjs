@@ -3,45 +3,34 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import createLoader from '../scripts/lib/load-typescript.cjs';
-
 const root = fileURLToPath(new URL('..', import.meta.url));
 const load = createLoader(root);
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('compliance baseline treats legally required AI labels as a usage condition, not a defect', () => {
-  const { complianceBaselineRules, complianceBaselineVersion } = load('@/lib/compliance-baseline');
-  assert.equal(complianceBaselineVersion, 'compliance-baseline.v1');
-  assert.match(complianceBaselineRules, /人工智能生成合成内容标识办法/);
-  assert.match(complianceBaselineRules, /不是产品缺陷/);
-  assert.match(complianceBaselineRules, /发布时仍须声明/);
-  assert.match(complianceBaselineRules, /不把“不得出现平台生成标识\/水印”/);
+test('context baseline distinguishes visible branding from verified requirements and preserves locked criteria', () => {
+  const { complianceBaselineRules: rules, complianceBaselineVersion } = load('@/lib/compliance-baseline');
+  assert.equal(complianceBaselineVersion, 'compliance-baseline.v2-context');
+  assert.match(rules, /不能断言它就是法定显式标识/);
+  assert.match(rules, /Judge 必须遵循已锁定的 Rubric，不追溯改分/);
+  assert.match(rules, /不笼统宣称/);
+  assert.doesNotMatch(rules, /下载和导出的文件也要带|同样属于合规要求/);
 });
-
-test('every content stage that judges or writes receives the same compliance baseline', () => {
+test('planning, findings, writing, audits and future Judge share the contextual interpretation', () => {
   const story = load('@/lib/community-story-policy');
-  for (const name of ['storyBriefRules', 'storyWritingRules', 'storyReviewRules', 'storyFinalAuditRules']) {
-    assert.match(story[name], /合规基线/, `${name} must carry the baseline`);
-  }
-  assert.equal(story.storyPolicyVersion, 'community-story.v10-compliance-baseline');
-  assert.match(read('lib/services/protocols.service.ts'), /\+ "\\n" \+ complianceBaselineRules/);
+  for (const name of ['storyBriefRules','storyWritingRules','storyReviewRules','storyFinalAuditRules']) assert.match(story[name], /合规基线/);
+  assert.equal(story.storyPolicyVersion, 'community-story.v11-context-baseline');
+  assert.match(read('lib/services/protocols.service.ts'), /complianceBaselineRules/);
   assert.match(read('lib/services/findings.service.ts'), /videoEvaluationRules,\n\s*complianceBaselineRules,/);
+  assert.match(read('lib/services/judge.service.ts'), /\$\{complianceBaselineRules\}/);
 });
-
-test('public visitors do not see raw execution notes or internal writing plans', () => {
-  assert.match(read('app/projects/[projectId]/test/page.tsx'), /run\.notes && <AdminOnly>/);
-  assert.match(read('app/projects/[projectId]/publish/publish-editor.tsx'), /!quick && !readOnly && <aside/);
-});
-
-test('portfolio report hiding applies to visitors only and leaves other projects visible', () => {
+test('all portfolio visitors have one report policy while administrators retain history', () => {
   const { isReportHiddenFromVisitors } = load('@/lib/portfolio-visibility');
-  const jimeng = '77ac52ae-cb4c-477b-9783-688dead41c12';
-  const yuanbao = '85cc4ea9-9902-4e10-aacc-e2320cbac926';
-  for (const id of [jimeng, yuanbao]) {
-    assert.equal(isReportHiddenFromVisitors(id, 'read-only'), true);
-    assert.equal(isReportHiddenFromVisitors(id, null), true);
-    assert.equal(isReportHiddenFromVisitors(id, 'admin'), false);
+  for (const access of ['read-only',null,'visitor']) {
+    assert.equal(isReportHiddenFromVisitors(access),true);
+    assert.equal(isReportHiddenFromVisitors(null),true);
+    assert.equal(isReportHiddenFromVisitors('admin'),false);
   }
-  assert.equal(isReportHiddenFromVisitors('030347a8-6e7e-494a-bbe0-08e505e10718', 'read-only'), false);
-  assert.match(read('app/projects/[projectId]/report/page.tsx'), /isReportHiddenFromVisitors\(projectId, \(await headers\(\)\)\.get\("x-ai-benchmark-access"\)\)\) redirect\(`\/projects\/\$\{projectId\}\/results`\)/);
-  assert.match(read('app/projects/[projectId]/results/page.tsx'), /\{!reportHidden && <ProfessionalMode/);
+  assert.match(read('app/projects/[projectId]/test/page.tsx'), /admin && run\.notes && <details/);
+  const report = read('app/projects/[projectId]/report/page.tsx');
+  assert.ok(report.indexOf('if (!workflowState.stages.review.completed)') < report.indexOf('const workspace = await getReportWorkspace'));
 });

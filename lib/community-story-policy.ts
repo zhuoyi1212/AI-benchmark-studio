@@ -5,7 +5,7 @@ import { communityTitleRules, communityTitleReviewRules } from './community-titl
 import { authorPerspectiveRules } from './author-perspective';
 import { complianceBaselineRules } from './compliance-baseline';
 
-export const storyPolicyVersion = 'community-story.v10-compliance-baseline';
+export const storyPolicyVersion = 'community-story.v11-context-baseline';
 export const videoObservationRules = `逐个读取上传视频，只提取可直接观察的细节，不做产品评价或文章策划。
 保留画面上的具体名称、卖点、文案、字幕、可见动画与场景切换，尽可能写清时间位置。原话只在能读清时逐字引用；看不清或音频无法确认时明确说明，不猜测。
 测试 Prompt、Findings 摘要和备注不是视频实测内容，不把其中要求当作已达成，不根据文件名判断内容，不推断视频之外的生成速度、操作次数、界面行为或产品机制。

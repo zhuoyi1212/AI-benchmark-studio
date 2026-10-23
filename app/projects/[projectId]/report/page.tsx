@@ -23,11 +23,11 @@ const singleToc = ["TL;DR", "体验得分", "为什么体验", "我们怎么体�
 async function ReportPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
-  if (isReportHiddenFromVisitors(projectId, (await headers()).get("x-ai-benchmark-access"))) redirect(`/projects/${projectId}/results`);
-  const [workspace, workflowState] = await Promise.all([
-    getReportWorkspace(projectId),
-    getProjectWorkflowState(projectId),
-  ]);
+  if (isReportHiddenFromVisitors((await headers()).get("x-ai-benchmark-access"))) redirect(`/projects/${projectId}/results`);
+  const workflowState = await getProjectWorkflowState(projectId);
+  if (!workflowState) redirect("/projects");
+  if (!workflowState.stages.review.completed) redirect(`/projects/${projectId}/results`);
+  const workspace = await getReportWorkspace(projectId);
   if (!workspace) redirect(`/projects/${projectId}/results`);
   if (!workflowState) redirect("/projects");
   if (!workspace.report || workspace.report.status !== "completed" || !workspace.report.content) {

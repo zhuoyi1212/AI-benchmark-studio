@@ -7,7 +7,7 @@ import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json, PublishPackArtifactRow, PublishPackRow } from "@/lib/types/database";
 
-const packColumns = "id, project_id, report_id, findings_id, version, status, config, content_ideas, selected_idea, community_post, model, provider, prompt_version, input_signature, error_message, created_at, updated_at, completed_at, input_tokens, output_tokens, latency_ms, estimated_cost, discovery_provider, discovery_model, discovery_prompt_version, discovery_input_signature, discovery_input_tokens, discovery_output_tokens, discovery_latency_ms, discovery_estimated_cost, discovery_started_at, discovered_at, generation_started_at";
+const packColumns = "id, project_id, report_id, findings_id, findings_revision_id, version, status, config, content_ideas, selected_idea, community_post, model, provider, prompt_version, input_signature, error_message, created_at, updated_at, completed_at, input_tokens, output_tokens, latency_ms, estimated_cost, discovery_provider, discovery_model, discovery_prompt_version, discovery_input_signature, discovery_input_tokens, discovery_output_tokens, discovery_latency_ms, discovery_estimated_cost, discovery_started_at, discovered_at, generation_started_at";
 const artifactColumns = "publish_pack_id, artifact_id, display_order, reason, supports_claim, supports_paragraph, created_at";
 
 export const publishRepository = {

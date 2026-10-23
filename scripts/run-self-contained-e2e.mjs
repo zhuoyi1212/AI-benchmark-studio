@@ -55,6 +55,8 @@ try {
       E2E_TEST_MODE: "1",
       QUICK_WORKER_DISABLED: "1",
       E2E_TEST_TOKEN: token,
+      APP_ACCESS_USERNAME: "studio",
+      APP_ACCESS_PASSWORD: token,
       ZAI_API_KEY: realAiQuickPublish ? liveProviderKeys.zhipu : "e2e-provider-key-not-a-secret",
       DEEPSEEK_API_KEY: realAiQuickPublish ? liveProviderKeys.deepseek : "e2e-provider-key-not-a-secret",
       MOONSHOT_API_KEY: realAiQuickPublish ? liveProviderKeys.moonshot : "e2e-provider-key-not-a-secret",
@@ -72,7 +74,7 @@ try {
   fullFlowRequestStarted = true;
   const response = await postFullFlow(`${appOrigin}/api/e2e-test/full-flow`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-e2e-token": token },
+    headers: { "content-type": "application/json", "x-e2e-token": token, authorization: `Basic ${Buffer.from(`studio:${token}`).toString("base64")}` },
     body: JSON.stringify({ runId, protocolOnly, textOnlyEvidence }),
     signal: AbortSignal.timeout(600_000),
   });

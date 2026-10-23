@@ -53,6 +53,7 @@ export type ExperienceFindingsWorkspace = {
   artifacts: FindingsArtifact[];
   latest: {
     id: string;
+    editorialRevisionId?: string | null;
     version: number;
     status: ExperienceFindingRow["status"];
     errorMessage: string | null;
@@ -85,6 +86,13 @@ async function readExperienceFindingsWorkspace(projectId: string): Promise<Exper
 
   const rows = await findingsRepository.list(projectId, test.protocol.id);
   const latest = rows[0] ?? null;
+  const revisions = latest?.human_confirmed_at ? await findingsRepository.listRevisions(latest.id) : [];
+  const editorial = revisions.find(revision => revision.kind === "editorial");
+  const latestRun = latest ? mapFindingRun(latest) : null;
+  if (latestRun && editorial) {
+    latestRun.effectiveOutput = confirmedFindingsOutputSchema.parse(editorial.output);
+    latestRun.editorialRevisionId = editorial.id;
+  }
   return {
     projectId,
     projectName: test.project.name,
@@ -101,7 +109,7 @@ async function readExperienceFindingsWorkspace(projectId: string): Promise<Exper
       prompt: testCase.prompt,
     })),
     artifacts: flattenArtifacts(test),
-    latest: latest ? mapFindingRun(latest) : null,
+    latest: latestRun,
   };
 }
 

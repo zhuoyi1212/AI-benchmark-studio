@@ -309,7 +309,7 @@ export const communityPostContentSchema = z.object({
   writingPlan: writingPlanSchema.optional(),
   contentPolicyVersion: text.optional(),
   titleRefreshes: z.array(titleRefreshAuditSchema).max(20).optional(),
-  manualEdit: z.object({ sourcePackId: z.string().uuid(), savedAt: z.string().datetime({ offset: true }), aiReviewed: z.literal(false) }).optional(),
+  manualEdit: z.object({ sourcePackId: z.string().uuid(), savedAt: z.string().datetime({ offset: true }), aiReviewed: z.literal(false), reason: z.string().max(1000).optional() }).optional(),
   regeneration: z.object({ sourcePackId: z.string().uuid(), jobId: z.string().uuid(), requestedAt: z.string().datetime({ offset: true }) }).optional(),
 });
 

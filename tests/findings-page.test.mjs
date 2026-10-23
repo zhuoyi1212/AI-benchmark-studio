@@ -8,7 +8,7 @@ const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKi
 const workspace = { projectId: 'project', protocolId: 'protocol', protocolVersion: 1, latest: null };
 const ui = new Proxy({}, { get: (_target, name) => String(name) });
 
-function loadPage({ findings = workspace, revealed = false, professional = async () => null, workflow = true } = {}) {
+function loadPage({ findings = workspace, revealed = false, professional = async () => null, workflow = true, confirmed = false } = {}) {
   let professionalReads = 0;
   const dependencies = {
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
@@ -18,7 +18,7 @@ function loadPage({ findings = workspace, revealed = false, professional = async
     'lucide-react': ui,
     '@/lib/supabase/read-scope': { withPageReads: render => render },
     '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => findings },
-    '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => workflow ? { stages: { review: { completed: revealed } } } : null },
+    '@/lib/services/workflow-navigation.service': { getProjectWorkflowState: async () => workflow ? { stages: { review: { completed: revealed }, results: { completed: confirmed } } } : null },
     '@/lib/services/result-analysis.service': { getResultsWorkspace: async () => { professionalReads++; return professional(); } },
     'next/headers': { headers: async () => new Headers({ 'x-ai-benchmark-access': 'admin' }) },
     '@/lib/portfolio-visibility': { isReportHiddenFromVisitors: () => false },
@@ -85,4 +85,11 @@ test('revisiting quick findings never automatically starts or retries generation
     assert.ok(action, 'Explicit recovery action remains available');
     assert.ok(!action.props.autoStart, 'Opening a result page must not submit a generation form');
   }
+});
+
+test('legacy confirmed Findings remain readable without fabricating a Blind Review', async () => {
+  const page = loadPage({ confirmed: true, findings: { ...workspace, projectName: 'Legacy', artifacts: [], latest: { id: 'finding', status: 'completed', humanConfirmedAt: '2026-09-21', effectiveOutput: { summary: '历史确认结论', findings: [], limitations: [] } } } });
+  const content = nodes(await page.render());
+  assert.ok(content.includes('历史确认结论'));
+  assert.equal(page.reads(), 0, 'Do not ask Judge services to read a legacy project without samples');
 });

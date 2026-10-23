@@ -28,8 +28,8 @@ async function BlindReviewPage({ params }: ReviewPageProps) {
   } catch (error) {
     if (!(error instanceof JudgeExecutionError)) throw error;
   }
-  if (!workspace) redirect(`/projects/${projectId}/test`);
   const workflowState = await workflowStatePromise;
+  if (!workspace) redirect(`/projects/${projectId}/${workflowState?.stages.results.completed ? "results" : "test"}`);
   if (!workflowState) redirect("/projects");
   if (workspace.latestRun?.status === "completed") {
     const reviewWorkspace = await getHumanReviewWorkspace(projectId);

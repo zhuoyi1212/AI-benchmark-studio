@@ -316,3 +316,13 @@ Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不�
 ## Kimi 写作 Provider（2026-10-17）
 
 迁移 `20261017060048_kimi_community_writing.sql` 仅扩展 `publish_packs.provider` 的 CHECK 为 zhipu/deepseek/moonshot，以及 `start_community_post`、`refresh_publish_pack_title` 的 Provider 白名单；两个 RPC 的既有 service_role-only 权限和状态/版本规则保留。discovery_provider、Research、Judge、Findings 等表和白名单不变。community_post 内 generationTrace/titleRefreshes 接受 moonshot；新调用记录实际模型与 Prompt，旧稿不回填、不改写，无新表或 Storage 变化。
+
+## 2026-10-23 · 作品集展示修订
+
+`experience_finding_revisions` 是已确认发现的追加式编辑层，原 `experience_findings.output/human_output/human_confirmed_at` 保持原样。字段包括 `findings_id`（restrict FK）、递增 `version`（来源内唯一）、`kind`（recovered/editorial）、`editor_kind`（assistant/human）、`reason`、`output`、`provenance` 和实际写入时间 `created_at`。恢复旧备份的原确认时间仅进入 provenance，不冒充本次写入时间；recovered 不作为当前展示，读取最新 editorial 后运行同一 ConfirmedFindings Schema。
+
+新表启用 RLS，anon/authenticated/PUBLIC 无权限，service_role 仅 SELECT/INSERT；UPDATE/DELETE 触发器拒绝任何角色覆盖历史。已确认 Findings 的原输出、确认输出、确认时间增加不可变保护。`append_finding_revision` 为 service-only / security invoker / 空 search_path，锁定来源行，检查期望版本、确认状态及每条图片/文本证据的项目、方案、产品、任务归属。
+
+`publish_packs.findings_revision_id` 绑定展示修订（restrict FK，索引）。既有 33 条文章不回写，仅新增列 NULL。`create_publish_revision` 继续原子追加新文章；编辑分支可携带经过服务端 Schema 校验的选题/配置/修订 ID，拒绝过期来源。编辑稿不继承旧稿的 Story Brief、事实审核、语言编辑和 generationTrace；完整旧审稿信息留在 `manualEdit.sourcePackId` 指向的不可变来源稿中，`aiReviewed=false`。管理员版本页可查看原文、恢复的确认文本和当前展示修订。
+
+真实数据库回滚测试覆盖：成功追加、旧版本冲突、跨项目 Artifact 拒绝、修订 UPDATE/DELETE 拒绝、原确认记录覆盖拒绝、编辑稿审核字段清理、文章来源绑定、匿名权限。生产数据修订单独执行，不把项目 ID 或业务文本塞入 schema migration。

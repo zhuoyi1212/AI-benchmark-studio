@@ -1,4 +1,5 @@
 import "server-only";
+import { complianceBaselineRules } from "@/lib/compliance-baseline";
 
 import { memoPageRead } from "@/lib/supabase/read-scope";
 import { createHash } from "node:crypto";
@@ -250,7 +251,7 @@ async function executeJudgeCase(
     messages: [
       {
         role: "system",
-        content: `你是严格的 Blind AI Judge。你只能使用匿名 Sample、Locked Protocol、TestCase、Rubric 与原始 Artifact 评分。不得猜测产品身份，不得使用品牌先验，不得改变 Rubric。每条 Evidence 必须引用给定 Artifact ID，并指出可核查的页面、段落、图表或原文。输出简体中文。\n${videoEvaluationRules}`,
+        content: `你是严格的 Blind AI Judge。你只能使用匿名 Sample、Locked Protocol、TestCase、Rubric 与原始 Artifact 评分。不得猜测产品身份，不得使用品牌先验，不得改变 Rubric。每条 Evidence 必须引用给定 Artifact ID，并指出可核查的页面、段落、图表或原文。输出简体中文。\n${videoEvaluationRules}\n${complianceBaselineRules}`,
       },
       { role: "user", content },
     ],
