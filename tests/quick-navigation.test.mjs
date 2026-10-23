@@ -61,6 +61,37 @@ test('writing stage can revisit findings, protocol and research, with completion
   assert.equal(tree.find(node => node.props?.['aria-current'] === 'step').props.href, '/projects/project/publish');
 });
 
+test('community content page exposes all four earlier stages as clear, keyboard-accessible review links', async () => {
+  const tree = await navigation('/projects/project/publish', state(true));
+  const links = tree.filter(node => node.type === 'a');
+  for (const [route, label] of [['research', '产品调研'], ['protocol', '测试计划'], ['test', '真实测试'], ['results', '测评发现']]) {
+    const link = links.find(node => node.props.href === `/projects/project/${route}`);
+    assert.ok(link, `${label} must remain reachable from the article`);
+    assert.equal(link.props.title, `查看${label}`);
+    assert.equal(link.props['aria-disabled'], undefined);
+    assert.equal(link.props.onClick, undefined, 'reviewing a stage must only navigate, never regenerate');
+    assert.match(link.props.className, /min-h-11/);
+    assert.match(link.props.className, /cursor-pointer/);
+    assert.match(link.props.className, /hover:bg-blue-50/);
+    assert.match(link.props.className, /focus-visible:ring-2/);
+  }
+  assert.equal(links.find(node => node.props['aria-current'] === 'step').props.href, '/projects/project/publish');
+});
+
+test('browsing earlier stages keeps the article reachable and does not turn locked steps into links', async () => {
+  for (const route of ['research', 'protocol', 'test', 'results']) {
+    const tree = await navigation(`/projects/project/${route}`, state(true));
+    assert.ok(hrefs(tree).includes('/projects/project/publish'));
+    assert.equal(tree.find(node => node.props?.['aria-current'] === 'step').props.href, `/projects/project/${route}`);
+  }
+  const locked = await navigation('/projects/project/test', state());
+  assert.ok(!hrefs(locked).includes('/projects/project/results'));
+  for (const node of locked.filter(node => node.props?.['aria-disabled'] === 'true')) {
+    assert.match(node.props.className, /cursor-not-allowed/);
+    assert.doesNotMatch(node.props.className, /cursor-pointer|hover:bg-blue-50/);
+  }
+});
+
 test('quick detail pages offer a return to the live workspace; professional pages do not', async () => {
   for (const route of ['research', 'protocol', 'test', 'results', 'publish']) {
     const tree = await navigation(`/projects/project/${route}`, state(true));

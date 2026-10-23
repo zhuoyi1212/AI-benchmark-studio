@@ -46,14 +46,15 @@ export function WorkflowSteps({ projectId, workflowState, activeStage }: { proje
               <span className="sr-only">{active ? "，当前页面" : ""}{step.access.completed ? "，已完成" : step.access.accessible ? "，可进入" : "，未解锁"}</span>
             </>;
             const className = cn(
-              "relative flex flex-1 items-center gap-2 border-b-2 border-transparent px-1 pb-3 text-xs transition-colors",
-              step.access.completed && !active && "text-slate-600 hover:text-emerald-700",
-              step.access.accessible && !step.access.completed && !active && "text-slate-600 hover:text-foreground",
+              "relative flex min-h-11 flex-1 items-center gap-2 rounded-t-md border-b-2 border-transparent px-3 py-3 text-xs transition-colors",
+              step.access.completed && !active && "text-slate-600",
+              step.access.accessible && !step.access.completed && !active && "text-slate-600",
+              step.access.accessible && "cursor-pointer hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600",
               active && "border-blue-600 font-semibold text-blue-700",
               !step.access.accessible && "cursor-not-allowed text-slate-300",
             );
             if (step.access.accessible) {
-              return <Link key={step.id} href={step.href} aria-current={active ? "step" : undefined} className={className}>{content}</Link>;
+              return <Link key={step.id} href={step.href} title={active ? undefined : `查看${step.label}`} aria-current={active ? "step" : undefined} className={className}>{content}</Link>;
             }
             return (
               <Tooltip key={step.id}>
