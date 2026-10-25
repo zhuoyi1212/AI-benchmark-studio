@@ -29,7 +29,9 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
     const json = options.messages.find(m => m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('{'));
     const input = json ? JSON.parse(json.content) : {};
     let value;
-    if (options.schemaName === 'PublicationVideoObservations') {
+    if (options.schemaName === 'ContentIdeas') {
+      value = { ideas: [idea] };
+    } else if (options.schemaName === 'PublicationVideoObservations') {
       value = { observations: ['视频画面显示写下项目的3个硬数字，并提前约15分钟沟通。'] };
     } else if (options.schemaName === 'CommunityStoryBrief') {
       value = { readerQuestion: '如何准备预算紧张时的加薪沟通？', targetReader: '准备沟通加薪的人', spine: idea.insight,
@@ -52,6 +54,9 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   };
   const forbid = () => { throw new Error('Unexpected professional source'); };
   const repo = {
+    beginFromReport: async () => id,
+    startDiscovery: async () => { state.discoveryStarted = true; },
+    completeDiscovery: async (_id, ideas) => { state.discoveredIdeas = ideas; if (readyPack) readyPack.content_ideas = ideas; },
     beginFromFindings: async () => {
       readyPack = { ...readyPack, id: '22222222-2222-4222-8222-222222222222', status: 'draft', community_post: null };
       state.createdPackId = readyPack.id;
@@ -88,5 +93,5 @@ export function harness({ mutate, professional = false, realAI = false, raw = ra
   };
   if (!realAI) overrides['@/lib/ai/task-service'] = { aiTaskService: { discoverContentIdeas: invoke, generateCommunityPost: invoke, generateCommunityPostTitle: invoke, humanizeCommunityPost: invoke, factCheckTextCommunityPost: invoke, factCheckCommunityPost: invoke } };
   const load = createLoader(fileURLToPath(new URL('../..', import.meta.url)), overrides);
-  return { state, load, run: (settings = config) => load('@/lib/services/publish.service').generateCommunityPost(id, { ideaId: idea.id, config: settings }) };
+  return { state, load, discover: () => load('@/lib/services/publish.service').discoverContentIdeas(id), run: (settings = config) => load('@/lib/services/publish.service').generateCommunityPost(id, { ideaId: idea.id, config: settings }) };
 }

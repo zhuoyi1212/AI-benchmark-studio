@@ -1,6 +1,8 @@
 # 最终内容生成规范
 
-版本：community-story.v9-natural-voice · 2026-10-17
+2026-10-25 社区分享增量：当前策略为 `community-story.v12-community-sharing`。按具体用途、代表性结果与判断理由组织内容；短帖/有据实操长文随材料选择，图像任务不强求产品引语，不自动附加使用须知。Brief ending可空，scope和主线证据仍必填。详见 [社区分享生成规则](community-sharing-generation.md)，事实、作者经历和历史保护规则保持。
+
+版本：community-story.v12-community-sharing · 2026-10-25
 
 适用范围：快速模式、专业模式生成的社区文章。保留既有 Blind、Protocol、人工测试、确认 Findings、评分与历史版本。
 

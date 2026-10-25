@@ -44,6 +44,7 @@ import {
 } from "@/lib/community-content-policy";
 
 import { communityTitleRules, communityTitleRefreshRules } from "@/lib/community-title-policy";
+import { communitySharingRules } from "@/lib/community-sharing-policy";
 
 import { storyPolicyVersion, storyBriefRules, storyWritingRules, storyReviewRules, targetedRevisionRules, storyFinalAuditRules, storyBriefIssues, locatedReviewOutputRules, buildStoryWritingInput } from "@/lib/community-story-policy";
 import { authorPerspectiveRules, hasAuthorPerspective } from '@/lib/author-perspective';
@@ -154,6 +155,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
           content: source.kind === "findings"
             ? [
                 "你是社区内容策划编辑。选题只能建立在人工确认后的真实 Findings、测试计划、Research 背景和真实截图证据上。",
+                communitySharingRules,
                 "不要重新评分，不要生成排名，也不要把专业评分当作选题中心。",
                 authorPerspectiveRules,
                 "先确定目标读者最想知道的问题，按实际影响和证据完整性选主线，不因为小问题显眼就把它当标题重点。",
@@ -165,6 +167,7 @@ export async function discoverContentIdeas(projectId: string): Promise<string> {
               ].join("\n")
             : [
                 "你是社区内容选题编辑。基于已完成的专业测评发现真正有信息增量的观点，不要把深度报告机械缩短。",
+                communitySharingRules,
                 communityTitleRules,
                 "评分仅作为背景，优先使用真实 Case、Judge Evidence、人工复核与 Artifact 支撑具体观点。",
                 "不得创造实验数据；缺少过程日志不能推断产品默认行为或能力不足。",

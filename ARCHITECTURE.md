@@ -1,5 +1,9 @@
 # AI Benchmark Studio — Architecture
 
+### 社区分享指导（2026-10-25）
+
+`community-sharing-policy.ts`集中维护用途、结果与评价的选材/表达及语义审稿指导，接入快速/专业Discovery、Story Brief、初稿、按需修订与只读初审/终审；没有新增调用阶段或规则打分器。Brief的ending允许空串，其他事实与引用门禁不变；策略与五条受影响路由Prompt升版参与既有检查点签名。无新表、migration、模型配置或历史回写。
+
 ### Reader editing输入投影（2026-10-17）
 
 `buildStoryWritingInput`为正文与定向修订构建显式字段投影：config、products、完整tasks、完整factLedger与scopeNotes、可选authorPerspective、已验证storyBrief、originalDetails。去除旧selectedIdea和重复humanConfirmedFindings等元数据，原始事实与任务条件不裁剪；策划、初审及终审仍使用完整postInput/原始证据。无新增模型阶段或Schema/表变更。各受影响Prompt单独升版，写作路由沿用Kimi K3，审稿路由保持独立。剪贴板格式化仅省略空字段和与正文独立段落相同的互动，不改存储内容或语义去重。

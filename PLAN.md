@@ -272,6 +272,12 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-25 社区分享规则增量：按用户的图1反例、元宝UI/trae原型/三产品情感题与园区建站参考文，整理用途、真实输入/动作、代表性结果及直接有据评价的共同特征。新增community-sharing-policy，接入快速/专业Discovery、Brief、初稿、定向修订与两次只读审稿；图像任务不强求产品引语，长文允许真实步骤，减少参数报账、泛使用须知与固定免责结尾。Brief ending可空但scope/主线证据仍必需，删除无关数值须精确定位并明确要求；事实、经历、细节保留与最终失败不得ready的门禁保持。策略v12与五条受影响路由Prompt升版，同步规范、决策、验收与完整提示词清单；没有新表/migration、模型变更或第三方Skill运行时。
+
+497/497 tests、typecheck、build含媒体隔离实际抽帧/提音、diff check通过；lint0errors/27既有warnings。新增9项回归，含实际Task Service/Router/Provider序列化的五阶段合成材料测试，fetch传输与Repository隔离，不是远端模型/真实DB/Storage/浏览器E2E。初轮发现两个旧Prompt版本断言未同步已修正，未删除/跳过测试；本机回环监听被沙箱拒绝后使用显式隔离fetch传输，不宣称真实HTTP网络验证。本轮只完成规则工程验收，没有调用真实模型、改写App旧稿、push或部署，不宣称自然度改善比例或全产品Acceptance Criteria重认证。详细分析与人工改写示意见docs/community-sharing-generation.md。保留用户原有作品集编辑、模板删除与未跟踪资料。
+
+本轮暂存快照498个tracked文件、75个真实流程文件通过Secret/客户端/Provider/Mock边界审计，并以内存比对本机实际凭据值确认未泄漏；用户原有模板删除不影响隔离快照审计，当前工作区未恢复或暂存该文件。
+
 2026-10-16 补修获明确授权并上线：按用户“部署3d7b195并重试两项”，生产部署dpl_8cUmv8iKcD3bD5pEFJZHBea14egf经READY及候选页200后promote，正式域名确认提交一致。懂你AI新v9 ac9f3921-f561-4c35-930a-abc88b6d2277五阶段完成并ready；即梦v10读图遇Z.AI 1210/400，四图只读检查均200、有效PNG/1728×2304后，以新地址正常创建v11 9182ba30-bc3d-449b-8d26-ac54adb66706，四图及五阶段完成、ready、3张原图关联。两项目全部旧ready与Findings完整快照哈希一致；失败记录保留。连同此前腾讯元宝v7，三个项目最新版本均ready，浏览器已核对新标题和正文。更正旧记录：即梦由智谱读图，文章初审实际为DeepSeek文本路由；不把媒体保留的视觉边界测试当成实际路由。不宣称图片400根因或普遍模型成功率已解决。生产运行时代码保持3d7b195，当前分支codex/quick-backend-workflow；本轮仅归档结果并校正回归测试名称，无migration/Mock回退或评分、Blind、Human Review、Storage改动。详细结果、验证及已知文字笔误见docs/regeneration-reliability-20261016.md，未重新认证全产品Acceptance Criteria。
 
 2026-10-16 补修验证完成与发布边界：3d7b195完整真实Supabase/Storage E2E（模拟模型）通过，7个业务页面200、45次Provider边界请求、单产品/可比/不可比路径通过，3/3临时项目软删除。427/427 tests、typecheck、build及媒体自检通过，lint0errors/26既有warnings。生产仍为4f953d5；自动审批以“此前授权仅覆盖4f953d5，不能自动扩展到3d7b195”为由拒绝补修的生产部署，未绕过拒绝。已准备仅含3d7b195跟踪文件的本地发布快照及两个失败案例的重试脚本，均未执行补修发布/真实重试；等待用户对3d7b195明确授权。当前真实结果：腾讯元宝v7成功；懂你AI v8与即梦v9保留failed，三项目旧ready及Findings快照均一致。线上近15分钟error/fatal日志未见记录，不将此当作内容任务全部成功或模型准确率达标。

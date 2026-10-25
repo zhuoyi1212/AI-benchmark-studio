@@ -267,7 +267,7 @@ export const storyBriefSchema = z.object({
   }).strict()).min(1).max(8),
   corePromiseGaps: z.array(text.max(800)).max(8),
   scope: text.max(1200),
-  ending: text.max(1200),
+  ending: z.string().trim().max(1200),
   avoidClaims: z.array(text.max(800)).max(8),
   comparison: z.boolean(),
 }).strict();
