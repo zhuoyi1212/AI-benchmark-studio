@@ -88,7 +88,7 @@ export const reportRepository = {
   async listArtifacts(artifactIds: string[]): Promise<TestArtifactRow[]> {
     if (artifactIds.length === 0) return [];
     const { data, error } = await getSupabaseServerClient()
-      .from("test_artifacts")
+      .from("available_test_artifacts")
       .select(testArtifactColumns)
       .in("id", artifactIds)
       .order("created_at", { ascending: true });

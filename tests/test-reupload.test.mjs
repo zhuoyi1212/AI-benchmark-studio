@@ -26,18 +26,18 @@ test('restart service returns the atomic new round and preserves actionable fail
   }
 });
 
-for (const access of ['read-only', 'admin']) test(`restart action checks ${access} authorization and refreshes all stages only after success`, async () => {
+for (const access of ['read-only', 'admin']) test(`delete action checks ${access} authorization and refreshes all stages only after success`, async () => {
   let calls = 0; const invalidations = [];
   const load = createLoader(root, {
     'next/headers': { headers: async () => new Headers({ 'x-ai-benchmark-access': access }) },
     'next/cache': { revalidatePath: (...args) => invalidations.push(args) },
     'next/navigation': { redirect: path => { throw new Error(`redirect:${path}`); } },
-    '@/lib/services/test-execution.service': { restartTestExecution: async (...ids) => { calls++; assert.deepEqual(ids, [projectId, protocolId]); }, TestExecutionError: class extends Error {} },
+    '@/lib/services/test-execution.service': { removeTestArtifact: async (...ids) => { calls++; assert.deepEqual(ids, [projectId, protocolId, replacementId]); }, TestExecutionError: class extends Error {} },
   });
-  const data = new FormData(); data.set('projectId', projectId); data.set('protocolId', protocolId);
-  const run = () => load('@/app/projects/[projectId]/test/actions').restartTestExecutionAction({ ok: false, message: null }, data);
+  const data = new FormData(); data.set('projectId', projectId); data.set('protocolId', protocolId); data.set('artifactId', replacementId);
+  const run = () => load('@/app/projects/[projectId]/test/actions').removeTestArtifactAction({ ok: false, message: null }, data);
   if (access === 'admin') {
-    await assert.rejects(run(), /redirect:.*\/test/);
+    assert.deepEqual(await run(), { ok: true, message: null });
     assert.equal(calls, 1);
     assert.ok(invalidations.some(([path, scope]) => path === `/projects/${projectId}` && scope === 'layout'));
   } else {
@@ -97,8 +97,10 @@ test('replacement RPC keeps immutable history, locks exact task copies and guard
   assert.match(sql, /revoke all on function public.restart_test_execution\(uuid,uuid\) from public,anon,authenticated/);
   assert.doesNotMatch(sql, /delete from|disable trigger|drop table|update public\.(test_artifacts|judge_scores|human_review_events|experience_findings)/i);
   const page = await readFile(new URL('../app/projects/[projectId]/test/page.tsx', import.meta.url), 'utf8');
-  assert.match(page, /admin && testRuns.some.*ReuploadAction/);
-  const component = await readFile(new URL('../app/projects/[projectId]/test/reupload-action.tsx', import.meta.url), 'utf8');
-  assert.match(component, /重新上传所有产品/);
+  assert.match(page, /admin && <RemoveArtifactAction/);
+  assert.doesNotMatch(page, /ReuploadAction/);
+  const component = await readFile(new URL('../app/projects/[projectId]/test/remove-artifact-action.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(component, /Dialog|confirm\(/);
+  assert.match(component, /aria-label=\{`删除/);
   assert.match(component, /disabled=\{pending\}/);
 });

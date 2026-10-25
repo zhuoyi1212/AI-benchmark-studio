@@ -1647,6 +1647,44 @@ export type Database = {
           },
         ]
       }
+      test_artifact_deletions: {
+        Row: {
+          artifact_id: string
+          project_id: string
+          protocol_id: string
+          replacement_protocol_id: string
+          storage_path: string
+          preview_path: string | null
+          requested_at: string
+          cleaned_at: string | null
+        }
+        Insert: {
+          artifact_id: string
+          project_id: string
+          protocol_id: string
+          replacement_protocol_id: string
+          storage_path: string
+          preview_path?: string | null
+          requested_at?: string
+          cleaned_at?: string | null
+        }
+        Update: {
+          artifact_id?: string
+          project_id?: string
+          protocol_id?: string
+          replacement_protocol_id?: string
+          storage_path?: string
+          preview_path?: string | null
+          requested_at?: string
+          cleaned_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "test_artifact_deletions_artifact_id_fkey"; columns: ["artifact_id"]; isOneToOne: true; referencedRelation: "test_artifacts"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_protocol_id_fkey"; columns: ["protocol_id"]; isOneToOne: false; referencedRelation: "protocols"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_replacement_protocol_id_fkey"; columns: ["replacement_protocol_id"]; isOneToOne: false; referencedRelation: "protocols"; referencedColumns: ["id"] },
+        ]
+      }
       test_artifacts: {
         Row: {
           bucket_id: string
@@ -1828,6 +1866,10 @@ export type Database = {
       }
     }
     Views: {
+      available_test_artifacts: {
+        Row: Database["public"]["Tables"]["test_artifacts"]["Row"]
+        Relationships: Database["public"]["Tables"]["test_artifacts"]["Relationships"]
+      }
       review_final_scores: {
         Row: {
           active_override_event_id: string | null
@@ -1843,6 +1885,18 @@ export type Database = {
       }
     }
     Functions: {
+      remove_test_artifact: {
+        Args: { p_project_id: string; p_protocol_id: string; p_artifact_id: string }
+        Returns: Json
+      }
+      finish_test_artifact_deletion: {
+        Args: { p_project_id: string; p_artifact_id: string }
+        Returns: undefined
+      }
+      pending_test_artifact_deletions: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       append_finding_revision: {
         Args: {
           p_editor_kind: string

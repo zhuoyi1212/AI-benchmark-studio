@@ -1,8 +1,8 @@
 # AI Benchmark Studio — Architecture
 
-### 测试重传（2026-10-25）
+### 逐文件删除（2026-10-25）
 
-ReuploadAction → 管理员Server Action → TestExecutionService → Repository.restart → service-role-only restart_test_execution事务。项目mutex及row lock保护完整任务/输入/Rubric复制，经draft→lock→ensure matrix创建新轮；protocols.retest_of_protocol_id追溯来源。原Storage及业务行不删除，复制版本generation usage为0，原模型字段仅追溯原生成。导航快照携带轮次来源，出现重传后仅当前Protocol决定完成状态；旧轮worker在恢复记录前验证scope，旧上传在签发及完成前校验当前Protocol，数据库上传RPC继续最终校验。无新队列或AI路由。
+RemoveArtifactAction → 管理员Server Action → TestExecutionService → Repository → remove_test_artifact事务。复用restart_test_execution的项目mutex、活跃任务检查及完整任务复制；只把未删附件的元数据关联到新TestRuns，共享原Storage对象，不复制binary。test_artifact_deletions记录待清理/完成回执，available_test_artifacts安全视图排除被删对象。Storage API清理原件、预览和视频缓存后完成回执；失败持久显示重试。新轮重新评分，历史AI分与复核不改。协议版本与旧worker/上传防过期沿用现有逻辑，无新增AI路由或模型阶段。
 
 ### 社区分享指导（2026-10-25）
 

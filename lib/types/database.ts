@@ -481,6 +481,7 @@ export type DatabaseTableRows = {
   rubric_dimensions: RubricDimensionRow;
   test_runs: TestRunRow;
   test_artifacts: TestArtifactRow;
+  test_artifact_deletions: GeneratedPublic["Tables"]["test_artifact_deletions"]["Row"];
   blind_samples: BlindSampleRow;
   blind_mappings: BlindMappingRow;
   judge_runs: JudgeRunRow;
@@ -523,7 +524,11 @@ type PublicTables = {
 export type Database = Omit<GeneratedDatabase, "public"> & {
   public: Omit<GeneratedPublic, "Tables" | "Views"> & {
     Tables: PublicTables;
-    Views: Omit<GeneratedPublic["Views"], "review_final_scores"> & {
+    Views: Omit<GeneratedPublic["Views"], "review_final_scores" | "available_test_artifacts"> & {
+      available_test_artifacts: {
+        Row: TestArtifactRow;
+        Relationships: GeneratedPublic["Tables"]["test_artifacts"]["Relationships"];
+      };
       review_final_scores: {
         Row: ReviewFinalScoreRow;
         Relationships: [];

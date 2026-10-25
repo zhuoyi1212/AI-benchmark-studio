@@ -272,6 +272,13 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-25 逐文件删除修正：按用户最新要求取消整轮弹窗，在每张上传卡片右上角提供管理员叉号，点击直接删除；幸存文件继续显示，可补传再分析。remove_test_artifact事务复用同任务新轮隔离旧分析，幸存附件只复制关联元数据、共享同一Storage对象，不产生文件历史副本。新增test_artifact_deletions清理回执和service-only/security_invoker available_test_artifacts视图；Storage API实际清理原件、预览和视频缓存，半成功显示可刷新恢复的重试入口。原AI分、Human Review事件、锁定任务及文章不回写。无新AI路由、模型或Mock fallback。
+
+迁移20261025134553与20261025145245已应用：前者逐文件隔离/清理，后者让上传确认在锁定或验证run之前取得同一项目mutex，避免并发写入旧轮。均先回滚验证并仅追加远端新版本，不改旧migration history/Vault；角色权限、跨项目拒绝、幂等、剩余文件/执行元数据与评分不变均验证，安全advisors无WARN/ERROR，Data API实际验证视图关系。数据库不可变Artifact行仅留引用和回执，删除的binary不保留，未批量删除用户项目。
+
+最终516/516tests、typecheck、production build含实际媒体隔离自检、diff检查通过；lint0errors/27既有warnings。浏览器本地即梦页可见4个叉号，未登录访客无删除入口，未点击其真实文件删除；截图/private/tmp/artifact-delete-ui.png。索引快照511文件/76真实流程边界与本机实际Secret值扫描通过。完整E2E首次客户端10分钟超时，3个临时项目经只读核对均已软归档；未把超时算成功。E2E重跑mvnys5c3-edc5365d在3分钟内HTTP200通过：48次本地Provider边界请求、真实DB/Storage，逐文件删除/幸存文件下载/最后一项删除/补传/重新Judge及旧文章保护全部通过，7页面200、横评/不可比回归通过，3/3临时项目软归档。本轮是上传功能增量验收，不重新认证全产品AC；分支codex/quick-backend-workflow，应用代码未push/部署，用户既有作品集修改/模板删除/私密未跟踪资料不暂存。
+
+
 2026-10-25 测试文件重新上传：按用户截图要求在测试执行页新增管理员“移除文件并重新上传”入口与整轮确认弹窗。保留不可变Artifact/Storage/原评分及下游历史，用retest_of_protocol_id追溯原方案，service-role-only restart_test_execution事务原样复制任务/Prompt/输入/Rubric，经draft→lock→空矩阵开始新轮；复制usage为0，无AI方案重跑。保护项目/worker互斥、活跃任务拒绝、跨项目/过期请求拒绝及空新轮幂等；新上传和后台旧任务在写入/恢复前核对当前轮，导航与Quick工作台不沿用旧完成状态。此入口为整轮替换，所有产品任务需重传，不提供逐文件物理删除。新列/索引/RPC/导航投影迁移20261025131254已应用，原始即梦项目未实际执行新轮。
 
 重传最终索引快照审计：507个tracked文件/76个真实流程文件通过Secret、客户端、Provider与Mock边界检查，另以内存比对本机实际凭据值确认无泄漏；用户原有模板删除与作品集改动未暂存或恢复。

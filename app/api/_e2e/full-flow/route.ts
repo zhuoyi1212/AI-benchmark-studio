@@ -12,7 +12,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
-import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution } from "@/lib/services/test-execution.service";
+import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution, removeTestArtifact } from "@/lib/services/test-execution.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
@@ -278,17 +278,45 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(!freshState.stages.test.completed && !freshState.stages.results.completed && !freshState.stages.publish.completed, 'Historical analysis leaked into replacement workflow');
   const freshPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/test`);
   const freshHtml = await freshPage.text();
-  assert(freshPage.ok && freshHtml.includes('重新上传的新一轮测试') && !freshHtml.includes('poster-output-'), 'Replacement HTTP page did not load');
+  assert(freshPage.ok && freshHtml.includes('测试执行') && !freshHtml.includes('poster-output-'), 'Replacement HTTP page did not load');
   for (const run of freshTest.testRuns) {
     await uploadTestArtifact({ projectId, testRunId: run.id, file: new File(['Replacement raw evidence for the same locked task.'], 'replacement-output.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: null, retryCount: 0, manuallyEdited: false, notes: null } });
+    await uploadTestArtifact({ projectId, testRunId: run.id, file: new File(['Surviving original evidence.'], 'survivor.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: 7, retryCount: 1, manuallyEdited: false, notes: 'Surviving execution metadata' } });
   }
   const reuploaded = requireValue(await getTestExecutionWorkspace(projectId), 'Replacement upload not persisted');
-  assert(reuploaded.testRuns.every(run => run.artifacts.length === 1 && run.artifacts[0]?.fileName === 'replacement-output.txt'), 'Replacement evidence was not saved');
+  assert(reuploaded.testRuns.every(run => run.artifacts.length === 2 && run.artifacts.some(a => a.fileName === 'replacement-output.txt')), 'Replacement evidence was not saved');
   await finalizeTestExecution(projectId, newProtocolId);
   await startProfessionalReview(projectId, newProtocolId);
   await runBlindJudge(projectId);
   const newReview = requireValue(await getHumanReviewWorkspace(projectId), 'New round has no review');
   assert(newReview.protocolId === newProtocolId && newReview.scores.length > 0, 'Old Judge reused instead of reanalysis');
+  const selected = requireValue(reuploaded.testRuns[0]?.artifacts.find(a => a.fileName === 'replacement-output.txt'), 'Delete source missing');
+  const { data: selectedRow } = await db.from('test_artifacts').select('storage_path').eq('id', selected.id).single();
+  assert(selectedRow, 'Delete object path missing');
+  await removeTestArtifact(projectId, newProtocolId, selected.id);
+  let afterDelete = requireValue(await getTestExecutionWorkspace(projectId), 'Post-delete workspace missing');
+  assert(afterDelete.protocol.id !== newProtocolId && afterDelete.testRuns.every(run => run.status !== 'ready_for_review'), 'Deletion reused analyzed evidence state');
+  assert(afterDelete.testRuns[0]?.artifacts.length === 1 && afterDelete.testRuns[0].artifacts[0]?.fileName === 'survivor.txt', 'Per-file delete removed surviving files');
+  assert(afterDelete.testRuns[0]?.generationTimeSeconds === 7 && afterDelete.testRuns[0]?.retryCount === 1, 'Surviving execution metadata lost');
+  const survivor = requireValue(afterDelete.testRuns[0]?.artifacts[0], 'Survivor missing');
+  const response = await fetch(requireValue(survivor.fileUrl, 'Survivor URL missing'));
+  assert(response.ok && await response.text() === 'Surviving original evidence.', 'Surviving Storage object changed');
+  const removed = await db.storage.from('benchmark-artifacts').info(selectedRow.storage_path);
+  assert(removed.error, 'Deleted binary is still stored');
+  await removeTestArtifact(projectId, newProtocolId, selected.id);
+  assert((await getTestExecutionWorkspace(projectId))?.protocol.id === afterDelete.protocol.id, 'Delete retry created another round');
+  const deletedState = requireValue(await getProjectWorkflowState(projectId), 'Post-delete navigation missing');
+  assert(!deletedState.stages.test.completed && !deletedState.stages.publish.completed, 'Old analysis still marked current');
+  await removeTestArtifact(projectId, afterDelete.protocol.id, survivor.id);
+  afterDelete = requireValue(await getTestExecutionWorkspace(projectId), 'Empty upload workspace missing');
+  assert(afterDelete.testRuns[0]?.status === 'pending' && afterDelete.testRuns[0].artifacts.length === 0, 'Last-file deletion did not reopen upload');
+  assert(afterDelete.pendingDeletions?.length === 0, 'Storage cleanup left pending receipts');
+  await uploadTestArtifact({ projectId, testRunId: requireValue(afterDelete.testRuns[0], 'Run missing').id, file: new File(['New evidence after individual file removal.'], 'new-upload.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: null, retryCount: 0, manuallyEdited: false, notes: null } });
+  await finalizeTestExecution(projectId, afterDelete.protocol.id);
+  await startProfessionalReview(projectId, afterDelete.protocol.id);
+  await runBlindJudge(projectId);
+  const deletedReview = requireValue(await getHumanReviewWorkspace(projectId), 'Reanalysis missing');
+  assert(deletedReview.protocolId === afterDelete.protocol.id && deletedReview.scores.length > 0, 'New upload did not get fresh analysis');
   const { data: historyAfter, error: afterError } = await db.from('test_artifacts').select('*').in('id', artifactIds);
   assert(!afterError && isDeepStrictEqual(historyAfter, historyBefore), 'Reupload mutated historical artifacts');
   const { data: oldArticle } = await db.from('publish_packs').select('community_post').eq('id', refreshed.packId).single();
@@ -314,6 +342,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     articleRevisionsVerified: true,
     authorPerspectiveVerified: true,
     reuploadVerified: true,
+    individualDeletionVerified: true,
   };
 }
 

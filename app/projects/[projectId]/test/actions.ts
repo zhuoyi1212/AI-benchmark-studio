@@ -9,7 +9,7 @@ import {
   completeTestArtifactUpload,
   finalizeTestExecution,
   prepareTestArtifactUpload,
-  restartTestExecution,
+  removeTestArtifact,
   TestExecutionError,
   type ArtifactFileDescriptor,
 } from "@/lib/services/test-execution.service";
@@ -33,23 +33,24 @@ export type CompleteArtifactUploadActionState = TestExecutionActionState & {
   restartUpload?: boolean;
 };
 
-export async function restartTestExecutionAction(
+export async function removeTestArtifactAction(
   _state: TestExecutionActionState, formData: FormData,
 ): Promise<TestExecutionActionState> {
-  if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { ok: false, message: '请以管理员身份重新上传。' };
-  const ids = z.object({ projectId: idSchema, protocolId: idSchema }).safeParse({
-    projectId: formData.get('projectId'), protocolId: formData.get('protocolId'),
+  if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { ok: false, message: '请以管理员身份删除文件。' };
+  const ids = z.object({ projectId: idSchema, protocolId: idSchema, artifactId: idSchema }).safeParse({
+    projectId: formData.get('projectId'), protocolId: formData.get('protocolId'), artifactId: formData.get('artifactId'),
   });
-  if (!ids.success) return { ok: false, message: '项目或测试版本无效。' };
-  try { await restartTestExecution(ids.data.projectId, ids.data.protocolId); }
+  if (!ids.success) return { ok: false, message: '文件标识无效。' };
+  let message: string | null = null;
+  try { await removeTestArtifact(ids.data.projectId, ids.data.protocolId, ids.data.artifactId); }
   catch (error) {
-    if (error instanceof TestExecutionError) return { ok: false, message: error.message };
-    throw error;
+    if (error instanceof TestExecutionError) message = error.message;
+    else throw error;
   }
   revalidatePath(`/projects/${ids.data.projectId}`, 'layout');
   revalidatePath('/projects');
   revalidatePath('/products');
-  redirect(`/projects/${ids.data.projectId}/test`);
+  return { ok: message === null, message };
 }
 
 export async function prepareTestArtifactUploadAction(

@@ -1,25 +1,20 @@
-# 重新上传测试文件
+# 删除并重新上传测试文件
 
-管理员进入测试执行页，点击右上角“移除文件并重新上传”，确认后上传新结果。此操作替换整轮文件，横评项目须重新上传所有产品和任务的结果。
+管理员点击文件卡片右上角的叉号即可删除，不弹窗。其他文件继续保留；可以补传文件，再点击继续分析。正在分析或生成内容时暂时拒绝删除。
 
-任务、提示词、输入材料和评分标准完全沿用，不调用AI重新生成方案。原轮文件、评分、复核、发现和文章继续保存在数据库与Storage；新轮从零上传开始，按既有流程重新匿名分析和人工确认。不提供逐文件物理删除，避免破坏已评分证据。
+删除实际清理Storage原件、预览与视频缓存，不保留历史文件副本。数据库保留必要的来源/删除回执及已生成的不可变AI评分、复核、文章。旧分析不再作为当前证据集的结果。
 
 ## 数据与失败处理
 
-- `protocols.retest_of_protocol_id`关联来源，新的Protocol先draft、复制子项、lock，再创建全产品TestRun矩阵。事务失败不留下半个新轮。
-- `restart_test_execution`仅service_role可调用，Action另验管理员。项目锁与worker mutex串行化，活跃后台任务阻止替换；跨项目和非锁定来源拒绝。
-- 双击/响应丢失可重试，只返回同一尚未上传的新轮；新轮已有文件则旧请求不能再次清空它。
-- 原Artifact及Storage不删除，原AI分、append-only复核和文章不回写。新轮generation usage为0，原生成模型字段为来源信息。
-- 导航保留旧项目历史兼容；出现重传后仅最新Protocol解锁当前流程。没有当前Findings时，旧写作任务不能遮挡新上传页。
-- 旧上传页面在签发与完成前拒绝过期Protocol，worker在恢复业务记录前验证当前输入；既有SQL上传门禁继续最终校验。
-- 后台忙、版本变化和请求失败显示可重试错误。新文件沿用直传、校验和有限重试，失败不伪报上传成功。
+- `remove_test_artifact`为service-only、security invoker、空search_path事务；Action另验管理员。复用项目锁/worker mutex、活跃工作检查和锁定任务复制。
+- 新轮完整沿用任务、提示词、输入和Rubric。幸存附件只新增元数据关联，共享相同Storage对象；保留其执行元数据，不复制文件、不调用AI生成方案。
+- `test_artifacts`依然不可变；同一run内路径唯一，全局路径建索引。`test_artifact_deletions`记录删除与清理状态，`available_test_artifacts`视图排除所有指向被删对象的历史关联。视图security_invoker，表启用RLS，仅service_role可读写。
+- DB先隔离被删证据，再通过Storage API清理，最后完成回执。半成功后页面显示“存储清理未完成”和重试；刷新仍可恢复，重复请求不会再创建轮次。完成回执失败也不能伪报成功。
+- 新轮只采用当前文件与分析完成状态；上传确认在验证/锁定run之前取得与删除相同的项目mutex；旧上传/worker继续有scope检查。最后一个文件删除后恢复pending，其他文件仍可下载。旧AI分与append-only复核不回写。
+- 已删除文件不参与当前生成。大量历史binary主要占用存储；历史元数据仍有查询成本，本次不宣称做了全量数据库性能优化。
 
-## 验证与发布边界
+## 验证与发布
 
-SQL合约在同一事务内验证原记录不变、完整复制、空矩阵、后台互斥、幂等和权限，最后ROLLBACK。独立E2E扩展完整流程：文章完成后开启新轮、重传到真实Storage、重新Judge，逐项核对旧文件与文章；模型使用本地fixture，临时项目按现有规则软归档。
+增量migration为`20261025134553_remove_individual_test_artifact.sql`。先在回滚事务验证权限、互斥、幂等、幸存文件/执行元数据和旧评分不变，再只追加本次迁移；不修复旧迁移历史，不修改Vault，不自动删除用户项目文件。
 
-浏览器在本地真实即梦项目只验证入口、确认弹窗及取消；不实际确认用户项目重传。访客无入口，管理员可以打开弹窗。截图为`/private/tmp/reupload-dialog.png`。
-
-增量迁移为`20261025131254_test_execution_reupload.sql`，已通过回滚合约后应用。原CLI dry-run发现旧迁移文件名与远端历史不一致，因此在隔离目录只读fetch真实远端迁移，再追加本次文件；确认只推本次后应用，不repair旧历史，不更新Vault。应用后的安全检查无warning/error，Docker缺失仅影响CLI本地catalog缓存，不影响migration执行。
-
-应用代码暂未push或部署。用户项目原轮保持，完整测试和E2E最终结果见PLAN Progress Log。本增量不代表全产品Acceptance Criteria重新认证。
+隔离E2E覆盖文章生成后删除单个真实Storage文件、幸存文件下载、最后一项删除、补传、重新Judge和历史文章不变。AI使用本地Provider fixture，数据库与Storage真实。浏览器只在用户即梦项目检查入口与访客权限，不点击其删除按钮；实际删除限独立测试项目。结果见PLAN Progress Log。

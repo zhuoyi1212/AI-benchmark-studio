@@ -21,8 +21,8 @@ export const productLibraryRepository = {
   async listTestedProducts(productIds: string[]) {
     if (productIds.length === 0) return [];
     const { data, error } = await getSupabaseServerClient().from("test_runs")
-      .select("product_id,project_id,test_artifacts!inner(id)")
-      .in("product_id", productIds).neq("status", "invalid").gt("test_artifacts.size_bytes", 0);
+      .select("product_id,project_id,available_test_artifacts!inner(id)")
+      .in("product_id", productIds).neq("status", "invalid").gt("available_test_artifacts.size_bytes", 0);
     if (error) throwRepositoryError("productLibrary.listTestedProducts", error);
     return data.map(run => ({ productId: run.product_id, projectId: run.project_id }));
   },

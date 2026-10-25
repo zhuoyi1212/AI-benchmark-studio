@@ -86,6 +86,29 @@ export class TestExecutionError extends Error {
   }
 }
 
+export async function removeTestArtifact(projectId: string, protocolId: string, artifactId: string): Promise<void> {
+  if (![projectId, protocolId, artifactId].every(id => artifactIdSchema.safeParse(id).success)) {
+    throw new TestExecutionError("文件标识无效，请刷新后重试。");
+  }
+  let removal: { protocolId: string; storagePaths: string[]; cacheArtifactIds: string[] };
+  try { removal = await testExecutionRepository.removeArtifact(projectId, protocolId, artifactId); }
+  catch (error) {
+    if (error instanceof RepositoryError) {
+      if (error.code === 'P2101') throw new TestExecutionError("测试版本已变化，请刷新后重试。");
+      if (error.code === 'P2102') throw new TestExecutionError("后台仍在分析或生成内容，请结束后再删除。");
+      if (error.code === 'P2103') throw new TestExecutionError("文件已不存在，请刷新页面。");
+    }
+    throw new TestExecutionError("删除失败，请重试。");
+  }
+  try {
+    for (const id of removal.cacheArtifactIds) await testExecutionRepository.removeMediaCache(id);
+    for (const path of new Set(removal.storagePaths)) await testExecutionRepository.removeStorageObject(path);
+    await testExecutionRepository.finishDeletion(projectId, artifactId);
+  } catch {
+    throw new TestExecutionError("文件已移出分析，存储清理未完成，请重试删除。");
+  }
+}
+
 export async function restartTestExecution(projectId: string, protocolId: string): Promise<string> {
   if (!artifactIdSchema.safeParse(projectId).success || !artifactIdSchema.safeParse(protocolId).success) {
     throw new TestExecutionError("项目或测试版本无效，请刷新后重试。");
@@ -134,7 +157,10 @@ async function readTestExecutionWorkspace(projectId: string): Promise<TestExecut
     if (rows.length === 0) return null;
     const artifacts = await testExecutionRepository.listArtifacts(rows.map((row) => row.id));
     const artifactsByRun = Map.groupBy(artifacts, (artifact) => artifact.test_run_id);
-    const mappedRuns = await Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? [])));
+    const [mappedRuns, pendingDeletions] = await Promise.all([
+      Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? []))),
+      testExecutionRepository.pendingDeletions(projectId),
+    ]);
     return {
       project: {
         id: project.id,
@@ -144,6 +170,7 @@ async function readTestExecutionWorkspace(projectId: string): Promise<TestExecut
       },
       protocol,
       testRuns: mappedRuns,
+      pendingDeletions,
     };
   } catch (error) {
     throw new TestExecutionError(toUserFacingError(error));
@@ -236,7 +263,7 @@ export async function completeTestArtifactUpload(input: {
   if (input.storagePath !== expectedPath) throw new TestExecutionError("上传文件路径与当前测试项不一致。");
 
   try {
-    const existing = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
+    const existing = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id);
     if (existing) {
       if (existing.test_run_id !== run.id || existing.id !== artifactId || existing.size_bytes !== file.size || existing.sha256 !== sha256) {
         throw new TestExecutionError("已保存文件与本次上传不一致，请移除后重新上传。");
@@ -277,7 +304,7 @@ export async function completeTestArtifactUpload(input: {
         } satisfies Json,
       }, metadata);
     } catch (error) {
-      const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
+      const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id);
       if (recorded) return recorded.id;
       try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the persistence error. */ }
       throw error;
@@ -287,7 +314,7 @@ export async function completeTestArtifactUpload(input: {
       try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve validation error. */ }
       throw error;
     }
-    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath).catch(() => null);
+    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id).catch(() => null);
     if (recorded) return recorded.id;
     try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the original storage or database error. */ }
     throw new TestExecutionError(toUserFacingError(error));

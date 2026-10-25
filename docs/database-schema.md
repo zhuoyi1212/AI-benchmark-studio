@@ -333,3 +333,11 @@ Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不�
 `protocols.retest_of_protocol_id uuid null`引用原Protocol，FK `ON DELETE RESTRICT`，非空来源有部分索引。没有新表，不修改Artifact不可变触发器。`restart_test_execution(projectId, protocolId)`为security invoker、空search_path、service-role-only事务，锁项目与worker mutex，拒绝活跃业务，复制完整任务/输入/Rubric并锁定，再创建空TestRuns。旧文件及全部下游行保留；generation usage=0，原模型字段用于来源追溯。重复请求只复用同一空新轮，其他过期请求拒绝。
 
 导航RPC的Protocol对象新增可选`retestOfProtocolId`，服务器在重传后按最新Protocol计算当前状态。迁移20261025131254已应用，回滚合约及安全权限检查通过；具体使用和验证边界见[test-reupload.md](test-reupload.md)。
+
+## 逐文件删除（2026-10-25，用户修正）
+
+`test_artifact_deletions`：artifact_id PK/FK、project_id、protocol_id、replacement_protocol_id均restrict，storage_path唯一、preview_path、requested_at、cleaned_at；项目未完成清理部分索引。RLS开启，public/anon/authenticated无权限，service_role仅select/insert/update。只保存必要的删除回执，不保存文件副本。`available_test_artifacts`为security_invoker视图，按storage_path排除被删对象，只有service_role可读；当前上传、报告证据、产品库和导航使用此视图。
+
+Artifact不可变触发器不变，storage_path全局唯一改为(test_run_id,storage_path)唯一并增加路径索引。幸存附件在新轮共享Storage对象，路径追溯最初上传，新增上传仍校验自身run/id路径；直传幂等查询现在同时限定run。`remove_test_artifact(project,protocol,artifact)`复用锁定任务的新轮事务，只关联幸存附件并保留执行元数据；`pending_test_artifact_deletions(project)`返回最少的重试UI字段，`finish_test_artifact_deletion(project,artifact)`只在Storage API成功后写cleaned_at。三个RPC均service-only/security invoker/空search_path。原AI分、复核及文章不覆盖；此前“原Storage全部保留”的说明被本节替代。
+
+补充迁移`20261025145245_serialize_upload_and_removal.sql`让record_test_artifact在锁定/验证TestRun之前取得相同项目advisory mutex，避免并发删除复制完附件后旧上传才入库。原文件校验、权限及失败补偿不变。

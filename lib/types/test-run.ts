@@ -42,4 +42,5 @@ export type TestExecutionWorkspace = {
   };
   protocol: import("@/lib/types/protocol").TestProtocol;
   testRuns: TestRun[];
+  pendingDeletions?: Array<{ artifactId: string; protocolId: string; fileName: string }>;
 };

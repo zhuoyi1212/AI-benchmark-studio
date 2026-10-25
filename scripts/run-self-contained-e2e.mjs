@@ -98,6 +98,7 @@ try {
     assert.equal(result.single.articleRevisionsVerified, true);
     assert.equal(result.single.authorPerspectiveVerified, true);
     assert.equal(result.single.reuploadVerified, true);
+    assert.equal(result.single.individualDeletionVerified, true);
     assert.deepEqual(result.single.routeChecks, ["research", "protocol", "test", "review", "results", "report", "publish"]);
     assert.ok(result.single.artifactIds.length > 0 && result.single.judgeScoreCount > 0);
     if (textOnlyEvidence) assert.equal(result.single.publishScreenshotCount, 0);

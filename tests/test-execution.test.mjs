@@ -39,7 +39,7 @@ test("uploads only validated raw multimodal evidence to private Storage", () => 
   assert.match(service, /sha256/);
   assert.match(service, /raw_test_output/);
   assert.match(service, /removeStorageObject/);
-  assert.match(service, /findArtifactByStoragePath\(expectedPath\)\.catch/);
+  assert.match(service, /findArtifactByStoragePath\(expectedPath, run.id\)\.catch/);
   assert.match(repository, /createSignedUploadUrl/);
   assert.match(repository, /\.info\(path\)/);
   assert.match(repository, /signedUrl: data\.signedUrl/);
