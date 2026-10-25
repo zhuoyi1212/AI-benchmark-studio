@@ -381,6 +381,7 @@ async function readProtocol(row: ProtocolRow): Promise<TestProtocol> {
     id: row.id,
     projectId: row.project_id,
     researchRunId: row.research_run_id,
+    retestOfProtocolId: row.retest_of_protocol_id ?? undefined,
     version: row.version,
     title: row.title,
     goal: row.goal,

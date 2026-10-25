@@ -12,7 +12,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
-import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact } from "@/lib/services/test-execution.service";
+import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution } from "@/lib/services/test-execution.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
@@ -264,6 +264,35 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(titled.pack.post.body === regenerated.pack.post?.body, 'Title refresh rewrote the body');
   const { data: kimiPack, error: kimiError } = await getSupabaseServerClient().from('publish_packs').select('provider,model').eq('id', refreshed.packId).single();
   assert(!kimiError && kimiPack?.provider === 'moonshot' && kimiPack.model === 'kimi-k3', 'Kimi provider metadata was not retained');
+  const db = getSupabaseServerClient();
+  const { data: historyBefore, error: historyError } = await db.from('test_artifacts').select('*').in('id', artifactIds);
+  assert(!historyError && historyBefore?.length === artifactIds.length, 'Original artifact snapshot missing');
+  const newProtocolId = await restartTestExecution(projectId, protocolId);
+  assert(await restartTestExecution(projectId, protocolId) === newProtocolId, 'Retry created an extra upload round');
+  const freshTest = requireValue(await getTestExecutionWorkspace(projectId), 'Replacement upload page missing');
+  assert(freshTest.protocol.id === newProtocolId && freshTest.protocol.retestOfProtocolId === protocolId, 'Missing replacement lineage');
+  assert(freshTest.testRuns.every(run => run.status === 'pending' && run.artifacts.length === 0), 'Old files reused in new round');
+  const taskContent = (item: typeof freshTest.protocol.testCases[number]) => ({ ...item, id: undefined, inputArtifacts: item.inputArtifacts?.map(artifact => ({ ...artifact, id: undefined, downloadUrl: undefined })) });
+  assert(isDeepStrictEqual(freshTest.protocol.testCases.map(taskContent), protocolWorkspace.protocol.testCases.map(taskContent)), 'Replacement changed the test tasks');
+  const freshState = requireValue(await getProjectWorkflowState(projectId), 'Replacement navigation missing');
+  assert(!freshState.stages.test.completed && !freshState.stages.results.completed && !freshState.stages.publish.completed, 'Historical analysis leaked into replacement workflow');
+  const freshPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/test`);
+  const freshHtml = await freshPage.text();
+  assert(freshPage.ok && freshHtml.includes('重新上传的新一轮测试') && !freshHtml.includes('poster-output-'), 'Replacement HTTP page did not load');
+  for (const run of freshTest.testRuns) {
+    await uploadTestArtifact({ projectId, testRunId: run.id, file: new File(['Replacement raw evidence for the same locked task.'], 'replacement-output.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: null, retryCount: 0, manuallyEdited: false, notes: null } });
+  }
+  const reuploaded = requireValue(await getTestExecutionWorkspace(projectId), 'Replacement upload not persisted');
+  assert(reuploaded.testRuns.every(run => run.artifacts.length === 1 && run.artifacts[0]?.fileName === 'replacement-output.txt'), 'Replacement evidence was not saved');
+  await finalizeTestExecution(projectId, newProtocolId);
+  await startProfessionalReview(projectId, newProtocolId);
+  await runBlindJudge(projectId);
+  const newReview = requireValue(await getHumanReviewWorkspace(projectId), 'New round has no review');
+  assert(newReview.protocolId === newProtocolId && newReview.scores.length > 0, 'Old Judge reused instead of reanalysis');
+  const { data: historyAfter, error: afterError } = await db.from('test_artifacts').select('*').in('id', artifactIds);
+  assert(!afterError && isDeepStrictEqual(historyAfter, historyBefore), 'Reupload mutated historical artifacts');
+  const { data: oldArticle } = await db.from('publish_packs').select('community_post').eq('id', refreshed.packId).single();
+  assert(oldArticle?.community_post && typeof oldArticle.community_post === 'object' && !Array.isArray(oldArticle.community_post) && oldArticle.community_post.body === titled.pack.post.body, 'Reupload rewrote the previous article');
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,
@@ -284,6 +313,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     routeChecks,
     articleRevisionsVerified: true,
     authorPerspectiveVerified: true,
+    reuploadVerified: true,
   };
 }
 

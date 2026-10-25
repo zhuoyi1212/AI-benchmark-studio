@@ -86,6 +86,21 @@ export class TestExecutionError extends Error {
   }
 }
 
+export async function restartTestExecution(projectId: string, protocolId: string): Promise<string> {
+  if (!artifactIdSchema.safeParse(projectId).success || !artifactIdSchema.safeParse(protocolId).success) {
+    throw new TestExecutionError("项目或测试版本无效，请刷新后重试。");
+  }
+  try { return await testExecutionRepository.restart(projectId, protocolId); }
+  catch (error) {
+    if (error instanceof RepositoryError) {
+      if (error.code === 'P2101') throw new TestExecutionError("测试版本已变化，请刷新后重试。");
+      if (error.code === 'P2102') throw new TestExecutionError("后台仍在分析或生成内容，请结束后再重新上传。");
+      if (error.code === 'P2103') throw new TestExecutionError("当前没有需要移除的已上传文件。");
+    }
+    throw new TestExecutionError("未能开始重新上传，原文件和分析已保留，请重试。");
+  }
+}
+
 // Submission only needs the current protocol and persisted evidence. Avoid rebuilding
 // the research workspace and signing every download URL just to enqueue evaluation.
 export async function getTestExecutionReadiness(projectId: string) {
@@ -142,9 +157,7 @@ export async function uploadTestArtifact(input: {
   metadata: RunExecutionMetadata;
 }): Promise<string> {
   const metadata = executionMetadataSchema.parse(input.metadata);
-  const run = await testExecutionRepository.findRun(input.testRunId);
-  if (!run || run.project_id !== input.projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
-  if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+  const run = await findOpenRun(input.projectId, input.testRunId);
 
   const file = normalizeAndValidateFile(input.file);
   const bytes = new Uint8Array(await file.file.arrayBuffer());
@@ -373,6 +386,8 @@ async function findOpenRun(projectId: string, testRunId: string) {
   const run = await testExecutionRepository.findRun(testRunId);
   if (!run || run.project_id !== projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
   if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+  const latest = (await protocolsRepository.listByProject(projectId))[0];
+  if (latest?.id !== run.protocol_id || latest.status !== 'locked') throw new TestExecutionError("测试版本已变化，请刷新后重新选择文件。");
   return run;
 }
 

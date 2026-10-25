@@ -10,7 +10,7 @@ export type WorkflowNavigationSnapshot = {
   evaluationMode: "quick" | "professional";
   productCount: number;
   researchRuns: Array<{ id: string; version: number; status: string; comparability: Json | null }>;
-  protocols: Array<{ id: string; researchRunId: string; version: number; status: string }>;
+  protocols: Array<{ id: string; researchRunId: string; version: number; status: string; retestOfProtocolId?: string | null }>;
   testCases: Array<{ id: string; protocolId: string }>;
   testRuns: Array<{ id: string; protocolId: string; status: string }>;
   artifactRunIds: string[];
@@ -28,7 +28,7 @@ const workflowNavigationSnapshotSchema: z.ZodType<WorkflowNavigationSnapshot> = 
   evaluationMode: z.enum(["quick", "professional"]),
   productCount: z.number().int().nonnegative(),
   researchRuns: z.array(z.object({ id: idSchema, version: z.number().int(), status: z.string(), comparability: z.custom<Json>().nullable() })),
-  protocols: z.array(z.object({ id: idSchema, researchRunId: idSchema, version: z.number().int(), status: z.string() })),
+  protocols: z.array(z.object({ id: idSchema, researchRunId: idSchema, version: z.number().int(), status: z.string(), retestOfProtocolId: idSchema.nullable().optional() })),
   testCases: z.array(z.object({ id: idSchema, protocolId: idSchema })),
   testRuns: z.array(z.object({ id: idSchema, protocolId: idSchema, status: z.string() })),
   artifactRunIds: z.array(idSchema),

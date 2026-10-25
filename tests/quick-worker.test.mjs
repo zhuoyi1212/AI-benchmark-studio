@@ -15,13 +15,13 @@ function load(job, evaluation, regeneration, options = {}) {
   const deps = {
     'server-only': {}, zod: { z },
     '@/lib/repositories/quick-jobs.repository': { quickJobsRepository: { list: async () => options.jobs ?? [job], claim: async () => job, heartbeat: noop, finish: async (...args) => finished.push(args) } },
-    '@/lib/repositories/protocols.repository': { protocolsRepository: { listByProject: async () => [{ id: job.scope, status: 'locked' }] } },
+    '@/lib/repositories/protocols.repository': { protocolsRepository: { listByProject: async () => [{ id: options.currentProtocolId ?? job.scope, status: 'locked' }] } },
     '@/lib/supabase/server': { getSupabaseServerClient: () => ({ from: table => ({ update: value => { recoveryWrites.push({ table, value }); return query; } }) }) },
     '@/lib/services/projects.service': { setQuickPreparationStatus: noop },
     '@/lib/services/research.service': { getResearchWorkspace: async () => { quickExecution.getStore().retryable = true; throw new Error('Temporary provider failure'); } },
     '@/lib/services/protocols.service': {},
     '@/lib/services/quick-evaluation.service': { advanceQuickEvaluation: evaluation },
-    '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => ({ latest: { id: job.payload.findingsId, humanConfirmedAt: 'confirmed' } }) },
+    '@/lib/services/findings.service': { getExperienceFindingsWorkspace: async () => ({ latest: { id: options.currentFindingsId ?? job.payload.findingsId, humanConfirmedAt: 'confirmed' } }) },
     '@/lib/services/publish.service': { getPublishWorkspace: async () => ({ pack: options.pack ?? { id: job.payload.packId, ideas: [{ id: 'idea', recommended: true }] } }), generateCommunityPost: async () => { throw new QuickYield(); }, regeneratePreparedCommunityPost: regeneration },
     '@/lib/services/result-analysis.service': {}, '@/lib/services/report.service': {},
     '@/lib/ai/schemas/publish.schemas': { publishConfigSchema: z.object({}) },
@@ -94,4 +94,14 @@ test('even without a newer queue row, a fixed pack mismatch stops before any rec
   assert.equal(worker.finished[0][1], 'failed');
   assert.match(worker.finished[0][3], /文章版本已变化/);
   assert.deepEqual(worker.recoveryWrites, []);
+});
+
+test('jobs for replacement-upload history stop before recovery can mutate any newer run', async () => {
+  for (const kind of ['evaluate', 'findings', 'discovery', 'publish', 'analysis', 'report']) {
+    const job = { ...base, kind, payload: { findingsId: '11111111-1111-4111-8111-111111111111', config: {} } };
+    const worker = load(job, undefined, undefined, { currentProtocolId: 'new-round', currentFindingsId: 'new-findings' });
+    await worker.runQuickWorker('project', 1);
+    assert.equal(worker.finished[0][1], 'failed', kind);
+    assert.deepEqual(worker.recoveryWrites, [], kind);
+  }
 });

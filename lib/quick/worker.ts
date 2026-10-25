@@ -31,6 +31,16 @@ export async function runQuickWorker(projectId?: string, maxJobs = 8) {
       try {
         if (job.kind === 'research' || job.kind === 'protocol') await setQuickPreparationStatus(job.project_id, 'running');
         await requireCurrentWritingJob(job);
+        // Check scope before recovering interrupted rows: an old-round job
+        // must not fail or reuse work belonging to replacement uploads.
+        if (['evaluate', 'findings'].includes(job.kind)) await requireProtocol(job);
+        if (['discovery', 'publish', 'analysis', 'report'].includes(job.kind)) {
+          const regeneration = job.payload && typeof job.payload === 'object' && !Array.isArray(job.payload) && job.payload.mode === 'regenerate';
+          if (!regeneration) {
+            const findingsId = ['analysis', 'report'].includes(job.kind) ? job.scope : writingPayload.parse(job.payload).findingsId;
+            await requireFindings(job.project_id, findingsId);
+          }
+        }
         await recoverInterruptedRun(job);
         const outcome = await executeJob(job);
         if (job.kind === 'protocol') await setQuickPreparationStatus(job.project_id, 'completed');

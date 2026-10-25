@@ -326,3 +326,10 @@ Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不�
 `publish_packs.findings_revision_id` 绑定展示修订（restrict FK，索引）。既有 33 条文章不回写，仅新增列 NULL。`create_publish_revision` 继续原子追加新文章；编辑分支可携带经过服务端 Schema 校验的选题/配置/修订 ID，拒绝过期来源。编辑稿不继承旧稿的 Story Brief、事实审核、语言编辑和 generationTrace；完整旧审稿信息留在 `manualEdit.sourcePackId` 指向的不可变来源稿中，`aiReviewed=false`。管理员版本页可查看原文、恢复的确认文本和当前展示修订。
 
 真实数据库回滚测试覆盖：成功追加、旧版本冲突、跨项目 Artifact 拒绝、修订 UPDATE/DELETE 拒绝、原确认记录覆盖拒绝、编辑稿审核字段清理、文章来源绑定、匿名权限。生产数据修订单独执行，不把项目 ID 或业务文本塞入 schema migration。
+
+
+## 测试文件重传（2026-10-25）
+
+`protocols.retest_of_protocol_id uuid null`引用原Protocol，FK `ON DELETE RESTRICT`，非空来源有部分索引。没有新表，不修改Artifact不可变触发器。`restart_test_execution(projectId, protocolId)`为security invoker、空search_path、service-role-only事务，锁项目与worker mutex，拒绝活跃业务，复制完整任务/输入/Rubric并锁定，再创建空TestRuns。旧文件及全部下游行保留；generation usage=0，原模型字段用于来源追溯。重复请求只复用同一空新轮，其他过期请求拒绝。
+
+导航RPC的Protocol对象新增可选`retestOfProtocolId`，服务器在重传后按最新Protocol计算当前状态。迁移20261025131254已应用，回滚合约及安全权限检查通过；具体使用和验证边界见[test-reupload.md](test-reupload.md)。

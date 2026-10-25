@@ -145,6 +145,7 @@ export type ProductResearchSnapshotRow = {
 };
 
 export type ProtocolRow = {
+  retest_of_protocol_id?: string | null;
   id: string;
   project_id: string;
   research_run_id: string;

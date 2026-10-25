@@ -47,7 +47,7 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
   const { active, failed } = selectQuickWorkspaceJobs(jobs, {
     protocolId: protocol?.id,
     protocolLocked: protocol?.status === 'locked',
-    findingsId: preparedFindings?.latest?.id ?? preparedPublish?.findingsId ?? undefined,
+    findingsId: preparedFindings?.latest?.id ?? preparedPublish?.findingsId ?? null,
     publishReady,
     reviewCompleted: preparedReview?.protocolId === protocol?.id && preparedReview?.status === 'revealed',
     findingsCompleted: preparedFindings?.protocolId === protocol?.id && preparedFindings?.latest?.status === 'completed',

@@ -272,6 +272,14 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-25 测试文件重新上传：按用户截图要求在测试执行页新增管理员“移除文件并重新上传”入口与整轮确认弹窗。保留不可变Artifact/Storage/原评分及下游历史，用retest_of_protocol_id追溯原方案，service-role-only restart_test_execution事务原样复制任务/Prompt/输入/Rubric，经draft→lock→空矩阵开始新轮；复制usage为0，无AI方案重跑。保护项目/worker互斥、活跃任务拒绝、跨项目/过期请求拒绝及空新轮幂等；新上传和后台旧任务在写入/恢复前核对当前轮，导航与Quick工作台不沿用旧完成状态。此入口为整轮替换，所有产品任务需重传，不提供逐文件物理删除。新列/索引/RPC/导航投影迁移20261025131254已应用，原始即梦项目未实际执行新轮。
+
+重传最终索引快照审计：507个tracked文件/76个真实流程文件通过Secret、客户端、Provider与Mock边界检查，另以内存比对本机实际凭据值确认无泄漏；用户原有模板删除与作品集改动未暂存或恢复。
+
+最终506/506tests（新增8项）、typecheck、build含实际隔离媒体自检、diff检查通过；lint0errors/27既有warnings。CLI事务回滚合约在应用前后均通过，安全advisors无WARN/ERROR。连接器查询传输失败后用已登录CLI；db push dry-run发现8条既有历史命名差异，在隔离目录fetch真实远端迁移并仅追加本次文件，dry-run确认后应用，不repair旧历史、不改Vault。Docker未运行仅使CLI catalog缓存告警，不影响迁移执行。没有Secret进入代码或文档。
+
+完整真实DB/Storage E2E mvnv46p7-b65a059a通过，47次本地模拟Provider边界请求、7个原业务页面200、单产品/可比/不可比路径通过；新增同项目完成文章后开新轮→空上传页HTTP200→重传到真实Storage→新轮Judge、旧Artifact全文行和旧文章正文逐项相同，3/3临时项目软归档。模型输出为fixture，不冒充真实产品测评。实际浏览器验证本地即梦访客无入口、临时本地管理员有入口，打开弹窗显示4个文件/整轮范围及历史保留、取消回到原四图，未确认用户项目重传。截图/private/tmp/reupload-dialog.png；测试服务器已关闭。产品规则、AI路由、Blind顺序、immutable Score和append-only Review保持。本轮完成重传增量验收，不重认证全部M0–M15。代码未push/部署；用户原有作品集改动、模板删除与未跟踪资料保留。详见docs/test-reupload.md。
+
 2026-10-25 即梦新规则真实候选：用户要求先重生成一篇看效果，并在自动审批拒绝后明确允许把即梦已有测试文本/已存图片观察发Kimi和DeepSeek及正常API费用。只读核对App v14、当前Findings展示修订v2、同一任务及四图元数据/归档SHA；以54b9f1d新规则跑现有Service/Router/Provider，Repository改为显式本地输出适配器、HTTP guard只允许Provider POST，不写DB/Storage/App。一个本地投影缺tags的尝试在模型调用前停止并按真实旧稿补齐；首次真实流水线因虚构背景及修订的无依据表述失败。随后补充针对这些具体问题的编辑提醒，用相同材料重跑五阶段，初审结构修复一次，共6个响应，独立终审通过。两轮真实流水线共11响应，失败和输入返回保留，未存思维链、手改审核布尔值或润色终稿。
 
 最终462字符候选逐字归档docs/project-articles/2026-10-25即梦社区分享候选，明确人工阅读仍见参数堆积、图像枚举和泛提醒，不将模型通过当作用户自然度验收。原图片观察复用归档，未重新读图；生成后DB复读超时，不宣称逐行后置比对完成，生成进程写入边界为0。新增一项全文/哈希/模型追溯/当前来源/失败留存回归；498/498tests、typecheck、build含媒体实际隔离自检、新测试eslint及diff检查通过。本轮只有本地候选与核验材料，不部署/替换原文章，不改源码生成规则或上游实验；用户既有未提交资料保留。

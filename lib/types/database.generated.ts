@@ -885,6 +885,7 @@ export type Database = {
           project_id: string
           prompt_version: string | null
           research_run_id: string
+          retest_of_protocol_id: string | null
           rules: Json
           status: string
           test_mode: string
@@ -907,6 +908,7 @@ export type Database = {
           project_id: string
           prompt_version?: string | null
           research_run_id: string
+          retest_of_protocol_id?: string | null
           rules?: Json
           status?: string
           test_mode?: string
@@ -929,6 +931,7 @@ export type Database = {
           project_id?: string
           prompt_version?: string | null
           research_run_id?: string
+          retest_of_protocol_id?: string | null
           rules?: Json
           status?: string
           test_mode?: string
@@ -937,6 +940,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "protocols_retest_of_protocol_id_fkey"
+            columns: ["retest_of_protocol_id"]
+            isOneToOne: false
+            referencedRelation: "protocols"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "protocols_project_id_fkey"
             columns: ["project_id"]
@@ -2058,6 +2068,10 @@ export type Database = {
         Returns: string
       }
       ensure_review_session: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: string
+      }
+      restart_test_execution: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: string
       }

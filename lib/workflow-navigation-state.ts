@@ -5,7 +5,10 @@ import type { ProjectWorkflowState, WorkflowStageAccess } from "./types/workflow
 export function deriveWorkflowState(snapshot: WorkflowNavigationSnapshot): ProjectWorkflowState {
   const completedResearch = snapshot.researchRuns.filter((run) => run.status === "completed");
   const latestCompletedResearch = completedResearch[0] ?? null;
-  const lockedProtocolIds = new Set(snapshot.protocols.filter((protocol) => protocol.status === "locked").map((protocol) => protocol.id));
+  // Replacement uploads are a new round. Historical completion must not unlock it.
+  const latest = snapshot.protocols.reduce<(typeof snapshot.protocols)[number] | undefined>((current, item) => !current || item.version > current.version ? item : current, undefined);
+  const replacingUploads = snapshot.protocols.some(protocol => protocol.retestOfProtocolId);
+  const lockedProtocolIds = new Set(snapshot.protocols.filter(protocol => protocol.status === "locked" && (!replacingUploads || protocol.id === latest?.id)).map(protocol => protocol.id));
   const artifactRunIds = new Set(snapshot.artifactRunIds);
   const completedTestProtocolIds = new Set<string>();
 

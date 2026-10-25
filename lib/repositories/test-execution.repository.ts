@@ -33,6 +33,13 @@ export type StoredArtifactInfo = {
 };
 
 export const testExecutionRepository = {
+  async restart(projectId: string, protocolId: string): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc("restart_test_execution", {
+      p_project_id: projectId, p_protocol_id: protocolId,
+    });
+    if (error) throwRepositoryError("testExecution.restart", error);
+    return data;
+  },
   async ensureMatrix(projectId: string, protocolId: string): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("ensure_test_run_matrix", {
       p_project_id: projectId,

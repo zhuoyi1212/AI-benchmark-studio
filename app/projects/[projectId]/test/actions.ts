@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { BlindReviewError, startProfessionalReview } from "@/lib/services/blind-review.service";
 import {
   completeTestArtifactUpload,
   finalizeTestExecution,
   prepareTestArtifactUpload,
+  restartTestExecution,
   TestExecutionError,
   type ArtifactFileDescriptor,
 } from "@/lib/services/test-execution.service";
@@ -30,6 +32,25 @@ export type PrepareArtifactUploadActionState = TestExecutionActionState & {
 export type CompleteArtifactUploadActionState = TestExecutionActionState & {
   restartUpload?: boolean;
 };
+
+export async function restartTestExecutionAction(
+  _state: TestExecutionActionState, formData: FormData,
+): Promise<TestExecutionActionState> {
+  if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { ok: false, message: '请以管理员身份重新上传。' };
+  const ids = z.object({ projectId: idSchema, protocolId: idSchema }).safeParse({
+    projectId: formData.get('projectId'), protocolId: formData.get('protocolId'),
+  });
+  if (!ids.success) return { ok: false, message: '项目或测试版本无效。' };
+  try { await restartTestExecution(ids.data.projectId, ids.data.protocolId); }
+  catch (error) {
+    if (error instanceof TestExecutionError) return { ok: false, message: error.message };
+    throw error;
+  }
+  revalidatePath(`/projects/${ids.data.projectId}`, 'layout');
+  revalidatePath('/projects');
+  revalidatePath('/products');
+  redirect(`/projects/${ids.data.projectId}/test`);
+}
 
 export async function prepareTestArtifactUploadAction(
   formData: FormData,
