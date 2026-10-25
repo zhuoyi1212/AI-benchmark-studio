@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+
+test('Jimeng local sharing candidate preserves exact model prose, current source lineage and review provenance', async () => {
+  const root = new URL('../docs/project-articles/2026-10-25即梦社区分享候选/', import.meta.url);
+  const record = JSON.parse(await readFile(new URL('生成核验.json', root), 'utf8'));
+  const article = await readFile(new URL(record.articleFile, root), 'utf8');
+  const hash = text => createHash('sha256').update(text).digest('hex');
+  assert.equal(article, `# ${record.title}\n\n${record.body}\n`);
+  assert.equal(hash(record.body), record.bodySha256);
+  assert.equal(hash(article), record.articleSha256);
+  assert.equal(record.sourceVersion, 14);
+  assert.equal(record.sourceFindingsRevisionId, '499bc473-0e65-420e-8960-b6bd8beb62ad');
+  assert.equal(record.policyVersion, 'community-story.v12-community-sharing');
+  assert.equal(record.generationTrace.find(trace => trace.stage === 'writing').provider, 'moonshot');
+  assert.deepEqual(record.generationTrace.map(trace => trace.stage), ['planning', 'writing', 'content_check', 'style_edit', 'fact_check']);
+  assert.ok(record.generationTrace.every(trace => trace.promptVersion.includes('community-sharing')));
+  assert.equal(record.attempts.reduce((sum, attempt) => sum + attempt.responseCount, 0), 11);
+  assert.equal(record.attempts[0].status, 'failed');
+  assert.equal(record.editorialReminderAfterFailedAttempt, true);
+  assert.deepEqual(record.articleReview.issues, []);
+  for (const key of ['facts','scope','stance','experience','advice','evidence']) assert.equal(record.stylePreservation[key], true);
+  for (const key of ['databaseWrites','storageWrites','appWrites','deploys']) assert.equal(record[key], 0);
+  assert.equal(record.originalArtifactMetadataMatched, true);
+  assert.match(record.limits.join('\n'), /timed out/);
+  assert.match(record.limits.join('\n'), /dense parameters/);
+  assert.doesNotMatch(JSON.stringify(record), /Authorization|Bearer |api_key|reasoning_content|chain.of.thought/i);
+});

@@ -272,6 +272,10 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-25 即梦新规则真实候选：用户要求先重生成一篇看效果，并在自动审批拒绝后明确允许把即梦已有测试文本/已存图片观察发Kimi和DeepSeek及正常API费用。只读核对App v14、当前Findings展示修订v2、同一任务及四图元数据/归档SHA；以54b9f1d新规则跑现有Service/Router/Provider，Repository改为显式本地输出适配器、HTTP guard只允许Provider POST，不写DB/Storage/App。一个本地投影缺tags的尝试在模型调用前停止并按真实旧稿补齐；首次真实流水线因虚构背景及修订的无依据表述失败。随后补充针对这些具体问题的编辑提醒，用相同材料重跑五阶段，初审结构修复一次，共6个响应，独立终审通过。两轮真实流水线共11响应，失败和输入返回保留，未存思维链、手改审核布尔值或润色终稿。
+
+最终462字符候选逐字归档docs/project-articles/2026-10-25即梦社区分享候选，明确人工阅读仍见参数堆积、图像枚举和泛提醒，不将模型通过当作用户自然度验收。原图片观察复用归档，未重新读图；生成后DB复读超时，不宣称逐行后置比对完成，生成进程写入边界为0。新增一项全文/哈希/模型追溯/当前来源/失败留存回归；498/498tests、typecheck、build含媒体实际隔离自检、新测试eslint及diff检查通过。本轮只有本地候选与核验材料，不部署/替换原文章，不改源码生成规则或上游实验；用户既有未提交资料保留。
+
 2026-10-25 社区分享规则增量：按用户的图1反例、元宝UI/trae原型/三产品情感题与园区建站参考文，整理用途、真实输入/动作、代表性结果及直接有据评价的共同特征。新增community-sharing-policy，接入快速/专业Discovery、Brief、初稿、定向修订与两次只读审稿；图像任务不强求产品引语，长文允许真实步骤，减少参数报账、泛使用须知与固定免责结尾。Brief ending可空但scope/主线证据仍必需，删除无关数值须精确定位并明确要求；事实、经历、细节保留与最终失败不得ready的门禁保持。策略v12与五条受影响路由Prompt升版，同步规范、决策、验收与完整提示词清单；没有新表/migration、模型变更或第三方Skill运行时。
 
 497/497 tests、typecheck、build含媒体隔离实际抽帧/提音、diff check通过；lint0errors/27既有warnings。新增9项回归，含实际Task Service/Router/Provider序列化的五阶段合成材料测试，fetch传输与Repository隔离，不是远端模型/真实DB/Storage/浏览器E2E。初轮发现两个旧Prompt版本断言未同步已修正，未删除/跳过测试；本机回环监听被沙箱拒绝后使用显式隔离fetch传输，不宣称真实HTTP网络验证。本轮只完成规则工程验收，没有调用真实模型、改写App旧稿、push或部署，不宣称自然度改善比例或全产品Acceptance Criteria重认证。详细分析与人工改写示意见docs/community-sharing-generation.md。保留用户原有作品集编辑、模板删除与未跟踪资料。
