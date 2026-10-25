@@ -1,0 +1,342 @@
+{
+  "releasedAtUtc": "2026-10-25T15:40:50.119454+00:00",
+  "projectId": "prj_hbBp4mC9Tb20UgpNJmDni06w7ORS",
+  "team": "z-z-y1",
+  "deploymentId": "dpl_ENEDmeLoHxsyQJGaQZ8tZNgGhcDc",
+  "sourceCommit": "193d8ff3655d3f0114729ec9bd3e151c1aecda8f",
+  "target": "production",
+  "status": "READY",
+  "productionUrl": "https://ai-benchmark-studio-sand.vercel.app",
+  "previousDeploymentId": "dpl_H2E3nhoC5H92SWfoBWA52GNsJaU9",
+  "sourceProof": {
+    "deploymentId": "dpl_ENEDmeLoHxsyQJGaQZ8tZNgGhcDc",
+    "commit": "193d8ff3655d3f0114729ec9bd3e151c1aecda8f",
+    "allUploadedSourceHashesMatch": true,
+    "count": 509,
+    "featureFiles": [
+      "app/projects/[projectId]/test/actions.ts",
+      "app/projects/[projectId]/test/page.tsx",
+      "app/projects/[projectId]/test/remove-artifact-action.tsx",
+      "lib/services/test-execution.service.ts"
+    ]
+  },
+  "candidateVerification": {
+    "base": "https://ai-benchmark-studio-e88cy603t-z-z-y1.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "uploaded-source-hashes-match-193d8ff",
+        "passed": true,
+        "files": 509
+      }
+    ],
+    "count": 29,
+    "administratorCredentialStatus": 401,
+    "deployedDeleteComponent": true,
+    "visitorDeleteButtons": 0,
+    "userFilesDeleted": false
+  },
+  "productionVerification": {
+    "base": "https://ai-benchmark-studio-sand.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "uploaded-source-hashes-match-193d8ff",
+        "passed": true,
+        "files": 509
+      }
+    ],
+    "count": 29,
+    "administratorCredentialStatus": 401,
+    "deployedDeleteComponent": true,
+    "visitorDeleteButtons": 0,
+    "userFilesDeleted": false
+  },
+  "runtimeErrorLogs": 0,
+  "runtimeFatalLogs": 0,
+  "logWindow": "10m",
+  "administratorLoginVerifiedOnline": false,
+  "limitation": "Existing cached production administrator credential returned 401. No password or access-control changes. Administrator UI and physical deletion/reupload/reanalysis verified locally and in isolated E2E in implementation task."
+}

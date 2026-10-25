@@ -272,6 +272,9 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-25 逐文件删除生产发布：用户要求部署，正常push现有codex分支2b36ec1→193d8ff；从193d8ff干净Git快照发布，不含.env及用户未提交资料，511文件/76真实流程边界与真实Secret值扫描通过。Vercel原团队z-z-y1/项目ai-benchmark-studio，候选dpl_ENEDmeLoHxsyQJGaQZ8tZNgGhcDc远端READY、TypeScript和Linux媒体隔离自检通过，实际上传509源码文件SHA-1全部匹配。候选29项只读页面/访客权限/来源验证后promote，正式sand域名inspect确认同一部署、29项再次通过，近10分钟error/fatal日志0。既有本机缓存管理员凭据返回401，本次不宣称线上管理员实际登录/点击删除已验收；管理员交互/实际删除及重分析功能依赖实现任务516测试与完整隔离E2E证据，线上没有删除用户文件或修改密码/访问保护。无新migration、AI付费调用或业务数据改写，未改main。连接器失败使用现有CLI/代理，详细发布边界见docs/releases/2026-10-25-individual-upload-deletion.md及同名JSON。跟进提交仅记录发布，不重建运行代码；用户既有资料不暂存。
+
+
 2026-10-25 逐文件删除修正：按用户最新要求取消整轮弹窗，在每张上传卡片右上角提供管理员叉号，点击直接删除；幸存文件继续显示，可补传再分析。remove_test_artifact事务复用同任务新轮隔离旧分析，幸存附件只复制关联元数据、共享同一Storage对象，不产生文件历史副本。新增test_artifact_deletions清理回执和service-only/security_invoker available_test_artifacts视图；Storage API实际清理原件、预览和视频缓存，半成功显示可刷新恢复的重试入口。原AI分、Human Review事件、锁定任务及文章不回写。无新AI路由、模型或Mock fallback。
 
 迁移20261025134553与20261025145245已应用：前者逐文件隔离/清理，后者让上传确认在锁定或验证run之前取得同一项目mutex，避免并发写入旧轮。均先回滚验证并仅追加远端新版本，不改旧migration history/Vault；角色权限、跨项目拒绝、幂等、剩余文件/执行元数据与评分不变均验证，安全advisors无WARN/ERROR，Data API实际验证视图关系。数据库不可变Artifact行仅留引用和回执，删除的binary不保留，未批量删除用户项目。
