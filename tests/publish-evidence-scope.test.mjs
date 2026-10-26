@@ -16,6 +16,7 @@ function evidenceLoader({ video = false } = {}) {
     workspace.testRuns[0].artifacts.push({ ...workspace.testRuns[0].artifacts[0], id: two, fileType: 'image/png' });
   }
   return createLoader(fileURLToPath(new URL('..', import.meta.url)), {
+    '@/lib/services/analysis-image.service': { imageForAI: async image => ({ url: image.fileUrl, description: 'fixture image transport' }) },
     '@/lib/services/test-execution.service': { getTestExecutionWorkspace: async () => workspace },
     '@/lib/services/research.service': { getResearchWorkspace: async () => ({ completedResult: { products: [] } }) },
     '@/lib/ai/task-service': { aiTaskService: {} },

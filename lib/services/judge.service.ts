@@ -1,4 +1,6 @@
 import "server-only";
+import { imageForAI } from "@/lib/services/analysis-image.service";
+import { analysisImagePolicyVersion, AnalysisImageError } from "@/lib/media/analysis-image";
 import { complianceBaselineRules } from "@/lib/compliance-baseline";
 
 import { memoPageRead } from "@/lib/supabase/read-scope";
@@ -198,6 +200,7 @@ async function executeJudgeCase(
       policyVersion: selection.policyVersion,
       selectedFamily: selection.selectedFamily,
       mediaPolicyVersion,
+      analysisImagePolicyVersion,
     },
     artifacts: selectedInputs.map((input) => ({
       blindSampleId: input.blind_sample_id,
@@ -358,6 +361,7 @@ async function buildJudgeContent(
     if (isTextArtifactMimeType(artifact.mimeType)) {
       content.push({ type: "text", text: artifact.text! });
     } else if (artifact.mimeType.startsWith("image/") && !videoCase) {
+      content.push({ type: "text", text: artifact.imageDescription! });
       content.push({ type: "image_url", image_url: { url: artifact.url! } });
     } else if (artifact.mimeType.startsWith("image/") && videoCase) {
       // This image was read by the dedicated vision step above.
@@ -377,7 +381,8 @@ async function prepareArtifact(input: JudgeCaseInputRow, testCase: JudgeTestCase
     return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: mediaEvidence.sourceSha256, url: null, text: null, mediaEvidence };
   }
   if (!isTextArtifactMimeType(input.mime_type)) {
-    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url, text: null };
+    const image = input.mime_type.startsWith("image/") ? await imageForAI({ id: input.artifact_id, fileUrl: url, fileType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256 ?? undefined }) : null;
+    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url: image?.url ?? url, imageDescription: image?.description, text: null };
   }
   const response = await fetch(url);
   if (!response.ok) throw new JudgeExecutionError("无法读取原始文本 Artifact。");
@@ -478,6 +483,7 @@ function mapRun(run: JudgeRunRow, caseRuns: JudgeCaseRunRow[], scores: JudgeScor
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return "AI Judge structured output validation failed";
   if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"
@@ -490,6 +496,7 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return "AI Judge 返回结果未通过评分矩阵校验，请重新运行。";
   if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"

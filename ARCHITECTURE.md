@@ -1,5 +1,9 @@
 # AI Benchmark Studio — Architecture
 
+### 图片分析副本（2026-10-26）
+
+Direct Upload → TestExecutionService 完整图片 SHA/解码校验 → Sharp 有界无损/高质量编码 → 私有 Storage 副本 → record_test_artifact 一次保存 metadata.analysisImage。Judge/Findings/Publish 通过 server-only imageForAI 验证 available_test_artifacts 来源及副本校验值，以 Base64 发送并说明技术处理边界。旧图按需内存适配，策略参与输入签名。删除/失败补偿批量清理原图及副本，确认不明保留对象。无 DDL、新模型阶段或 Provider 变更；详见 docs/analysis-image.md。
+
 ### 逐文件删除（2026-10-25）
 
 RemoveArtifactAction → 管理员Server Action → TestExecutionService → Repository → remove_test_artifact事务。复用restart_test_execution的项目mutex、活跃任务检查及完整任务复制；只把未删附件的元数据关联到新TestRuns，共享原Storage对象，不复制binary。test_artifact_deletions记录待清理/完成回执，available_test_artifacts安全视图排除被删对象。Storage API清理原件、预览和视频缓存后完成回执；失败持久显示重试。新轮重新评分，历史AI分与复核不改。协议版本与旧worker/上传防过期沿用现有逻辑，无新增AI路由或模型阶段。

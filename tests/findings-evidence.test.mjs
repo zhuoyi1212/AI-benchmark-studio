@@ -44,6 +44,7 @@ test('PDF limits and corrupt files fail explicitly without returning partial evi
 function serviceFixture(artifacts, overrides={}) {
   const testWorkspace={project:{id:'project',name:'test',products:[{id:'product',name:'tool'}]},protocol:{id:'protocol',version:1,testCases:[{id:'case',title:'task',expectedOutputTypes:['mixed']}]},testRuns:[{id:'run',productId:'product',testCaseId:'case',status:'ready_for_review',artifacts}]};
   return createLoader(root, {
+    '@/lib/services/analysis-image.service': { imageForAI: async image => ({ url: image.fileUrl, description: 'fixture image transport' }) },
     '@/lib/services/test-execution.service':{getTestExecutionWorkspace:async()=>testWorkspace},
     '@/lib/services/research.service':{getResearchWorkspace:async()=>({completedResult:{products:[]}})},
     '@/lib/services/human-review.service':{getHumanReviewWorkspace:async()=>({status:'revealed'})},

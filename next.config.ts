@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     // Server Actions already invalidate affected routes after every write.
     staleTimes: { dynamic: 120 },
   },
-  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "ffmpeg-static", "@ffprobe-installer/ffprobe"],
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "ffmpeg-static", "@ffprobe-installer/ffprobe", "sharp"],
   webpack(config, { isServer, webpack }) {
     if (isServer && process.env.VERCEL) {
       config.plugins.push(new webpack.NormalModuleReplacementPlugin(

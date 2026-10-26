@@ -1,5 +1,7 @@
 # AI Benchmark Studio 数据库 Schema v1
 
+2026-10-26 图片适配（无 DDL）：新上传的 test_artifacts.metadata.analysisImage 在初次记录时保存策略版本、原图/分析副本 SHA-256、宽高、MIME、字节数、编码质量与私有路径。原件不改，副本为原路径追加 .analysis-image.v1.png/jpg，不创建新 Artifact 或进入配图。available_test_artifacts 继续作为可用性来源；历史行不回写，旧图显式分析时在内存处理。Storage remove 批量清理原件与两个候选副本，既有删除回执在全部成功后完成。无新表、列、RPC、权限或公开 bucket，详见 docs/analysis-image.md。
+
 ## 设计目标
 
 本 Schema 将一次测评保存为可追溯的数据链：

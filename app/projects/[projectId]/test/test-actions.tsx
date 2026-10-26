@@ -126,7 +126,7 @@ export function UploadArtifactAction({ projectId, run, productName }: { projectI
             <p className="mt-2 text-xs text-muted-foreground">可多选、继续添加，或在此按 ⌘V / Ctrl+V 粘贴截图。</p>
           </div>
           {entries.length > 0 && <ul aria-label="待上传文件" className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">{entries.map(entry => <li key={entry.id} className="flex items-start gap-2 text-xs">
-            <div className="min-w-0 flex-1"><span className="block break-all">{entry.file.name}</span><span className={entry.status === "failed" ? "text-red-600" : "text-muted-foreground"}>{entry.status === "saved" ? "已保存" : entry.status === "uploading" ? `正在上传 ${entry.progress}%` : entry.status === "failed" ? entry.error : `${formatFileSize(entry.file.size)} · 待上传`}</span></div>
+            <div className="min-w-0 flex-1"><span className="block break-all">{entry.file.name}</span><span className={entry.status === "failed" ? "text-red-600" : "text-muted-foreground"}>{entry.status === "saved" ? "已保存" : entry.status === "uploading" ? entry.progress >= 100 ? "正在校验与处理…" : `正在上传 ${entry.progress}%` : entry.status === "failed" ? entry.error : `${formatFileSize(entry.file.size)} · 待上传`}</span></div>
             {entry.status === "saved" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" disabled={pending} aria-label={`移除 ${entry.file.name}`} onClick={() => setEntries(current => current.filter(item => item.id !== entry.id))}><X className="h-3.5 w-3.5" /></Button>}
           </li>)}</ul>}
           <p role="status" className="sr-only">{pending ? `已保存 ${entries.filter(entry => entry.status === "saved").length} / ${entries.length} 个文件` : ""}</p>

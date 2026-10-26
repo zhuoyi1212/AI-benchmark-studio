@@ -1,4 +1,5 @@
 import "server-only";
+import { AnalysisImageError } from "@/lib/media/analysis-image";
 import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 
 import { communityExpressionIssues, communityVoiceMetrics, firstPersonExperienceIssues, manualTestNoteRecords } from "@/lib/community-experience";
@@ -819,6 +820,7 @@ function combineUsage(...usages: AIUsage[]): AIUsage {
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof AIValidationError) return `PublishPack validation failed: ${error.schemaName}`;
   if (error instanceof AIProviderError) return providerFailureMessage(error, true);
   if (error instanceof RepositoryError) return `PublishPack persistence failed at ${error.operation}`;
@@ -827,6 +829,7 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof PublishExecutionError) return error.message;
   if (error instanceof AIValidationError) {
     if (error.schemaName === 'FindingsScreenshotObservations') return error.category === 'invalid_json'

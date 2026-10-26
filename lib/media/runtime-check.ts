@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { runMediaCommand } from "./ffmpeg";
 import { localVideoPreprocessor } from "./video-preprocessor";
+import { prepareAnalysisImage } from "./analysis-image";
 
 /** Small synthetic fixture only; never accepts user URLs or returns machine paths. */
 export async function verifyMediaRuntime() {
@@ -20,6 +21,8 @@ export async function verifyMediaRuntime() {
     const audioHz = wav.length > 28 ? wav.readUInt32LE(24) : 0;
     const audioChannels = wav.length > 24 ? wav.readUInt16LE(22) : 0;
     if (!prepared.frames.length || audioHz !== 16000 || audioChannels !== 1) throw new Error("Media runtime self-test failed");
-    return { ok: true, platform: process.platform, architecture: process.arch, node: process.version, versions, decodedFrames: prepared.frames.length, audioHz, audioChannels };
+    const image = await prepareAnalysisImage(Buffer.from(prepared.frames[0].imageDataUrl.split(",")[1], "base64"), "image/jpeg");
+    return { ok: true, platform: process.platform, architecture: process.arch, node: process.version, versions, decodedFrames: prepared.frames.length, audioHz, audioChannels,
+      analysisImage: { ok: true, width: image.manifest.width, height: image.manifest.height, bytes: image.bytes.length } };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

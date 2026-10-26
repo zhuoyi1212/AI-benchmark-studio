@@ -10,6 +10,7 @@ function load({ project = { evaluation_mode: 'quick' }, protocols = [{ id: 'curr
   class RepositoryError extends Error {}
   const dependencies = {
     'server-only': {}, 'node:crypto': { createHash, randomUUID }, zod: { z },
+    '@/lib/services/analysis-image.service': {}, '@/lib/media/analysis-image': {},
     '@/lib/repositories/repository-error': { RepositoryError },
     '@/lib/repositories/projects.repository': { projectsRepository: { findActiveById: async () => project } },
     '@/lib/repositories/protocols.repository': { protocolsRepository: { listByProject: async () => protocols } },

@@ -25,7 +25,7 @@ try {
       const route = require(process.argv[1]);
       const response = await route.routeModule.userland.GET();
       const result = await response.json();
-      if (response.status !== 200 || !result.ok || result.audioHz !== 16000 || result.audioChannels !== 1 || !result.decodedFrames) {
+      if (response.status !== 200 || !result.ok || result.audioHz !== 16000 || result.audioChannels !== 1 || !result.decodedFrames || !result.analysisImage?.ok || !result.analysisImage.bytes) {
         throw new Error('Isolated media function failed: ' + JSON.stringify(result));
       }
       console.log('MEDIA_BUNDLE_RESULT ' + JSON.stringify(result));

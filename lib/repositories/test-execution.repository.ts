@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { analysisImagePaths } from "@/lib/media/analysis-image-paths";
 
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -184,7 +185,9 @@ export const testExecutionRepository = {
   },
 
   async removeStorageObject(path: string): Promise<void> {
-    const { error } = await getSupabaseServerClient().storage.from(artifactBucket).remove([path]);
+    // Include both possible technical copies in the same request. They never outlive a deleted original.
+    const derivatives = analysisImagePaths(path);
+    const { error } = await getSupabaseServerClient().storage.from(artifactBucket).remove([path, ...derivatives]);
     if (error) throwRepositoryError("testExecution.removeStorageObject", error);
   },
 
@@ -217,6 +220,13 @@ export const testExecutionRepository = {
       .eq("test_run_id", testRunId)
       .maybeSingle();
     if (error) throwRepositoryError("testExecution.findArtifactByStoragePath", error);
+    return data;
+  },
+
+  async findArtifactById(id: string): Promise<TestArtifactRow | null> {
+    const { data, error } = await getSupabaseServerClient().from("available_test_artifacts")
+      .select(artifactColumns).eq("id", id).maybeSingle();
+    if (error) throwRepositoryError("testExecution.findArtifactById", error);
     return data;
   },
 

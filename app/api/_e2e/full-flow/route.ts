@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from 'node:util';
 import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
@@ -12,7 +13,8 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
-import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution, removeTestArtifact } from "@/lib/services/test-execution.service";
+import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution, removeTestArtifact, prepareTestArtifactUpload, completeTestArtifactUpload } from "@/lib/services/test-execution.service";
+import { analysisImageSchema, maxAnalysisImageBytes } from "@/lib/media/analysis-image";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
@@ -124,14 +126,31 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
       expectedTextByRun.set(run.id, rawText);
       continue;
     }
+    const imageBytes = index === 0 ? Buffer.concat([onePixelPng, Buffer.alloc(5 * 1024 * 1024)]) : onePixelPng;
     const artifact = textOnlyEvidence
       ? new File([rawText], `e2e-${run.id}.md`, { type: "application/octet-stream" })
-      : new File([onePixelPng], `e2e-${run.id}.png`, { type: "image/png" });
-    await uploadTestArtifact({
+      : new File([imageBytes], `e2e-${run.id}.png`, { type: "image/png" });
+    const metadata = { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E raw Artifact ${runId}` };
+    if (!textOnlyEvidence && index === 0) {
+      const file = { name: artifact.name, size: artifact.size, type: artifact.type, lastModified: null };
+      const prepared = await prepareTestArtifactUpload({ projectId, testRunId: run.id, file });
+      const form = new FormData(); form.append('cacheControl', '3600'); form.append('', artifact);
+      const response = await fetch(prepared.signedUrl, { method: 'PUT', headers: { 'x-upsert': 'false' }, body: form });
+      assert(response.ok, 'Direct Storage image upload failed');
+      await completeTestArtifactUpload({ projectId, testRunId: run.id, ...prepared, file, sha256: createHash('sha256').update(imageBytes).digest('hex'), metadata });
+      const { data: stored } = await getSupabaseServerClient().from('test_artifacts').select('metadata,sha256,size_bytes').eq('id', prepared.artifactId).single();
+      const data = stored?.metadata;
+      assert(data && typeof data === 'object' && !Array.isArray(data), 'Image provenance missing');
+      const manifest = analysisImageSchema.parse(data.analysisImage);
+      assert(stored.size_bytes === imageBytes.length && stored.sha256 === manifest.sourceSha256, 'Raw image identity changed');
+      assert(manifest.sizeBytes <= maxAnalysisImageBytes && manifest.encoding === 'lossless', 'Automatic lossless compression did not run');
+      const compressed = await getSupabaseServerClient().storage.from('benchmark-artifacts').download(manifest.storagePath);
+      assert(compressed.data && createHash('sha256').update(Buffer.from(await compressed.data.arrayBuffer())).digest('hex') === manifest.sha256, 'Stored compressed image integrity failed');
+    } else await uploadTestArtifact({
       projectId,
       testRunId: run.id,
       file: artifact,
-      metadata: { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E raw Artifact ${runId}` },
+      metadata,
     });
     if (textOnlyEvidence) expectedTextByRun.set(run.id, rawText);
   }

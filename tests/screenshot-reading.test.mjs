@@ -23,6 +23,8 @@ function fixture(failure, permanent = false) {
     }
   }
   const load = createLoader(root, {
+    // This suite tests provider JSON repair; image transport has its own real-code suite.
+    '@/lib/services/analysis-image.service': { imageForAI: async image => ({ url: image.fileUrl, description: 'fixture image transport' }) },
     '@/lib/ai/config': { resolveAITaskRoute: task => ({ task, provider: 'zhipu', model: 'fixture', promptVersion: 'fixture', reasoning: 'standard', repairReasoning: 'standard', timeoutMs: 1000, maxAttempts: 2 }) },
     '@/lib/env/server': { getAIProviderKey: () => 'fixture' },
     '@/lib/ai/providers/zhipu.provider': { ZhipuProvider: Provider },

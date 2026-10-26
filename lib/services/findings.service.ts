@@ -1,4 +1,6 @@
 import "server-only";
+import { imageForAI } from "@/lib/services/analysis-image.service";
+import { analysisImagePolicyVersion, AnalysisImageError } from "@/lib/media/analysis-image";
 import { memoPageRead } from "@/lib/supabase/read-scope";
 import { complianceBaselineRules } from "@/lib/compliance-baseline";
 
@@ -321,6 +323,7 @@ function buildSnapshot(
   return JSON.parse(JSON.stringify({
     evidenceTransport,
     mediaPolicyVersion,
+    analysisImagePolicyVersion,
     project: { id: test.project.id, name: test.project.name },
     protocol: {
       id: test.protocol.id,
@@ -408,6 +411,7 @@ async function buildArtifactContent(
       },
       evidenceTransport,
       mediaPolicyVersion,
+      analysisImagePolicyVersion,
     }),
   }];
 
@@ -480,7 +484,9 @@ async function buildArtifactContent(
   }
   if (imageEvidence.length <= maxImagesPerVisionRequest) {
     for (const image of imageEvidence) {
-      content.push({ type: "image_url", image_url: { url: image.artifact.fileUrl! } });
+      const prepared = await imageForAI({ ...image.artifact, fileUrl: image.artifact.fileUrl! });
+      content.push({ type: "text", text: `artifactId: ${image.artifact.id}; ${prepared.description}` });
+      content.push({ type: "image_url", image_url: { url: prepared.url } });
     }
   } else {
     console.info("[FindingsEvidence] Screenshot batching started", {
@@ -490,12 +496,14 @@ async function buildArtifactContent(
     });
     for (let index = 0; index < imageEvidence.length; index += maxImagesPerVisionRequest) {
       const batch = imageEvidence.slice(index, index + maxImagesPerVisionRequest);
+      const prepared: Awaited<ReturnType<typeof imageForAI>>[] = [];
+      for (const image of batch) prepared.push(await imageForAI({ ...image.artifact, fileUrl: image.artifact.fileUrl! }));
       const batchContent: Exclude<AIMessageContent, string> = [
         {
           type: "text" as const,
-          text: batch.map((image, imageIndex) => `Screenshot ${imageIndex + 1}: ${artifactContext(image)}`).join("\n"),
+          text: batch.map((image, imageIndex) => `Screenshot ${imageIndex + 1}: ${artifactContext(image)}; ${prepared[imageIndex].description}`).join("\n"),
         },
-        ...batch.map((image) => ({ type: "image_url" as const, image_url: { url: image.artifact.fileUrl! } })),
+        ...prepared.map((image) => ({ type: "image_url" as const, image_url: { url: image.url } })),
       ];
       const { data } = await aiTaskService.understandScreenshots({
         schema: z.object({
@@ -632,6 +640,7 @@ function mapFindingRun(row: ExperienceFindingRow): ExperienceFindingsWorkspace["
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return `Findings validation failed: ${error.schemaName}`;
   if (error instanceof PdfEvidenceError) return error.message;
@@ -656,6 +665,7 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
   if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof PdfEvidenceError) return error.message;
   if (error instanceof AIValidationError) return "AI 提炼的 Findings 未通过真实证据引用校验，请重试。";

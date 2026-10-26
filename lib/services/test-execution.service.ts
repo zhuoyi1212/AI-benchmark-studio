@@ -1,4 +1,6 @@
 import "server-only";
+import { storeAnalysisImage, analysisImageMetadata } from "@/lib/services/analysis-image.service";
+import { AnalysisImageError } from "@/lib/media/analysis-image";
 import { memoPageRead } from "@/lib/supabase/read-scope";
 import { getProjectSummary } from "@/lib/services/projects.service";
 import { getLockedProtocolContext } from "@/lib/services/protocols.service";
@@ -197,6 +199,8 @@ export async function uploadTestArtifact(input: {
   try {
     await testExecutionRepository.uploadStorageObject(storagePath, bytes, artifactType.mimeType);
     try {
+      const analysisImage = artifactType.kind === "image"
+        ? analysisImageMetadata(await storeAnalysisImage(storagePath, bytes, artifactType.mimeType)) : undefined;
       return await testExecutionRepository.recordArtifact(run.id, {
         id: artifactId,
         kind: artifactType.kind,
@@ -208,6 +212,7 @@ export async function uploadTestArtifact(input: {
         metadata: {
           originalLastModified: file.file.lastModified || null,
           capturedAs: "raw_test_output",
+          ...(analysisImage ? { analysisImage } : {}),
         } satisfies Json,
       }, metadata);
     } catch (error) {
@@ -216,6 +221,7 @@ export async function uploadTestArtifact(input: {
     }
   } catch (error) {
     if (error instanceof TestExecutionError) throw error;
+    if (error instanceof AnalysisImageError) throw new TestExecutionError(error.message);
     throw new TestExecutionError(toUserFacingError(error));
   }
 }
@@ -278,17 +284,20 @@ export async function completeTestArtifactUpload(input: {
     }
 
     let verifiedSha256 = sha256;
-    if (artifactType.kind === "text") {
-      const bytes = await testExecutionRepository.readStorageObject(expectedPath, maxTextArtifactBytes);
+    let imageBytes: Uint8Array | undefined;
+    if (artifactType.kind === "text" || artifactType.kind === "image") {
+      const bytes = await testExecutionRepository.readStorageObject(expectedPath, artifactType.kind === "text" ? maxTextArtifactBytes : maxArtifactBytes);
       validateFileSignature(bytes, file.mimeType);
       verifiedSha256 = createHash("sha256").update(bytes).digest("hex");
       if (verifiedSha256 !== sha256) throw new TestExecutionError("上传文件完整性校验失败，请重试。");
+      if (artifactType.kind === "image") imageBytes = bytes;
     } else {
       validateFileSignature(await testExecutionRepository.readStorageObjectPrefix(expectedPath, 32), file.mimeType);
     }
 
-    try {
-      return await testExecutionRepository.recordArtifact(run.id, {
+    const analysisImage = imageBytes
+      ? analysisImageMetadata(await storeAnalysisImage(expectedPath, imageBytes, file.mimeType)) : undefined;
+    return await testExecutionRepository.recordArtifact(run.id, {
         id: artifactId,
         kind: artifactType.kind,
         storagePath: expectedPath,
@@ -301,22 +310,23 @@ export async function completeTestArtifactUpload(input: {
           capturedAs: "raw_test_output",
           uploadMethod: "supabase_signed_url",
           storageEtag: stored.etag,
+          ...(analysisImage ? { analysisImage } : {}),
         } satisfies Json,
       }, metadata);
-    } catch (error) {
-      const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id);
-      if (recorded) return recorded.id;
-      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the persistence error. */ }
-      throw error;
-    }
   } catch (error) {
-    if (error instanceof TestExecutionError) {
-      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve validation error. */ }
-      throw error;
+    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id).catch(() => {
+      throw new TestExecutionError("上传结果暂未确认，请重试确认；原文件已保留。");
+    });
+    if (recorded) {
+      if (recorded.test_run_id !== run.id || recorded.id !== artifactId || recorded.size_bytes !== file.size || recorded.sha256 !== sha256) {
+        throw new TestExecutionError("已保存文件与本次上传不一致，请刷新核对；原文件已保留。");
+      }
+      return recorded.id;
     }
-    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id).catch(() => null);
-    if (recorded) return recorded.id;
-    try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the original storage or database error. */ }
+    try { await testExecutionRepository.removeStorageObject(expectedPath); }
+    catch { throw new TestExecutionError("文件未保存，临时文件清理未完成，请重试上传。"); }
+    if (error instanceof TestExecutionError) throw error;
+    if (error instanceof AnalysisImageError) throw new TestExecutionError(error.message);
     throw new TestExecutionError(toUserFacingError(error));
   }
 }
