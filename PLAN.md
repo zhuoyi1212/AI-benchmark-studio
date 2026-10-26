@@ -272,6 +272,8 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-26 图片自动适配生产发布：按用户要求正常push原分支e13ac1d→f5f7c0e，从该提交创建干净快照，不含未提交资料或.env；518索引文件/77真实流程边界及实际Secret值审计通过。Vercel原团队/项目生产候选dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz先skip-domain构建，Linux x64/Node24.22.1实际图片解码、抽帧和提音自检通过，目录各3MiB。实际上传516源码文件SHA-1全部与快照一致，候选31项验收后promote；正式sand域名确认同一READY部署、31项再次通过，最近10分钟error/fatal各0条。没有migration、环境/访问保护调整、用户业务数据写入或主动付费模型调用；未做线上管理员真实上传/模型重试，功能验证来自此前533测试及真实DB/Storage隔离E2E。记录见docs/releases/2026-10-26-image-analysis-adaptation.md及同名JSON，文档跟进提交不重建运行代码，不重认证全产品AC；用户既有作品集修改、模板删除和未跟踪资料保持。
+
 2026-10-26 图片后台自动适配：按用户要求接入签名直传后的服务器上传确认，完整图片 SHA 校验/解码后准备分析图，成功才保存不可变 Artifact；上传达到100%时显示简短处理状态。合规PNG/JPEG保持原字节，其他优先不减色PNG，再用95/90/85、4:4:4 JPEG，最多4MiB/最长边6000；不裁剪/模糊/重绘，不无限降质。metadata.analysisImage追溯原图/副本SHA、尺寸、策略与编码，原件继续展示下载，副本不创建Artifact或进入配图。Judge/Findings/Publish统一验证可用来源、读取副本并以Base64发送，旧图显式分析时内存适配，不回写历史。删除/失败补偿批量清理副本；补齐DB确认不明或不匹配时保护已保存原图的回归。无DDL/新队列/模型切换，不改用户评分、Findings或文章。
 
 新增17项真实Sharp/服务回归，全仓533/533通过；真实DB/Storage隔离完整E2E mvolkahb-ea234bb5 HTTP200通过，含超5MiB图片签名直传→无损副本→下载校验→多模态Judge/Findings/文章、删除重传与旧文章保护，48次本地Provider边界请求、1次多模态Judge，7页面200，可比/不可比路径通过，3/3临时项目软归档。模型是fixture，不冒充远端模型效果。额外只读下载当前即梦报错原图，本地实际压缩5,284,930→986,194bytes（JPEG95，1728×2304不变），原SHA匹配，查看标题/时间仍清楚；无用户项目生产写入或AI付费调用。真实图片仅留本机临时目录，仓库不含其binary、签名URL或凭据。最终VERCEL=1生产模式build（含隔离函数包实际图片解码、抽帧与提音，目录仍各3MiB）、typecheck、diff检查通过，lint0errors/27既有warnings。重复副本上传校验相同字节后幂等采用，不覆盖对象；新增动画测试初次使用相同帧被编码器合并，已改真实两帧夹具后通过，未降低检查。索引518文件/77真实流程文件、实际Secret值、客户端/Provider/Mock边界审计通过，27个暂存文件均属本增量。分支codex/quick-backend-workflow，本轮不重认证全部产品AC，不push/部署线上。用户原有作品集修改、模板删除与未跟踪资料保持。

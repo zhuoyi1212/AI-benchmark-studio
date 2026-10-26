@@ -29,6 +29,6 @@ Judge、Findings、Publish 共用 server-only `imageForAI`，从 `available_test
 
 真实 Sharp 测试覆盖无损/JPEG、WebP、透明度、方向、比例、动画、解码、完整性、旧图、缺失副本、直传、补偿、响应丢失及删除路径。完整隔离 E2E 使用真实 DB/Storage、本地 Provider 夹具，验证超 5 MiB 图片签名直传、自动压缩与副本下载校验，再运行评分/文章及删除重传回归。构建门禁在隔离 Next 函数包内实际解码，验证原生依赖。
 
-这降低已知输入体积/格式风险，不保证供应商全部 400 消失，也不证明模型识字准确率提高。未换模型、重生成用户文章或部署生产。实际结果见 PLAN.md。
+这降低已知输入体积/格式风险，不保证供应商全部 400 消失，也不证明模型识字准确率提高。未换模型或重生成用户文章。2026-10-26 已发布生产，实际验证边界见 [发布记录](releases/2026-10-26-image-analysis-adaptation.md) 和 PLAN.md。
 
 参考：[Z.AI 官方示例的 5 MiB 校验](https://github.com/zai-org/GLM-V/blob/main/skills/glmv-caption/scripts/glmv_caption.py)、[Sharp 输出参数](https://sharp.pixelplumbing.com/api-output/)、[Supabase Storage 上传](https://supabase.com/docs/reference/javascript/storage-from-upload)。
