@@ -1,5 +1,9 @@
 # AI Benchmark Studio — Architecture
 
+### 固定Skill编辑契约（2026-10-26）
+
+`lib/ai/skills/de-ai-flavor-source.ts`保存用户指定上游Skill原文、提交与SHA；`community-de-ai-flavor.ts`提供原文＋项目覆盖契约和八项只读审稿指导，接入现有Story写作/定向修订/初审/终审。没有读全局Skill路径、远程下载、第三方脚本或新增调用阶段。四条受影响路由Prompt与内容策略升版参与检查点签名，现有JSON/实际输入追溯与失败/版本边界保持；无表或迁移。博主profile目前是语料收集/应用方案，没有把示意配置接入运行时。
+
 ### 图片分析副本（2026-10-26）
 
 Direct Upload → TestExecutionService 完整图片 SHA/解码校验 → Sharp 有界无损/高质量编码 → 私有 Storage 副本 → record_test_artifact 一次保存 metadata.analysisImage。Judge/Findings/Publish 通过 server-only imageForAI 验证 available_test_artifacts 来源及副本校验值，以 Base64 发送并说明技术处理边界。旧图按需内存适配，策略参与输入签名。删除/失败补偿批量清理原图及副本，确认不明保留对象。无 DDL、新模型阶段或 Provider 变更；详见 docs/analysis-image.md。

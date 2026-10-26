@@ -18,7 +18,7 @@ for (const professional of [false, true]) test(`sharing guidance reaches ${profe
   assert.equal(writer.originalDetails, rawEvidence);
   assert.ok(!JSON.stringify(writer).includes('DO NOT SEND'));
   assert.equal(h.state.saved.body, draft.body);
-  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v12-community-sharing');
+  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v13-de-ai-flavor');
   assert.equal(h.state.calls.length, 4);
 });
 
@@ -127,8 +127,13 @@ test('sharing prompts survive Task Service, Router and Provider serialization wi
   assert.deepEqual(requests.map(r => r.schema), ['CommunityStoryBrief', 'CommunityPostDraft', 'CommunityPostReview', 'CommunityPostRevision', 'EvidenceCheckedCommunityPost']);
   assert.equal(requests.filter(r => r.path === '/moonshot/chat/completions').length, 2);
   for (const request of requests) assert.ok(request.body.messages.some(m => typeof m.content === 'string' && /社区分享的中心是一个具体用途|按社区分享的读者价值审稿/.test(m.content)));
+  const { deAiFlavorSkillText } = h.load('@/lib/ai/skills/de-ai-flavor-source');
+  for (const request of requests.filter(r => ['CommunityPostDraft', 'CommunityPostRevision'].includes(r.schema))) {
+    assert.ok(request.body.messages.some(message => typeof message.content === 'string' && message.content.includes(deAiFlavorSkillText)));
+    assert.ok(request.body.messages.some(message => typeof message.content === 'string' && message.content.includes('以下项目契约优先')));
+  }
   assert.equal(h.state.saved.body, draft.body);
   assert.equal(h.state.saved.storyBrief.ending, '');
-  assert.ok(h.state.saved.generationTrace.every(trace => /community-sharing/.test(trace.promptVersion)));
+  assert.ok(h.state.saved.generationTrace.every(trace => /community-sharing|de-ai-flavor/.test(trace.promptVersion)));
   assert.equal(JSON.parse(requests.at(-1).body.messages[2].content).draft.body, draft.body);
 });

@@ -135,7 +135,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post.v14-community-sharing",
+    promptVersion: "community-post.v15-de-ai-flavor",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -144,7 +144,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_humanize: {
     provider: "moonshot",
     capability: "structured_text",
-    promptVersion: "community-post-humanize.v10-community-sharing",
+    promptVersion: "community-post-humanize.v11-de-ai-flavor",
     reasoning: "standard",
     timeoutMs: reasoningHeavyTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -162,7 +162,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check_text: {
     provider: "deepseek",
     capability: "structured_text",
-    promptVersion: "community-post-evidence-check.v13-community-sharing-text",
+    promptVersion: "community-post-evidence-check.v14-de-ai-flavor-text",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,
@@ -171,7 +171,7 @@ const routeTemplates: Record<AITaskType, RouteTemplate> = {
   community_post_evidence_check: {
     provider: "zhipu",
     capability: "multimodal",
-    promptVersion: "community-post-evidence-check.v13-community-sharing-vision",
+    promptVersion: "community-post-evidence-check.v14-de-ai-flavor-vision",
     reasoning: "standard",
     timeoutMs: standardTimeoutMs,
     maxAttempts: structuredTaskMaxAttempts,

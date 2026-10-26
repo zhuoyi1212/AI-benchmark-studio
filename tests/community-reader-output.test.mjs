@@ -18,7 +18,7 @@ for (const professional of [false, true]) test(`${professional ? 'professional' 
   assert.deepEqual(writer.storyBrief, h.state.saved.storyBrief);
   for (const field of ['selectedIdea', 'humanConfirmedFindings', 'imageArtifacts', 'template']) assert.equal(Object.hasOwn(writer, field), false, field);
   assert.equal(h.state.calls.length, 4);
-  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v12-community-sharing');
+  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v13-de-ai-flavor');
   assert.deepEqual(h.state.saved.styleEdit.original, h.state.saved.styleEdit.edited);
 });
 

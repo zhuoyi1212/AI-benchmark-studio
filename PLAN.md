@@ -272,6 +272,12 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-26 de-ai-flavor安装与接入：用户明确指定masonweb3/de-ai-flavor而非其他同名版本。用官方skill-installer把b477196d9924db38c05bd0eeb85e4ac73eed87ac安装到用户Skill目录，保留原SKILL与MIT；Python默认CA缺失后改系统CA文件，HTTPS验证保持。项目静态保存完整Skill原文/SHA/提交及许可，以后置项目契约覆盖报告输出、主观浓度打分、85%/±20%篇幅下限及强迫情绪；初稿/定向修订实际接收原文，初审/终审按八项方法定位问题。用户这次显式请求覆盖历史“不用第三方Skill”限制，不读全局路径或远程指令、不运行示例脚本。策略v13、四条受影响路由Prompt升版；不新增调用阶段/模型/依赖/表，原事实/引用/数字/经历/最终审核门禁保持。
+
+新增7项固定来源/许可/实际快专业Service请求/严格字段/缩短重复/数字保护/终审回归，实际Task Service→Router→Provider序列化测试也确认写作与修订消息携带完整Skill。540/540 tests、typecheck、build含隔离图片解码/抽帧/提音、diff通过，lint0errors/27既有warnings。工作树初始无依赖，复用同lockfile依赖软链接使媒体打包校验遇ENOTSUP；改为本工作树独立copy-on-write依赖目录后完整build通过，原依赖不改，不跳过检查。博主文本还未提供，交付docs/creator-style-distillation.md的语料分离、风格卡、短对照、版本化应用及留出评测方案，明确不是已生成的profile或新UI功能。没有真实用户材料外发/模型付费调用、DB/Storage/App写入或部署，不把工程通过当作真人感提升或全产品AC重认证；保留用户既有作品集改动、模板删除和未跟踪资料。详细来源/适配见docs/de-ai-flavor-integration.md。
+
+本轮索引快照526个tracked文件/77个真实流程文件通过Secret、客户端、Provider与Mock边界审计，实际配置密钥值在内存逐项比对无泄漏；用户原有文档删除不影响隔离快照审计，当前工作区未恢复或暂存该文件。当前分支codex/de-ai-flavor-writing，基于eecdebb的新工作树独立提交，不改原分支或main。
+
 2026-10-26 图片自动适配生产发布：按用户要求正常push原分支e13ac1d→f5f7c0e，从该提交创建干净快照，不含未提交资料或.env；518索引文件/77真实流程边界及实际Secret值审计通过。Vercel原团队/项目生产候选dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz先skip-domain构建，Linux x64/Node24.22.1实际图片解码、抽帧和提音自检通过，目录各3MiB。实际上传516源码文件SHA-1全部与快照一致，候选31项验收后promote；正式sand域名确认同一READY部署、31项再次通过，最近10分钟error/fatal各0条。没有migration、环境/访问保护调整、用户业务数据写入或主动付费模型调用；未做线上管理员真实上传/模型重试，功能验证来自此前533测试及真实DB/Storage隔离E2E。记录见docs/releases/2026-10-26-image-analysis-adaptation.md及同名JSON，文档跟进提交不重建运行代码，不重认证全产品AC；用户既有作品集修改、模板删除和未跟踪资料保持。
 
 2026-10-26 图片后台自动适配：按用户要求接入签名直传后的服务器上传确认，完整图片 SHA 校验/解码后准备分析图，成功才保存不可变 Artifact；上传达到100%时显示简短处理状态。合规PNG/JPEG保持原字节，其他优先不减色PNG，再用95/90/85、4:4:4 JPEG，最多4MiB/最长边6000；不裁剪/模糊/重绘，不无限降质。metadata.analysisImage追溯原图/副本SHA、尺寸、策略与编码，原件继续展示下载，副本不创建Artifact或进入配图。Judge/Findings/Publish统一验证可用来源、读取副本并以Base64发送，旧图显式分析时内存适配，不回写历史。删除/失败补偿批量清理副本；补齐DB确认不明或不匹配时保护已保存原图的回归。无DDL/新队列/模型切换，不改用户评分、Findings或文章。

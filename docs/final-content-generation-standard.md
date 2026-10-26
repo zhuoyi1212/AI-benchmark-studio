@@ -1,8 +1,10 @@
 # 最终内容生成规范
 
-2026-10-25 社区分享增量：当前策略为 `community-story.v12-community-sharing`。按具体用途、代表性结果与判断理由组织内容；短帖/有据实操长文随材料选择，图像任务不强求产品引语，不自动附加使用须知。Brief ending可空，scope和主线证据仍必填。详见 [社区分享生成规则](community-sharing-generation.md)，事实、作者经历和历史保护规则保持。
+2026-10-26 de-ai-flavor增量：当前策略`community-story.v13-de-ai-flavor`。使用用户指定masonweb3版本的固定原文与项目适配，覆盖其报告、评分及最低篇幅要求；初稿/修订实际携带Skill，审核定位八项语言问题。真实事实/数字/引语/作者经历仍优先，没有情绪也能完成。详见[接入说明](de-ai-flavor-integration.md)及[博主风格方案](creator-style-distillation.md)。本轮未提供语料，风格卡尚未生成或接入。
 
-版本：community-story.v12-community-sharing · 2026-10-25
+2026-10-25 社区分享增量：当时策略为 `community-story.v12-community-sharing`。按具体用途、代表性结果与判断理由组织内容；短帖/有据实操长文随材料选择，图像任务不强求产品引语，不自动附加使用须知。Brief ending可空，scope和主线证据仍必填。详见 [社区分享生成规则](community-sharing-generation.md)，事实、作者经历和历史保护规则保持。
+
+版本：community-story.v13-de-ai-flavor · 2026-10-26
 
 适用范围：快速模式、专业模式生成的社区文章。保留既有 Blind、Protocol、人工测试、确认 Findings、评分与历史版本。
 
