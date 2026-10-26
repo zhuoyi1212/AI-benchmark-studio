@@ -2,7 +2,7 @@
 
 ### 固定Skill编辑契约（2026-10-26）
 
-`lib/ai/skills/de-ai-flavor-source.ts`保存用户指定上游Skill原文、提交与SHA；`community-de-ai-flavor.ts`提供原文＋项目覆盖契约和八项只读审稿指导，接入现有Story写作/定向修订/初审/终审。没有读全局Skill路径、远程下载、第三方脚本或新增调用阶段。四条受影响路由Prompt与内容策略升版参与检查点签名，现有JSON/实际输入追溯与失败/版本边界保持；无表或迁移。博主profile目前是语料收集/应用方案，没有把示意配置接入运行时。
+`lib/ai/skills/de-ai-flavor-source.ts`保存用户指定上游Skill原文、提交与SHA；`community-de-ai-flavor.ts`提供原文＋项目覆盖契约和八项只读审稿指导，接入现有Story写作/定向修订/初审/终审。没有读全局Skill路径、远程下载、第三方脚本或新增调用阶段。四条受影响路由Prompt与内容策略升版参与检查点签名，现有JSON/实际输入追溯与失败/版本边界保持；无表或迁移。候选profile与来源清单位于docs/research/turingscat-20261026，仅为研究数据，runtime_enabled=false；没有加载到运行时，实际提示词与签名保持。
 
 ### 图片分析副本（2026-10-26）
 

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "imported_on": "2026-10-26",
+  "origin": "user_provided_research_package",
+  "files": [
+    {
+      "path": "01-视频笔记.md",
+      "bytes": 14802,
+      "sha256": "b380b0a1b27a5a753acee2aaa6e0faa24ca611ec2f3b8ba4108c74906661b0b2"
+    },
+    {
+      "path": "02-写作规则.md",
+      "bytes": 3800,
+      "sha256": "0cbeb7a39cf12b73f7130bda397b3f71814e303841ccd95cdf76c9a1a97d8b80"
+    },
+    {
+      "path": "03-可直接使用的提示词.txt",
+      "bytes": 2347,
+      "sha256": "dfe7ed4900d3585b90c0310a5699ee5c622d21960314bea1b91c4aae0213c008"
+    },
+    {
+      "path": "04-核验记录.md",
+      "bytes": 3002,
+      "sha256": "2256dcbc38384eaf273f73271b26d5bb9b949b299556d33773590ff3adca0b8f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 796,
+      "sha256": "00531b1c501a7fc4888e80349d0f39959beb9d1de972f123d5923441e27a65b5"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 27296,
+      "sha256": "7d9fe9733f8762d715d5fd1acb9b136ed3b3759d38b69e08287a14baa79d2799"
+    },
+    {
+      "path": "writing-rules.json",
+      "bytes": 4203,
+      "sha256": "f0511c2b1531558a642b3be47335334ceca0408ef8a1656358e4193b3b3162f8"
+    }
+  ],
+  "verification": {
+    "byte_preservation": true,
+    "independently_refetched_subtitles": false,
+    "independently_reviewed_audio_or_video": false,
+    "upstream_verification_record": "04-核验记录.md",
+    "note": "继承所附研究的来源记录；本轮只检查文件、关联和时间范围，未重复现场核验。"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "status": "not_run",
+  "profile_id": "task-led-review",
+  "profile_version": "0.1.0-candidate",
+  "baseline": "当前community-story.v13-de-ai-flavor",
+  "candidate": "同一当前链路加本候选风格卡；尚未实现运行时加载",
+  "provider_calls": 0,
+  "production_writes": 0,
+  "cases": [
+    {
+      "id": "E01",
+      "requirement": "材料少、单次图像结果，无作者情绪"
+    },
+    {
+      "id": "E02",
+      "requirement": "主要正面、存在关键细节"
+    },
+    {
+      "id": "E03",
+      "requirement": "主要负面、需保留失败事实"
+    },
+    {
+      "id": "E04",
+      "requirement": "有人工记录的预期变化或取舍"
+    },
+    {
+      "id": "E05",
+      "requirement": "真实多步文本任务，保留追问顺序"
+    },
+    {
+      "id": "E06",
+      "requirement": "技术解释或来源混合，明确实测与资料归属"
+    }
+  ],
+  "controls": [
+    "同一份冻结任务、证据、作者输入与篇幅要求",
+    "同一Provider、模型、采样参数、输出预算和调用阶段上限",
+    "只改变候选风格指导，记录完整消息和版本摘要",
+    "首个完成配对纳入比较；失败同样保留，不重复抽稿挑最好",
+    "随机隐藏A/B来源标签，保留顺序和评审原始理由"
+  ],
+  "review_dimensions": [
+    "更愿意读哪篇（A/B/持平）",
+    "判断是否由具体细节支撑",
+    "模板感与重复结论的具体位置",
+    "需要哪些人工修改",
+    "事实、数字、引文、经历与必要范围条件是否漂移"
+  ],
+  "decision": "有事实漂移先修复并重测；小样本偏好只用于下一轮编辑决策，不证明统计提升。",
+  "runs": [],
+  "results": null,
+  "video_holdout": "本批10条都已参与分析；如验证作者风格泛化，另选未参与提炼的完整转写。产品迁移用未参与示例写作的真实项目材料。"
+}

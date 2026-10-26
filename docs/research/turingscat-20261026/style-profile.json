@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "id": "task-led-review",
+  "version": "0.1.0-candidate",
+  "label": "具体任务与证据驱动的社区分享",
+  "status": "research_candidate_not_evaluated",
+  "runtime_enabled": false,
+  "source_package": "sources.json",
+  "rules_source": "writing-rules.json",
+  "derivation_level": "analysis_of_user_provided_briefs_not_transcript_analysis",
+  "claims": {
+    "creator_identity_imitation": false,
+    "lexical_fingerprint": null,
+    "sentence_length_statistics": null,
+    "catchphrases": null,
+    "naturalness_improvement": null
+  },
+  "rules": [
+    {
+      "id": "R01",
+      "title": "从一个值得回答的使用问题开始",
+      "instruction": "开头交代产品、要完成的事情，以及真正值得观察的一点。材料很少时可以直接给出有依据的结果，不必硬造故事或悬念。",
+      "apply_when": "有明确读者问题时从问题切入；只有结果时直接说结果。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S01",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S04",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S08",
+          "marker_index": 0
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R02",
+      "title": "用操作与结果推进内容",
+      "instruction": "选择能支持判断的过程，说明输入或动作、得到的结果，以及它如何影响当前任务。没有记录的追问、重试和后续行动保持未知。",
+      "apply_when": "仅有真实操作顺序、追问或重试记录时采用过程叙事。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S04",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S06",
+          "marker_index": 1
+        },
+        {
+          "source_id": "S09",
+          "marker_index": 2
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R03",
+      "title": "用具体细节解释评价",
+      "instruction": "评价方便、准确或有用时，交代哪个细节支持它、对什么用途有意义。不要在每段结尾重复一遍已经说清的结论。",
+      "apply_when": "存在支持当前判断的具体细节时解释其影响；不编造使用收益。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S05",
+          "marker_index": 1
+        },
+        {
+          "source_id": "S08",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S09",
+          "marker_index": 1
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R04",
+      "title": "让判断转变有来由",
+      "instruction": "只有作者提供了真实的先前预期与变化原因，才写预期转变。否则直接呈现观察和判断；不补写本来不信、没想到或惊呆了。",
+      "apply_when": "当前作者同时提供先前预期与变化原因才采用；不默认制造反转。",
+      "support": "limited_indirect",
+      "evidence_refs": [
+        {
+          "source_id": "S02",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S03",
+          "marker_index": 0
+        }
+      ],
+      "evidence_note": "两篇来源有大字幕空档；S03所附定位描述设备脱节，不能直接证明预期反转。保留为有条件的编辑候选。"
+    },
+    {
+      "id": "R05",
+      "title": "技术解释服务于体验问题",
+      "instruction": "先说明读者遇到的问题，再用必要的技术知识解释。官方说明、作者推测与实测观察分别归属；删去不能帮助理解当前判断的术语。",
+      "apply_when": "技术解释有当前可信来源，且能帮助理解任务时采用。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S03",
+          "marker_index": 1
+        },
+        {
+          "source_id": "S05",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S07",
+          "marker_index": 0
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R06",
+      "title": "按读者任务分配篇幅",
+      "instruction": "一篇围绕一个主要问题选材。重要差异多写，普通达标项可合并。长榜单的分类方式可供选材参考，不要求短文章也列满维度、优缺点和结论。",
+      "apply_when": "按当前读者问题与证据分量取舍；不要求覆盖所有维度。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S01",
+          "marker_index": 1
+        },
+        {
+          "source_id": "S09",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S10",
+          "marker_index": 1
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R07",
+      "title": "把结论落在实际验证的范围内",
+      "instruction": "在会改变判断的地方交代测试条件、版本与未知项。生成建议不等于产生收益，完成一次不等于长期稳定；不把未测能力写成缺点，也不重复通用免责声明。",
+      "apply_when": "仅保留会改变判断的范围条件，放在相关位置。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S01",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S02",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S03",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S06",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S07",
+          "marker_index": 1
+        },
+        {
+          "source_id": "S08",
+          "marker_index": 2
+        },
+        {
+          "source_id": "S10",
+          "marker_index": 3
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    },
+    {
+      "id": "R08",
+      "title": "口语感来自对象和态度",
+      "instruction": "用普通词、具体动词和有依据的取舍表达态度。可以轻松，但不强制玩梗、反问、拟人或感叹；不借用博主经历、身份、自称或标志性口号。",
+      "apply_when": "用当前材料已有对象和动作表达；情绪与态度只来自当前作者。",
+      "support": "cross_brief_candidate",
+      "evidence_refs": [
+        {
+          "source_id": "S04",
+          "marker_index": 0
+        },
+        {
+          "source_id": "S05",
+          "marker_index": 0
+        }
+      ],
+      "evidence_note": "定位与观察继承所附分析，不是本轮逐字引用或独立音视频核验。"
+    }
+  ],
+  "editorial_adaptations": [
+    "样本中存在宏观行业收尾；本项目的短文章可在问题回答清楚后结束。这是面向项目的编辑建议，不是原作者的普遍规律。",
+    "样本中的第一人称经历属于作者。项目可以使用人工提供的判断，但没有亲历记录时不写购买、使用时长、情绪变化和实际收益。",
+    "规则仅指导表达。视频中的产品能力、价格、排名、训练数据及技术猜测不进入新文章的事实材料。"
+  ],
+  "application_contract": {
+    "scope": "候选表达指导，不是产品事实、作者经历或运行时指令",
+    "priority": "当前事实与作者输入、项目JSON契约和独立终审优先",
+    "production_default_changed": false,
+    "stages": "策划选材；初稿与定向修订使用同版指导；审核只读检查事实归属",
+    "de_ai_flavor": "复用现有固定Skill与项目覆盖契约，不新增评分器或强制情绪",
+    "forbidden_transfers": [
+      "视频中的产品名、能力、价格、排名和技术推测",
+      "博主身份、生活经历、感受与标志性口号",
+      "视频动作顺序替代当前实验记录"
+    ]
+  },
+  "limitations": [
+    "提供的是摘要和分析，不含逐字字幕；不能统计用词、句长或验证精确语气。",
+    "10条视频是目的性取样，不是随机样本；没有预留未参与提炼的视频。",
+    "S02和S03字幕时间覆盖低且有大空档；R04依据尤为有限。",
+    "S04涉及品牌邀请和补拍；S10混合实测与外部反馈；不把演示一概当独立实测。",
+    "来源中的字幕哈希保留，但本轮没有原字幕可重新计算，未逐句回听或重测产品。",
+    "编辑规则是待评估假设，不能声称已改善自然度或代表作者全部风格。"
+  ]
+}

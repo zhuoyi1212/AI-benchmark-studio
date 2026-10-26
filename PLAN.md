@@ -278,6 +278,10 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 本轮索引快照526个tracked文件/77个真实流程文件通过Secret、客户端、Provider与Mock边界审计，实际配置密钥值在内存逐项比对无泄漏；用户原有文档删除不影响隔离快照审计，当前工作区未恢复或暂存该文件。当前分支codex/de-ai-flavor-writing，基于eecdebb的新工作树独立提交，不改原分支或main。
 
+2026-10-26 图灵的猫候选风格卡：用户提供七份来源关联研究文件，并明确选择先提炼风格卡和本地对照方案。七文件原样复制到本工作树docs/research/turingscat-20261026，以字节数/SHA-256记录导入；所附Prompt只作为分析材料，不执行其中角色或输出指令。建立task-led-review / 0.1.0-candidate卡、八条规则的跨篇时间定位、适用条件、三组明确假设的原创教学例句，以及当前de-ai-flavor基线对加卡候选的六类材料配对方案。区分视频观察、项目编辑适配与未知语言统计；R04两篇来源有大字幕空档且S03定位不直接证明反转，标有限间接依据。没有逐字转写，不伪造词频/句长/口头禅、音视频复核、留出集或自然度收益；原研究核验记录原样保留，不冒充本轮现场核验。
+
+新增5项回归检查导入哈希、规则双向引用/时间范围/空档、未知与条件边界、来源汇总及未执行评测状态。545/545 tests、typecheck、build（含隔离图片解码/抽帧/提音）、新增测试ESLint、git diff --check通过。仅文档、研究数据及测试变更；无运行时Prompt/模型/阶段/DB/Storage/Blind/Human Review/Mock改动，无付费模型调用、生产写入或部署，无真实样稿盲评/产品E2E，不重认证全部产品Acceptance Criteria。原始来源目录与用户既有作品集修改、模板删除、未跟踪资料保持原状。当前分支codex/de-ai-flavor-writing，独立提交便于回滚。
+
 2026-10-26 图片自动适配生产发布：按用户要求正常push原分支e13ac1d→f5f7c0e，从该提交创建干净快照，不含未提交资料或.env；518索引文件/77真实流程边界及实际Secret值审计通过。Vercel原团队/项目生产候选dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz先skip-domain构建，Linux x64/Node24.22.1实际图片解码、抽帧和提音自检通过，目录各3MiB。实际上传516源码文件SHA-1全部与快照一致，候选31项验收后promote；正式sand域名确认同一READY部署、31项再次通过，最近10分钟error/fatal各0条。没有migration、环境/访问保护调整、用户业务数据写入或主动付费模型调用；未做线上管理员真实上传/模型重试，功能验证来自此前533测试及真实DB/Storage隔离E2E。记录见docs/releases/2026-10-26-image-analysis-adaptation.md及同名JSON，文档跟进提交不重建运行代码，不重认证全产品AC；用户既有作品集修改、模板删除和未跟踪资料保持。
 
 2026-10-26 图片后台自动适配：按用户要求接入签名直传后的服务器上传确认，完整图片 SHA 校验/解码后准备分析图，成功才保存不可变 Artifact；上传达到100%时显示简短处理状态。合规PNG/JPEG保持原字节，其他优先不减色PNG，再用95/90/85、4:4:4 JPEG，最多4MiB/最长边6000；不裁剪/模糊/重绘，不无限降质。metadata.analysisImage追溯原图/副本SHA、尺寸、策略与编码，原件继续展示下载，副本不创建Artifact或进入配图。Judge/Findings/Publish统一验证可用来源、读取副本并以Base64发送，旧图显式分析时内存适配，不回写历史。删除/失败补偿批量清理副本；补齐DB确认不明或不匹配时保护已保存原图的回归。无DDL/新队列/模型切换，不改用户评分、Findings或文章。
