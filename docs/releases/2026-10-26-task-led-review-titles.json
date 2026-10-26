@@ -1,0 +1,466 @@
+{
+  "releasedAtUtc": "2026-10-26T08:01:40.879486+00:00",
+  "projectId": "prj_hbBp4mC9Tb20UgpNJmDni06w7ORS",
+  "team": "z-z-y1",
+  "deploymentId": "dpl_6e3X8h5cLknUsQ3ofm9tbbeqwf55",
+  "sourceCommit": "deb62508274d2ad89638f62a4d550334ab9f573e",
+  "sourceBranch": "codex/de-ai-flavor-writing",
+  "target": "production",
+  "status": "READY",
+  "productionUrl": "https://ai-benchmark-studio-sand.vercel.app",
+  "previousDeploymentId": "dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz",
+  "releaseMethod": "clean local Git snapshot; staged production then promote same build",
+  "githubPush": {
+    "performed": false,
+    "automaticApprovalRejected": true,
+    "reason": "The user authorized Vercel deployment, not sending the source branch to GitHub; direct snapshot deployment is the narrower alternative."
+  },
+  "sourceProof": {
+    "deploymentId": "dpl_6e3X8h5cLknUsQ3ofm9tbbeqwf55",
+    "commit": "deb62508274d2ad89638f62a4d550334ab9f573e",
+    "allUploadedSourceHashesMatch": true,
+    "count": 567,
+    "featureFiles": [
+      "lib/community-title-policy.ts",
+      "lib/community-task-led-style.ts",
+      "lib/community-story-policy.ts",
+      "lib/community-de-ai-flavor.ts",
+      "lib/ai/config.ts"
+    ],
+    "existingArticleServiceUnchanged": true
+  },
+  "candidateVerification": {
+    "base": "https://ai-benchmark-studio-r4bnb9wx7-z-z-y1.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/new",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/api/media/runtime",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "candidate-source-matches-deb6250",
+        "passed": true,
+        "files": 567
+      }
+    ],
+    "count": 31,
+    "productionDataMutated": false,
+    "paidModelCalls": 0,
+    "adminInteractiveTest": "not performed",
+    "sourceProof": {
+      "deploymentId": "dpl_6e3X8h5cLknUsQ3ofm9tbbeqwf55",
+      "commit": "deb62508274d2ad89638f62a4d550334ab9f573e",
+      "allUploadedSourceHashesMatch": true,
+      "count": 567,
+      "featureFiles": [
+        "lib/community-title-policy.ts",
+        "lib/community-task-led-style.ts",
+        "lib/community-story-policy.ts",
+        "lib/community-de-ai-flavor.ts",
+        "lib/ai/config.ts"
+      ],
+      "existingArticleServiceUnchanged": true
+    },
+    "existingVisibleArticles": {
+      "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish": "cd027748724727c90147f1d7b1314c503c4be75ae71995ede8945824a37b26ab",
+      "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish": "d8ce0aae033c69fba7dde5cb152ca241529d287bdb00b2603289543412d24202",
+      "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish": "e83edc1e5b536575db62e7cfa2dbebe83b7bf815a182d0a55cd5341ff8386fcc",
+      "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish": "96fe2a330669375bbee342f6df5136369a7ddecd3b4fcd80a05bfd01c5a43a90",
+      "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish": "0af1454e698f52b263512ad4ce6177ed9d79641f56a1d7ba4596e885571aae9f",
+      "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish": "8202342a2a26fcda34072c02ade537ce8c287dd951e28db8fea3d846b4ff3682",
+      "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish": "32e70f8a3bb87f77e9f8f07b8e200743d0e976ddd1ce0c7b02c44e95e3b26ea5"
+    }
+  },
+  "productionVerification": {
+    "base": "https://ai-benchmark-studio-sand.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/new",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/api/media/runtime",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "candidate-source-matches-deb6250",
+        "passed": true,
+        "files": 567
+      }
+    ],
+    "count": 31,
+    "productionDataMutated": false,
+    "paidModelCalls": 0,
+    "adminInteractiveTest": "not performed",
+    "sourceProof": {
+      "deploymentId": "dpl_6e3X8h5cLknUsQ3ofm9tbbeqwf55",
+      "commit": "deb62508274d2ad89638f62a4d550334ab9f573e",
+      "allUploadedSourceHashesMatch": true,
+      "count": 567,
+      "featureFiles": [
+        "lib/community-title-policy.ts",
+        "lib/community-task-led-style.ts",
+        "lib/community-story-policy.ts",
+        "lib/community-de-ai-flavor.ts",
+        "lib/ai/config.ts"
+      ],
+      "existingArticleServiceUnchanged": true
+    },
+    "existingVisibleArticles": {
+      "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish": "cd027748724727c90147f1d7b1314c503c4be75ae71995ede8945824a37b26ab",
+      "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish": "d8ce0aae033c69fba7dde5cb152ca241529d287bdb00b2603289543412d24202",
+      "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish": "e83edc1e5b536575db62e7cfa2dbebe83b7bf815a182d0a55cd5341ff8386fcc",
+      "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish": "96fe2a330669375bbee342f6df5136369a7ddecd3b4fcd80a05bfd01c5a43a90",
+      "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish": "0af1454e698f52b263512ad4ce6177ed9d79641f56a1d7ba4596e885571aae9f",
+      "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish": "8202342a2a26fcda34072c02ade537ce8c287dd951e28db8fea3d846b4ff3682",
+      "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish": "32e70f8a3bb87f77e9f8f07b8e200743d0e976ddd1ce0c7b02c44e95e3b26ea5"
+    }
+  },
+  "existingArticles": {
+    "visibleArticleCount": 7,
+    "allTextHashesUnchanged": true,
+    "beforeSha256": {
+      "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish": "96fe2a330669375bbee342f6df5136369a7ddecd3b4fcd80a05bfd01c5a43a90",
+      "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish": "d8ce0aae033c69fba7dde5cb152ca241529d287bdb00b2603289543412d24202",
+      "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish": "cd027748724727c90147f1d7b1314c503c4be75ae71995ede8945824a37b26ab",
+      "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish": "e83edc1e5b536575db62e7cfa2dbebe83b7bf815a182d0a55cd5341ff8386fcc",
+      "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish": "0af1454e698f52b263512ad4ce6177ed9d79641f56a1d7ba4596e885571aae9f",
+      "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish": "8202342a2a26fcda34072c02ade537ce8c287dd951e28db8fea3d846b4ff3682",
+      "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish": "32e70f8a3bb87f77e9f8f07b8e200743d0e976ddd1ce0c7b02c44e95e3b26ea5"
+    },
+    "afterSha256": {
+      "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish": "cd027748724727c90147f1d7b1314c503c4be75ae71995ede8945824a37b26ab",
+      "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish": "d8ce0aae033c69fba7dde5cb152ca241529d287bdb00b2603289543412d24202",
+      "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish": "e83edc1e5b536575db62e7cfa2dbebe83b7bf815a182d0a55cd5341ff8386fcc",
+      "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish": "96fe2a330669375bbee342f6df5136369a7ddecd3b4fcd80a05bfd01c5a43a90",
+      "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish": "0af1454e698f52b263512ad4ce6177ed9d79641f56a1d7ba4596e885571aae9f",
+      "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish": "8202342a2a26fcda34072c02ade537ce8c287dd951e28db8fea3d846b4ff3682",
+      "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish": "32e70f8a3bb87f77e9f8f07b8e200743d0e976ddd1ce0c7b02c44e95e3b26ea5"
+    },
+    "scope": "All 7 existing visible article title/body/tag text; no existing post was regenerated or edited."
+  },
+  "implementationVerification": {
+    "testsPassed": 558,
+    "testsFailed": 0,
+    "typecheck": true,
+    "localBuild": "passed in implementation at same source commit",
+    "remoteProductionBuild": "READY",
+    "remoteBuildSeconds": 42,
+    "remotePlatform": "linux",
+    "remoteArchitecture": "x64",
+    "remoteNode": "24.22.1",
+    "isolatedMediaSelfTest": true
+  },
+  "runtimeLogScan": {
+    "since": "10m",
+    "levels": [
+      "error",
+      "fatal"
+    ],
+    "recordsReturned": 0,
+    "from": "2026-10-26T07:50:30.832Z",
+    "to": "2026-10-26T08:00:30.832Z"
+  },
+  "changesDuringRelease": {
+    "migration": false,
+    "environmentChange": false,
+    "accessProtectionChanged": false,
+    "businessDataWritten": false,
+    "paidModelCallsInitiated": 0,
+    "existingArticlesEdited": 0
+  },
+  "limitations": [
+    "No new paid production article was generated during release; prompt deployment is verified by exact uploaded source hashes and the tested provider serialization path."
+  ]
+}
