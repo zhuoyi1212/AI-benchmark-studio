@@ -1,0 +1,30 @@
+{
+  "sourceArtifactId": "761d2673-1097-4052-8d8c-cec8869953be",
+  "status": "requires_correction",
+  "variants": {
+    "current": {
+      "acceptedForPublishing": false,
+      "label": "待修正：品牌标志、过往经历",
+      "issues": [
+        {
+          "quote": "要求里「不要品牌标志、二维码或其他文字」也做到了",
+          "reason": "当前原图右下角可见“即梦AI”标志，与该句冲突。"
+        },
+        {
+          "quote": "以前用某些工具生成中文海报，最怕字变成方块或偏旁乱飞",
+          "reason": "当前测试没有作者过往使用经历记录。"
+        }
+      ]
+    },
+    "style-card": {
+      "acceptedForPublishing": false,
+      "label": "待修正：作者场景缺少依据",
+      "issues": [
+        {
+          "quote": "对我这种需要快速出活动物料的场景",
+          "reason": "当前材料没有记录作者具有这一工作需求；不应代写个人背景。"
+        }
+      ]
+    }
+  }
+}

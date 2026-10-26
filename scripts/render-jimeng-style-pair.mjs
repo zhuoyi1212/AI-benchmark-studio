@@ -7,6 +7,8 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const archive = path.join(root, 'outputs/natural-voice-private/jimeng');
 const destination = path.join(root, 'docs/project-articles/2026-10-26即梦风格卡对照');
+const prior = await readFile(path.join(destination, '生成核验.json'), 'utf8').catch(() => null);
+if (prior && JSON.parse(prior).status === 'invalidated_stale_source') throw new Error('旧证据对照已失效，禁止重新展示为当前结果。');
 const read = async (dir, name) => JSON.parse(await readFile(path.join(archive, dir, name), 'utf8'));
 const hash = text => createHash('sha256').update(text).digest('hex');
 const escape = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');

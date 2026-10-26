@@ -10,6 +10,7 @@ import { withStyleVariant, styleGuidance, assertProviderDestination } from './li
 const root = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
 const createLoader = require(path.join(root, 'scripts/lib/load-typescript.cjs'));
+if (process.argv.includes('--live')) throw new Error('该冻结源已被当前测试替换并删除，禁止继续调用模型。请使用校验当前线上证据的生成入口。');
 const key = 'jimeng';
 const variant = process.argv[2];
 assert.ok(['current', 'style-card'].includes(variant));

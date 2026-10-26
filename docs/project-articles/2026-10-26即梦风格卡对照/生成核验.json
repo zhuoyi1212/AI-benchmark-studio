@@ -1,6 +1,6 @@
 {
   "date": "2026-10-26",
-  "status": "one_pair_generated_not_reader_evaluated",
+  "status": "invalidated_stale_source",
   "sourceMaterialsIdentical": true,
   "images": "archived observations of the original four images; no fresh image reading",
   "firstCompletedPair": true,
@@ -127,8 +127,8 @@
   "storageWrites": 0,
   "appWrites": 0,
   "deploys": 0,
-  "htmlSha256": "c67be1a6a0ba20dc405adde32fc9afd1a56c7380d5a783e604b2af769362e900",
-  "comparisonSha256": "389d7fdbebd50b3bbf0628bedf3be72745eb6ad97a5b5b7a735bfd52ab123163",
+  "htmlSha256": "efa9c79abbe6f1ab9cd7e44afd6956fe049b6c71bc6cb4c82d6b022a31a2ec8e",
+  "comparisonSha256": "2027921e9679003d5c2e91f56b2488cbdabb30ecc3238202f665b061c1f15315",
   "runs": [
     {
       "variant": "current",
@@ -446,5 +446,12 @@
         }
       ]
     }
-  ]
+  ],
+  "invalidation": {
+    "reason": "本地冻结材料为已删除的v1四张旧图；当前为v6一张新图，本次对照不代表当前实验。",
+    "currentProtocolVersion": 6,
+    "currentArtifactCount": 1,
+    "checkedOn": "2026-10-26",
+    "sourceStorageDeleted": true
+  }
 }

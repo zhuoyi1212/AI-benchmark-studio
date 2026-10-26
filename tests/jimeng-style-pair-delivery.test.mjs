@@ -7,12 +7,15 @@ const directory = new URL('../docs/project-articles/2026-10-26即梦风格卡对
 const read = name => readFile(new URL(name, directory), 'utf8');
 const hash = text => createHash('sha256').update(text).digest('hex');
 
-test('the comparison preserves both complete model copies, with matching hashes and no hidden manual edits', async () => {
+test('the invalidated comparison retains audit copies but no longer displays deleted evidence as current results', async () => {
   const report = JSON.parse(await read('生成核验.json'));
   const comparison = await read('两版全文对照.md');
   const html = await read('两版并排对照.html');
   assert.equal(hash(comparison), report.comparisonSha256);
   assert.equal(hash(html), report.htmlSha256);
+  assert.match(html, /这组对照已失效/);
+  assert.match(comparison, /已撤回：来源过期/);
+  assert.equal(report.invalidation.currentProtocolVersion, 6);
   assert.equal(report.runs.length, 2);
   for (const run of report.runs) {
     const markdown = await read(run.file);
@@ -22,14 +25,14 @@ test('the comparison preserves both complete model copies, with matching hashes 
     assert.equal(Array.from(run.body).length, run.bodyCharacters);
     assert.ok(comparison.includes(markdown));
     const escape = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-    for (const paragraph of run.body.split(/\n\s*\n/)) assert.ok(html.includes(`<p>${escape(paragraph)}</p>`));
+    for (const paragraph of run.body.split(/\n\s*\n/)) assert.equal(html.includes(`<p>${escape(paragraph)}</p>`), false);
     assert.equal(run.policyVersion, 'community-story.v13-de-ai-flavor');
     assert.equal(run.articleReview.issues.length, 0);
     assert.equal(run.stylePreservation.issues.length, 0);
   }
   assert.equal(report.manualCopyEdits, false);
   assert.equal(report.extraEditorialReminders, false);
-  assert.equal(report.status, 'one_pair_generated_not_reader_evaluated');
+  assert.equal(report.status, 'invalidated_stale_source');
 });
 
 test('paired delivery records identical original evidence and model controls, with failures and planning resumption disclosed', async () => {

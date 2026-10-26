@@ -1,0 +1,342 @@
+{
+  "date": "2026-10-26",
+  "status": "current_source_verified_local_pair",
+  "sourceStamp": {
+    "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+    "protocolId": "8cc640bd-ce0c-47f9-a073-90f868e83ce8",
+    "protocolVersion": 6,
+    "runsHash": "821370d51a4f8dae6d6875a83b2fe86894a0b745edcfb8284788d88a6951bab7",
+    "artifacts": [
+      {
+        "id": "761d2673-1097-4052-8d8c-cec8869953be",
+        "sha256": "0a5241022867ee80f1c1a71ade12919c6f3a430df836b396616664623f93e938",
+        "testRunId": "dcfa5e12-efd1-499c-8f6f-c13bca2db371",
+        "sizeBytes": 5284930
+      }
+    ],
+    "findingsId": "18e25968-fa6a-4b67-a278-7dc492ad1955",
+    "findingsRevisionId": null,
+    "confirmedAt": "2026-10-26T00:58:17.774815+00:00",
+    "findingsHash": "f778d8f033c5fd2a962548d82974d69eaacf8f0cb4d04a89e55c1947d55c1ac9"
+  },
+  "snapshotHash": "0f25385e80df524d153d8e39dcca28a7fb404204424fd243f5ba94d6224edd60",
+  "sourceMaterialsIdentical": true,
+  "manualCopyEdits": false,
+  "databaseWrites": 0,
+  "storageWrites": 0,
+  "appWrites": 0,
+  "deploys": 0,
+  "htmlSha256": "ccb091d65ae40afffcf2ed205f9b7004eca19ba85b5000800245687d693e5f4e",
+  "comparisonSha256": "3bfde114931c0492d4b549898f168d75ec5b01f8e96700f1a326bf97248598f4",
+  "runs": [
+    {
+      "variant": "current",
+      "label": "A · 当前规则",
+      "file": "current.md",
+      "title": "即梦AI中文咖啡市集海报实测：中文准确，布局风格达标",
+      "body": "用即梦AI做了一张咖啡市集海报，纯文字提示词，没上传参考图。要求挺具体：3:4竖版，暖米色背景，手绘插画风，下半部分放拿铁、咖啡豆和木桌，上方写「周末咖啡市集」和「周六 10:00—18:00」，不许加品牌标志和二维码。\n\n生成结果先看了中文部分。标题和副标题都在上方居中的位置，内容一字不差，没有乱码或缺笔。以前用某些工具生成中文海报，最怕字变成方块或偏旁乱飞，这张没出现这个问题，活动信息直接可读。\n\n布局也按提示词走了。拿铁、两枚咖啡豆和木桌集中在下半部分，没有跑到标题区域去，构图看着不挤。暖米色背景和手绘风格是匹配的，线条比较流畅，整体是简洁的插画感，不是那种油腻的AI质感。\n\n要求里「不要品牌标志、二维码或其他文字」也做到了，画面干净，没有莫名多出来的元素。\n\n要说边界的话，「手绘插画风格」本身比较主观，这张是我觉得能直接用的程度，但每个人对「手绘感」的预期可能不太一样。如果要做活动海报，建议提示词写得越具体越好，这次把元素、位置、文字内容都写清楚了，结果基本一步到位。",
+      "bodySha256": "f0da29cff48e308f2f5e6083cafebad0eaff68fb98be54c672bc4571babbe6de",
+      "markdownSha256": "d02ec4c47426532ce2d74d21b32dc9b8aa591ef296afb10ed4c960be0a8fd417",
+      "bodyCharacters": 444,
+      "guidanceHash": "12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "f9c56a5a5afd94fd3e9b4db95a6fb21329918f6649be2077eccf6d567bc06042",
+          "usage": {
+            "inputTokens": 11090,
+            "outputTokens": 765,
+            "latencyMs": 18429,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v15-de-ai-flavor",
+          "inputSignature": "862f4bd1199b4602961b3244ae7b73851c3f60f9f09021948ed21765240b7c95",
+          "usage": {
+            "inputTokens": 6914,
+            "outputTokens": 354,
+            "latencyMs": 19771,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "b670c2b5369ba496a56fc909126ed37a7c2b1d21d03957f924f5e114664bf475",
+          "usage": {
+            "inputTokens": 11856,
+            "outputTokens": 60,
+            "latencyMs": 16199,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "b578f5e4dc014e122ff90259a378a3cac93f3a6cc5b621ffc0eb3a51d386e192",
+          "usage": {
+            "inputTokens": 12659,
+            "outputTokens": 496,
+            "latencyMs": 15209,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "requests": [
+        {
+          "sequence": 1,
+          "model": "glm-4.6v",
+          "schemaName": "CommunityStoryBrief",
+          "maxTokens": 5000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "3d14c4c4ceeabd7514465b3164580ae01d0ab1b492f6fb5e6ed99cf5ec9312e3"
+        },
+        {
+          "sequence": 2,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "maxTokens": 16384,
+          "reasoning": "low",
+          "thinking": null,
+          "messagesHash": "448a10a76e026205864315bd22a4b0d7af98e2d8cbe464cc8348aa6c82ba5466"
+        },
+        {
+          "sequence": 3,
+          "model": "glm-4.6v",
+          "schemaName": "CommunityPostReview",
+          "maxTokens": 3000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "6f777f0e62423203e363139863e9a0a9b9b5a8ecb62cff5a19df48212a565b0e"
+        },
+        {
+          "sequence": 4,
+          "model": "glm-4.6v",
+          "schemaName": "EvidenceCheckedCommunityPost",
+          "maxTokens": 3000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "32cdebf78f0d903f30c2756a569fec9200889eb6ff39fd2113fa687efd976601"
+        }
+      ],
+      "sourceReads": 85,
+      "resumedStages": [],
+      "humanReview": {
+        "acceptedForPublishing": false,
+        "label": "待修正：品牌标志、过往经历",
+        "issues": [
+          {
+            "quote": "要求里「不要品牌标志、二维码或其他文字」也做到了",
+            "reason": "当前原图右下角可见“即梦AI”标志，与该句冲突。"
+          },
+          {
+            "quote": "以前用某些工具生成中文海报，最怕字变成方块或偏旁乱飞",
+            "reason": "当前测试没有作者过往使用经历记录。"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "style-card",
+      "label": "B · 加风格卡",
+      "file": "style-card.md",
+      "title": "即梦AI咖啡市集海报实测：中文准、元素都在下半",
+      "body": "我做了一张中文咖啡市集海报，想验证即梦AI能不能只靠一段文字提示词，把标题、时间、拿铁、咖啡豆、木桌这些元素都放对位置，同时保持暖米色背景和手绘插画风。结果一次生成下来，基本要求都落实了。\n\n提示词里我写的是：3:4竖版，暖米色背景，下半部分放一杯拿铁、两枚咖啡豆和一张木桌，简洁手绘插画风，上方居中中文标题“周末咖啡市集”，标题下方小字“周六 10:00—18:00”，不要品牌标志、二维码或其他文字。\n\n生成的图里，中文标题和副标题的位置、内容都和提示词一致，没有缺字错字，字体是偏手写的感觉，清晰能认。对活动海报来说，信息能不能一眼看清很关键，这一点过关。\n\n布局上，拿铁、咖啡豆、木桌确实都在下半部分，数量和位置都对，构图不挤。这次提示词里的空间指令被执行得比较到位。\n\n风格方面，整体是暖米色底配简洁手绘线条，色彩柔和，和“手绘插画风”的描述对得上。不过手绘感这件事比较主观，我觉得线条够简洁，但具体是不是你想要的调性，还是得看图判断。\n\n对我这种需要快速出活动物料的场景，这个完成度已经能当草稿基础。如果只改改文案或微调配色就能用，会省不少事。但如果你对风格有明确参考，可能还是需要多试几次或者后期调整。",
+      "bodySha256": "f3215cdb536a8356eaa2d9e848939f93ba0c5848f00dd83109e2a3a24197496c",
+      "markdownSha256": "98ebebce8ebbabcd7dfd5f5f7813d8f1d2d82ea9d12ad8efc1a53b1ecc9cee8f",
+      "bodyCharacters": 508,
+      "guidanceHash": "defdbbf003e44255ec9849ace592840f91aec8f2b45f95cba9a4457aa86399c4",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "bd1bea0e06e75fe7b83901afa553af3eb45cb03691fbb7f1ef5f9b36663ecc8b",
+          "usage": {
+            "inputTokens": 11767,
+            "outputTokens": 816,
+            "latencyMs": 19869,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v15-de-ai-flavor",
+          "inputSignature": "d91276fac8a302b78986666e36f2f0f8b4c73c99f5912cf40150b5c0246d7721",
+          "usage": {
+            "inputTokens": 7617,
+            "outputTokens": 437,
+            "latencyMs": 23824,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "540289c76075b05a4736fa536cff484220f3abcd1e4c51c7a24469670ecc7bbe",
+          "usage": {
+            "inputTokens": 11973,
+            "outputTokens": 60,
+            "latencyMs": 40692,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v11-de-ai-flavor",
+          "inputSignature": "1f31f937564dbb979cae5a31cfcfc4adb0911a28b2fad85a8c485510a68d04c5",
+          "usage": {
+            "inputTokens": 7423,
+            "outputTokens": 383,
+            "latencyMs": 16042,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-vision",
+          "inputSignature": "e79cf2a3da3ecbc793605bb314c0201bc301c2a994bd5088c13b4c981fc63a57",
+          "usage": {
+            "inputTokens": 12865,
+            "outputTokens": 233,
+            "latencyMs": 17701,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "requests": [
+        {
+          "sequence": 1,
+          "model": "glm-4.6v",
+          "schemaName": "CommunityStoryBrief",
+          "maxTokens": 5000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "83ee263732c3ea0be6ef1d7f98ac9f1cc30a604a2a9b174e551099440bd81a8c"
+        },
+        {
+          "sequence": 2,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "maxTokens": 16384,
+          "reasoning": "low",
+          "thinking": null,
+          "messagesHash": "065beaf6d13aa9cce7d0bb8b14a7e315ea376a71581a27b17cb4237e9910f14a"
+        },
+        {
+          "sequence": 3,
+          "model": "glm-4.6v",
+          "schemaName": "CommunityPostReview",
+          "maxTokens": 3000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "ae73187c333d247f3cd9249a33c98b38f22150e4511e931ce0e5ba7cd9e00ea4"
+        },
+        {
+          "sequence": 4,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "maxTokens": 16384,
+          "reasoning": "low",
+          "thinking": null,
+          "messagesHash": "ec757836e32fe87a290379e81ba1d337944264d6102ab36ea45ba90e02389f1e"
+        },
+        {
+          "sequence": 5,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "maxTokens": 16384,
+          "reasoning": "low",
+          "thinking": null,
+          "messagesHash": "ec757836e32fe87a290379e81ba1d337944264d6102ab36ea45ba90e02389f1e"
+        },
+        {
+          "sequence": 6,
+          "model": "glm-4.6v",
+          "schemaName": "EvidenceCheckedCommunityPost",
+          "maxTokens": 3000,
+          "reasoning": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "messagesHash": "2fee56f88cefb6c22f27a44ddead5adb278da22d9fecd1a62c212a3e4fa1a5b8"
+        }
+      ],
+      "sourceReads": 105,
+      "resumedStages": [],
+      "humanReview": {
+        "acceptedForPublishing": false,
+        "label": "待修正：作者场景缺少依据",
+        "issues": [
+          {
+            "quote": "对我这种需要快速出活动物料的场景",
+            "reason": "当前材料没有记录作者具有这一工作需求；不应代写个人背景。"
+          }
+        ]
+      }
+    }
+  ]
+}
