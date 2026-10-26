@@ -1,0 +1,19 @@
+{
+  "title": "即梦AI咖啡海报实测：文字准确，布局符合指令",
+  "previousTitle": "即梦AI咖啡市集海报实测：中文准、元素都在下半",
+  "titleSource": "manual_editorial_from_user_feedback",
+  "aiTitleReviewed": false,
+  "bodyUnchanged": true,
+  "sourceBodySha256": "f3215cdb536a8356eaa2d9e848939f93ba0c5848f00dd83109e2a3a24197496c",
+  "bodySha256": "f3215cdb536a8356eaa2d9e848939f93ba0c5848f00dd83109e2a3a24197496c",
+  "markdownSha256": "ea15d753b4a368af4cacfaef6e50922f2c2b9bde4d218b25f9ecb57260122f98",
+  "sourceProtocolVersion": 6,
+  "sourceArtifactIds": [
+    "761d2673-1097-4052-8d8c-cec8869953be"
+  ],
+  "bodyGenerationPolicy": "community-story.v13-de-ai-flavor + task-led-review/0.1.0-candidate (local comparison)",
+  "futureDefaultPolicy": "community-story.v14-task-led-review",
+  "authorSceneStillUnconfirmed": true,
+  "appWrites": 0,
+  "deploys": 0
+}

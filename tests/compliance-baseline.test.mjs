@@ -18,7 +18,7 @@ test('context baseline distinguishes visible branding from verified requirements
 test('planning, findings, writing, audits and future Judge share the contextual interpretation', () => {
   const story = load('@/lib/community-story-policy');
   for (const name of ['storyBriefRules','storyWritingRules','storyReviewRules','storyFinalAuditRules']) assert.match(story[name], /合规基线/);
-  assert.equal(story.storyPolicyVersion, 'community-story.v13-de-ai-flavor');
+  assert.equal(story.storyPolicyVersion, 'community-story.v14-task-led-review');
   assert.match(read('lib/services/protocols.service.ts'), /complianceBaselineRules/);
   assert.match(read('lib/services/findings.service.ts'), /videoEvaluationRules,\n\s*complianceBaselineRules,/);
   assert.match(read('lib/services/judge.service.ts'), /\$\{complianceBaselineRules\}/);

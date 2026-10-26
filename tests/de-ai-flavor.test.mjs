@@ -31,7 +31,7 @@ for (const professional of [false, true]) test(`the actual ${professional ? 'pro
   }
   assert.equal(h.state.calls.length, 4);
   assert.equal(h.state.saved.body, draft.body);
-  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v13-de-ai-flavor');
+  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v14-task-led-review');
   assert.equal(h.state.saved.body.includes('我觉得'), false);
   assert.equal(h.state.saved.body.includes('AI味浓度'), false);
 });

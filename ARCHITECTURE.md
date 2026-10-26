@@ -1,8 +1,12 @@
 # AI Benchmark Studio — Architecture
 
+### 默认task-led-review与完整标题（2026-10-26）
+
+`community-task-led-style.ts`静态保存用户选中的规则、版本和研究来源哈希；Story Brief、初稿及修订的实际System Prompt各追加一次，审核不追加创作指导。`community-title-policy.ts`统一约束完整表达与有据概括，覆盖生成/修订/审稿/标题刷新。策略v14与六条受影响路由Prompt升版，实际内容进入现有输入签名和generationTrace；无新增阶段、模型、表、依赖或选择器。研究候选JSON保留原状，不从本地路径或网页动态加载规则。详见docs/task-led-review-style.md。
+
 ### 固定Skill编辑契约（2026-10-26）
 
-`lib/ai/skills/de-ai-flavor-source.ts`保存用户指定上游Skill原文、提交与SHA；`community-de-ai-flavor.ts`提供原文＋项目覆盖契约和八项只读审稿指导，接入现有Story写作/定向修订/初审/终审。没有读全局Skill路径、远程下载、第三方脚本或新增调用阶段。四条受影响路由Prompt与内容策略升版参与检查点签名，现有JSON/实际输入追溯与失败/版本边界保持；无表或迁移。候选profile与来源清单位于docs/research/turingscat-20261026，仅为研究数据，runtime_enabled=false；没有加载到运行时，实际提示词与签名保持。
+`lib/ai/skills/de-ai-flavor-source.ts`保存用户指定上游Skill原文、提交与SHA；`community-de-ai-flavor.ts`提供原文＋项目覆盖契约和八项只读审稿指导，接入现有Story写作/定向修订/初审/终审。没有读全局Skill路径、远程下载、第三方脚本或新增调用阶段。现有JSON、输入追溯与失败/版本边界保持；无表或迁移。原研究profile与来源清单原样保留在docs/research/turingscat-20261026，默认表达模块的选用见上节。
 
 ### 图片分析副本（2026-10-26）
 

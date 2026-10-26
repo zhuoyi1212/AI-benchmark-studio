@@ -67,6 +67,7 @@ assert.ok(output.startsWith(experimentRoot + path.sep));
 await mkdir(output, { recursive: true, mode: 0o700 });
 const save = (name, value) => write(output, name, value);
 const basePolicy = sourceLoad('@/lib/community-story-policy');
+assert.equal(basePolicy.storyPolicyVersion, 'community-story.v13-de-ai-flavor', '原v13对照实验已结束；当前默认已采用风格卡，禁止重复追加或冒充旧基线。');
 const policy = { ...basePolicy };
 for (const [field, schemaName] of [['storyBriefRules', 'CommunityStoryBrief'], ['storyWritingRules', 'CommunityPostDraft'], ['targetedRevisionRules', 'CommunityPostRevision']]) {
   policy[field] = withStyleVariant({ schemaName, messages: [{ role: 'system', content: basePolicy[field] }] }, mode, profile).messages[0].content;

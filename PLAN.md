@@ -272,6 +272,8 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 ## Progress Log
 
+2026-10-26 用户采用第二版风格：将task-led-review/1.0.0固定表达规则接入快/专业策划、初稿及定向修订，每阶段一次；不增加模型或调用阶段，独立审核继续事实优先。统一标题规则要求完整表达，将“元素都在下半”等个案要求概括为本次任务支持的“布局符合指令”，保留内容摘要写法与关键失败，不扩大为普遍能力；覆盖初稿、修订、审稿及单独换标题。策略v14、六条受影响Prompt升版并同步清单；研究候选JSON和历史对照不改，旧对照入口拒绝在新默认上重复追加风格卡。另建即梦本地采用稿，标题为“即梦AI咖啡海报实测：文字准确，布局符合指令”，正文与用户选中的B版逐字相同，记录人工改题与尚待作者确认的场景，未冒充新模型生成或审核。新增4项风格来源/双流程修订/采用稿追溯测试，实际Task Service→Router→Provider序列化检查覆盖风格规则；558/558 tests、typecheck、build含媒体原生自检、相关ESLint及diff检查通过。无付费调用、DB/Storage/App写入、push或部署；不是全产品AC重认证，用户既有文件改动保留。
+
 2026-10-26 de-ai-flavor安装与接入：用户明确指定masonweb3/de-ai-flavor而非其他同名版本。用官方skill-installer把b477196d9924db38c05bd0eeb85e4ac73eed87ac安装到用户Skill目录，保留原SKILL与MIT；Python默认CA缺失后改系统CA文件，HTTPS验证保持。项目静态保存完整Skill原文/SHA/提交及许可，以后置项目契约覆盖报告输出、主观浓度打分、85%/±20%篇幅下限及强迫情绪；初稿/定向修订实际接收原文，初审/终审按八项方法定位问题。用户这次显式请求覆盖历史“不用第三方Skill”限制，不读全局路径或远程指令、不运行示例脚本。策略v13、四条受影响路由Prompt升版；不新增调用阶段/模型/依赖/表，原事实/引用/数字/经历/最终审核门禁保持。
 
 新增7项固定来源/许可/实际快专业Service请求/严格字段/缩短重复/数字保护/终审回归，实际Task Service→Router→Provider序列化测试也确认写作与修订消息携带完整Skill。540/540 tests、typecheck、build含隔离图片解码/抽帧/提音、diff通过，lint0errors/27既有warnings。工作树初始无依赖，复用同lockfile依赖软链接使媒体打包校验遇ENOTSUP；改为本工作树独立copy-on-write依赖目录后完整build通过，原依赖不改，不跳过检查。博主文本还未提供，交付docs/creator-style-distillation.md的语料分离、风格卡、短对照、版本化应用及留出评测方案，明确不是已生成的profile或新UI功能。没有真实用户材料外发/模型付费调用、DB/Storage/App写入或部署，不把工程通过当作真人感提升或全产品AC重认证；保留用户既有作品集改动、模板删除和未跟踪资料。详细来源/适配见docs/de-ai-flavor-integration.md。

@@ -44,7 +44,7 @@ for (const professional of [false, true]) test(`${professional ? 'professional' 
   await h.run();
   assert.deepEqual(h.state.calls.map(c => c.schemaName), ['CommunityStoryBrief', 'CommunityPostDraft', 'CommunityPostReview', 'EvidenceCheckedCommunityPost']);
   assert.equal(h.state.rawReads, 1);
-  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v13-de-ai-flavor');
+  assert.equal(h.state.saved.contentPolicyVersion, 'community-story.v14-task-led-review');
   assert.equal(h.state.saved.body, h.state.saved.styleEdit.edited.body);
   assert.equal(h.state.saved.body, draft.body);
   assert.equal(h.state.saved.styleEdit.changed, false);
