@@ -1,0 +1,450 @@
+{
+  "date": "2026-10-26",
+  "status": "one_pair_generated_not_reader_evaluated",
+  "sourceMaterialsIdentical": true,
+  "images": "archived observations of the original four images; no fresh image reading",
+  "firstCompletedPair": true,
+  "extraEditorialReminders": false,
+  "manualCopyEdits": false,
+  "failedAttempts": [
+    {
+      "variant": "current",
+      "status": "failed_before_draft",
+      "message": "撰写初稿：Kimi 当前请求过多 HTTP 429，已重试仍失败，请稍后再试。",
+      "providerRequests": 3,
+      "requestControls": [
+        {
+          "sequence": 1,
+          "model": "deepseek-v4-pro",
+          "schemaName": "CommunityStoryBrief",
+          "messagesHash": "cae79a96e89b1ee893b5950123cd6727971c3a5475a40dfb4b54e38244e04362",
+          "maxTokens": 5000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        },
+        {
+          "sequence": 2,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "messagesHash": "c61ac19a00759d8c3b1dd5526629996daacf5121bb16f7904e765f8444914d3b",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 3,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "messagesHash": "c61ac19a00759d8c3b1dd5526629996daacf5121bb16f7904e765f8444914d3b",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        }
+      ],
+      "note": "Kimi过载或超时；后续严格比对原请求与输入后恢复成功阶段，仅继续未完成阶段，不添加编辑提示、不抽取新初稿。"
+    },
+    {
+      "variant": "style-card",
+      "status": "failed_during_revision",
+      "message": "修订已发现的问题：Kimi 生成社区内容超时，请重试。",
+      "providerRequests": 6,
+      "requestControls": [
+        {
+          "sequence": 1,
+          "model": "deepseek-v4-pro",
+          "schemaName": "CommunityStoryBrief",
+          "messagesHash": "5fedd2c132f6ce14700e9e50a71272a0629338e6929029288fdb6e50610b1c4f",
+          "maxTokens": 5000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        },
+        {
+          "sequence": 2,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "messagesHash": "c1e0dd3dee549d871433d53caf7ec6f56957f4e3a8858ce82ae2209f9aa6f9c0",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 3,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "messagesHash": "c1e0dd3dee549d871433d53caf7ec6f56957f4e3a8858ce82ae2209f9aa6f9c0",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 4,
+          "model": "deepseek-v4-flash",
+          "schemaName": "CommunityPostReview",
+          "messagesHash": "e53da1cc8ab0e7e9def73604ba1a00e957e0d4f9995048f5abb56453587d4d3a",
+          "maxTokens": 3000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        },
+        {
+          "sequence": 5,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "24414cfeacd306cddf1b70c45cd91126be6de1b41cd9c2978fedaa39931b7f70",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 6,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "24414cfeacd306cddf1b70c45cd91126be6de1b41cd9c2978fedaa39931b7f70",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        }
+      ],
+      "note": "Kimi过载或超时；后续严格比对原请求与输入后恢复成功阶段，仅继续未完成阶段，不添加编辑提示、不抽取新初稿。"
+    }
+  ],
+  "databaseRequests": 0,
+  "databaseWrites": 0,
+  "storageWrites": 0,
+  "appWrites": 0,
+  "deploys": 0,
+  "htmlSha256": "c67be1a6a0ba20dc405adde32fc9afd1a56c7380d5a783e604b2af769362e900",
+  "comparisonSha256": "389d7fdbebd50b3bbf0628bedf3be72745eb6ad97a5b5b7a735bfd52ab123163",
+  "runs": [
+    {
+      "variant": "current",
+      "label": "A · 当前规则",
+      "generatedAt": "2026-10-26T06:36:12.506Z",
+      "profileVersion": null,
+      "guidanceHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHash": "2f7b2fc8de63509b02136d868683c942d2316c176fb013e0828354b077feb891",
+      "rawEvidenceHash": "93887e0ce0683699b89d15a9302be7dd4ae888d9724893e10ac725cfa428ae26",
+      "policyVersion": "community-story.v13-de-ai-flavor",
+      "title": "即梦AI中文咖啡市集海报实测：一轮四张，三张满版草稿",
+      "body": "我用即梦AI免费账号里的Seedream4.0跑了一条3:4竖版海报提示词：暖米色背景、手绘插画风，下半部分是一杯拿铁、两枚咖啡豆和木桌，上方标题“周末咖啡市集”加小字“周六 10:00—18:00”。默认的5.0 Pro被会员入口拦住，就用了免费的4.0，一次出4张，我把原始PNG都下载下来看了。\n\n四张的中文都没错字缺字，标题和时间都能读清；第二、三张标题排成两行，第一、四张是一行。\n\n其中三张画面是填满的，拿铁还带心形拉花，标题时间在上方，构图挺规整，可以直接当活动海报草稿挑。第三张要注意：文件本身是1728×2304的3:4，但画面缩在中间，左右两条明显黑边。所以挑图时别只看文件比例，打开原图看一眼画面有没有铺满。\n\n还有一个边界要说清：四张下载图右下角都带“即梦AI”标志，这是本账号导出带的，不是模型自己画上去的品牌。对外发布前得确认平台标识要求和发布场景是否允许。\n\n这次只测了一条提示词、一轮四张，反映的是免费账号单次表现，不能推算整体出图成功率。",
+      "bodyCharacters": 436,
+      "bodySha256": "b7f02c92567cf2e760fa01e695acef7700854bc72b11502255b3ca75ab4744d7",
+      "markdownSha256": "9ea5ae919099b0a568ee37510b53f07681cb5a302006f733714b8684694e31fc",
+      "file": "current.md",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v10-community-sharing",
+          "inputSignature": "f595bcb913174fc938b3e9debba34ed789a790e3ca934e4af9630e8afcc82bc2",
+          "usage": {
+            "inputTokens": 11166,
+            "outputTokens": 1163,
+            "latencyMs": 15530,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v15-de-ai-flavor",
+          "inputSignature": "baaa75edf34f96fb6c3a7d3d0b60642bc037b2b842ea6781d44c2f5aa6bed818",
+          "usage": {
+            "inputTokens": 10626,
+            "outputTokens": 411,
+            "latencyMs": 22138,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-text",
+          "inputSignature": "442cd8851430f67ae91d8037f7448fb052a9445d08eb404e36962335086651da",
+          "usage": {
+            "inputTokens": 12424,
+            "outputTokens": 211,
+            "latencyMs": 2727,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v11-de-ai-flavor",
+          "inputSignature": "133029f102002d4440e722cd3666ef711cb72b8d0b56535e16289865bea59127",
+          "usage": {
+            "inputTokens": 11074,
+            "outputTokens": 730,
+            "latencyMs": 21149,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-text",
+          "inputSignature": "66e82780ddeb52d5d89b530e002da6981aad42989df2d2037bde570028f82bd0",
+          "usage": {
+            "inputTokens": 13517,
+            "outputTokens": 308,
+            "latencyMs": 2163,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "providerRequests": 5,
+      "responseCount": 6,
+      "resumedStages": [
+        {
+          "stage": "CommunityStoryBrief",
+          "archive": "style-pair-20261026-current",
+          "response": "01-CommunityStoryBrief-1.private.json"
+        }
+      ],
+      "requestControls": [
+        {
+          "sequence": 1,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostDraft",
+          "messagesHash": "c61ac19a00759d8c3b1dd5526629996daacf5121bb16f7904e765f8444914d3b",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 2,
+          "model": "deepseek-v4-flash",
+          "schemaName": "CommunityPostReview",
+          "messagesHash": "04266a44f9bdee5640954fa9e8d017d0a6a81d185a21b7cbca96cec7b8f1f4b0",
+          "maxTokens": 3000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        },
+        {
+          "sequence": 3,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "67c96517647ccd2d5f0dfd6919de106b76dadd6eeaa1133dc1b88f09c5c9e0ca",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 4,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "88912107b4533b9c9a4a49a3eae459a2ebb5882292c7a1996240f9b731ab679a",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 5,
+          "model": "deepseek-v4-flash",
+          "schemaName": "EvidenceCheckedCommunityPost",
+          "messagesHash": "201d6f396a065c4248f76e7e66eb10ca993b5cf50aeacbf60bfdc4f5bf8a8089",
+          "maxTokens": 3000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        }
+      ]
+    },
+    {
+      "variant": "style-card",
+      "label": "B · 当前规则＋风格卡",
+      "generatedAt": "2026-10-26T06:38:10.700Z",
+      "profileVersion": "0.1.0-candidate",
+      "guidanceHash": "dfdd9bf88a71fb53550938e0dc52868741969e578ccba17c7073d65dbad43c33",
+      "sourceHash": "2f7b2fc8de63509b02136d868683c942d2316c176fb013e0828354b077feb891",
+      "rawEvidenceHash": "93887e0ce0683699b89d15a9302be7dd4ae888d9724893e10ac725cfa428ae26",
+      "policyVersion": "community-story.v13-de-ai-flavor",
+      "title": "即梦AI做中文咖啡海报：四张可挑，一张有黑边",
+      "body": "用即梦AI免费账号试着做了一张中文活动海报：3:4竖版，提示词里写清楚暖米色背景、手绘插画风，下半部分是一杯拿铁、两枚咖啡豆和木桌，上方标题“周末咖啡市集”，小字“周六 10:00—18:00”，并要求不加品牌标志和二维码。默认的Seedream5.0 Pro被会员入口拦住，改用免费可用的Seedream4.0，一轮出4张，花了4个积分。\n\n最省心的是中文渲染。四张的标题和时间都逐字正确，没有错字缺字。其中三张是满版：米色背景、水彩手绘感、拿铁和木桌位置都对，直接能当活动海报草稿挑着用。\n\n但第三张是个坑：文件本身是1728×2304的3:4，画面却缩在中间，左右两条明显黑边。要满版的话这张得先剔掉——挑图别只看文件比例，要打开原图看画面有没有填满。\n\n另外四张下载图右下角都带“即梦AI”标志，这是账号导出带的，不是模型自己乱加的品牌。对外发布前需要确认平台的标识要求，单凭这个字样判断不了能不能去掉。\n\n这次只测了一条提示词、一轮四张，不能推算整体成功率。结论是：快速出几版中文海报草稿来挑，可行；但要自己筛掉黑边那张，水印的事发布前另行确认。",
+      "bodyCharacters": 478,
+      "bodySha256": "723078b83e079b5d322d01a75b3c5149b400371a3d32be9f3e866023a9fdb194",
+      "markdownSha256": "28f0b3090e8aadd5315b14bb290ccab1266bc7881be0ed8a030d7142dce4f977",
+      "file": "style-card.md",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v10-community-sharing",
+          "inputSignature": "dd0a8f33e3a25a1436f03a2ad09292dc3f88778ad324bffbdd37d789bc97079d",
+          "usage": {
+            "inputTokens": 11842,
+            "outputTokens": 1095,
+            "latencyMs": 15041,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v15-de-ai-flavor",
+          "inputSignature": "38fc05d4907d0d91652091c3128f44e98da40755c62e3363d305292fb7825b4a",
+          "usage": {
+            "inputTokens": 11209,
+            "outputTokens": 483,
+            "latencyMs": 33531,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-text",
+          "inputSignature": "e80ab936aa4951ef620c6a3fbb693015f739aa7d59522754ed4e48daa6b3cfc3",
+          "usage": {
+            "inputTokens": 12323,
+            "outputTokens": 40,
+            "latencyMs": 1466,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v11-de-ai-flavor",
+          "inputSignature": "3b23dc4292963e60a0c385a6e7617f0d7760488e9bbe0d0236e503e17e21b907",
+          "usage": {
+            "inputTokens": 11476,
+            "outputTokens": 388,
+            "latencyMs": 14573,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v14-de-ai-flavor-text",
+          "inputSignature": "12527c7f87678431610269c7537670df38a3a99a04c6c6448fd2e9a982cdc21c",
+          "usage": {
+            "inputTokens": 13225,
+            "outputTokens": 296,
+            "latencyMs": 2604,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "providerRequests": 3,
+      "responseCount": 6,
+      "resumedStages": [
+        {
+          "stage": "CommunityStoryBrief",
+          "archive": "style-pair-20261026-style-card",
+          "response": "01-CommunityStoryBrief-1.private.json"
+        },
+        {
+          "stage": "CommunityPostDraft",
+          "archive": "style-pair-20261026-style-card",
+          "response": "02-CommunityPostDraft-2.private.json"
+        },
+        {
+          "stage": "CommunityPostReview",
+          "archive": "style-pair-20261026-style-card",
+          "response": "03-CommunityPostReview-1.private.json"
+        }
+      ],
+      "requestControls": [
+        {
+          "sequence": 1,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "24414cfeacd306cddf1b70c45cd91126be6de1b41cd9c2978fedaa39931b7f70",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 2,
+          "model": "kimi-k3",
+          "schemaName": "CommunityPostRevision",
+          "messagesHash": "956205ea90bcc4f7126675ef6fced78fd6fac3df8038fa9d1fff2fa64e416f55",
+          "maxTokens": 16384,
+          "reasoningEffort": "low",
+          "thinking": null,
+          "stream": false
+        },
+        {
+          "sequence": 3,
+          "model": "deepseek-v4-flash",
+          "schemaName": "EvidenceCheckedCommunityPost",
+          "messagesHash": "db96df1f311766d152a0cb6713a0d1a3f60e6747ec46d435195e615510ea18bc",
+          "maxTokens": 3000,
+          "reasoningEffort": null,
+          "thinking": {
+            "type": "disabled"
+          },
+          "stream": false
+        }
+      ]
+    }
+  ]
+}

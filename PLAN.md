@@ -282,6 +282,10 @@ Micro Finding / Content Discovery 默认使用 `deepseek-v4-pro`；Community Pos
 
 新增5项回归检查导入哈希、规则双向引用/时间范围/空档、未知与条件边界、来源汇总及未执行评测状态。545/545 tests、typecheck、build（含隔离图片解码/抽帧/提音）、新增测试ESLint、git diff --check通过。仅文档、研究数据及测试变更；无运行时Prompt/模型/阶段/DB/Storage/Blind/Human Review/Mock改动，无付费模型调用、生产写入或部署，无真实样稿盲评/产品E2E，不重认证全部产品Acceptance Criteria。原始来源目录与用户既有作品集修改、模板删除、未跟踪资料保持原状。当前分支codex/de-ai-flavor-writing，独立提交便于回滚。
 
+2026-10-26 即梦本地风格卡配对：用户要求相同即梦原始材料按当前规则/加卡各生成一版，明确不改线上。使用当前v13与task-led-review候选卡，本地隔离覆盖策划/初稿/修订System消息，审核保持原样；实际消息、卡哈希、路由和预算进入归档。原冻结任务/确认发现修订/四图元数据/原操作记录与已存图像观察一致，不重测或重新读图，不把后来的单张示例替代实际一轮四张。Kimi过载/超时导致两个中断尝试；保留失败，仅在完整请求、来源、配置、预算、卡哈希和Schema匹配后恢复已成功阶段，不额外补编辑提醒、不重抽初稿或换模型。17次真实Provider请求/12份结构化响应，最终两版436/478字原样交付docs/project-articles/2026-10-26即梦风格卡对照，并排HTML已在真实本地浏览器显示；无手工润色、用户盲评或自然度提升结论，原六份材料计划不冒充已完成。
+
+本轮4项回归覆盖实际当前消息保留/候选追加/独立审稿、只限Provider的网络边界、全文/HTML/哈希一致和同源模型预算/失败恢复记录。549/549 tests、typecheck、build含隔离图片/抽帧/提音、新增文件ESLint、diff check通过。实际调用通过Task Service→Router→Provider，Repository只写本地；DB/Storage/App写入0，无push/部署/迁移或运行时默认规则改动。原输入文件前后哈希匹配，旧文章与用户原有资料保留；本轮非新Milestone或全产品AC认证。详细限制见对照目录说明。
+
 2026-10-26 图片自动适配生产发布：按用户要求正常push原分支e13ac1d→f5f7c0e，从该提交创建干净快照，不含未提交资料或.env；518索引文件/77真实流程边界及实际Secret值审计通过。Vercel原团队/项目生产候选dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz先skip-domain构建，Linux x64/Node24.22.1实际图片解码、抽帧和提音自检通过，目录各3MiB。实际上传516源码文件SHA-1全部与快照一致，候选31项验收后promote；正式sand域名确认同一READY部署、31项再次通过，最近10分钟error/fatal各0条。没有migration、环境/访问保护调整、用户业务数据写入或主动付费模型调用；未做线上管理员真实上传/模型重试，功能验证来自此前533测试及真实DB/Storage隔离E2E。记录见docs/releases/2026-10-26-image-analysis-adaptation.md及同名JSON，文档跟进提交不重建运行代码，不重认证全产品AC；用户既有作品集修改、模板删除和未跟踪资料保持。
 
 2026-10-26 图片后台自动适配：按用户要求接入签名直传后的服务器上传确认，完整图片 SHA 校验/解码后准备分析图，成功才保存不可变 Artifact；上传达到100%时显示简短处理状态。合规PNG/JPEG保持原字节，其他优先不减色PNG，再用95/90/85、4:4:4 JPEG，最多4MiB/最长边6000；不裁剪/模糊/重绘，不无限降质。metadata.analysisImage追溯原图/副本SHA、尺寸、策略与编码，原件继续展示下载，副本不创建Artifact或进入配图。Judge/Findings/Publish统一验证可用来源、读取副本并以Base64发送，旧图显式分析时内存适配，不回写历史。删除/失败补偿批量清理副本；补齐DB确认不明或不匹配时保护已保存原图的回归。无DDL/新队列/模型切换，不改用户评分、Findings或文章。
