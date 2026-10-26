@@ -1,0 +1,427 @@
+{
+  "releasedAtUtc": "2026-10-26T02:13:53.978130+00:00",
+  "projectId": "prj_hbBp4mC9Tb20UgpNJmDni06w7ORS",
+  "team": "z-z-y1",
+  "deploymentId": "dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz",
+  "sourceCommit": "f5f7c0e13a1985a1d0cc4145d0b8622ded4bbee1",
+  "target": "production",
+  "status": "READY",
+  "productionUrl": "https://ai-benchmark-studio-sand.vercel.app",
+  "previousDeploymentId": "dpl_ENEDmeLoHxsyQJGaQZ8tZNgGhcDc",
+  "sourceProof": {
+    "deploymentId": "dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz",
+    "commit": "f5f7c0e13a1985a1d0cc4145d0b8622ded4bbee1",
+    "allUploadedSourceHashesMatch": true,
+    "count": 516,
+    "featureFiles": [
+      "lib/media/analysis-image.ts",
+      "lib/media/analysis-image-paths.ts",
+      "lib/services/analysis-image.service.ts",
+      "lib/services/test-execution.service.ts",
+      "lib/services/findings.service.ts",
+      "lib/services/judge.service.ts",
+      "lib/media/runtime-check.ts",
+      "next.config.ts",
+      "package.json"
+    ],
+    "remoteLinuxImageSelfTest": true
+  },
+  "candidateVerification": {
+    "base": "https://ai-benchmark-studio-3qwzsn6md-z-z-y1.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/new",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/api/media/runtime",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "deployed-source-matches-f5f7c0e",
+        "passed": true,
+        "files": 516
+      }
+    ],
+    "count": 31,
+    "productionDataMutated": false,
+    "paidModelCalls": 0,
+    "adminInteractiveTest": "not performed",
+    "sourceProof": {
+      "deploymentId": "dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz",
+      "commit": "f5f7c0e13a1985a1d0cc4145d0b8622ded4bbee1",
+      "allUploadedSourceHashesMatch": true,
+      "count": 516,
+      "featureFiles": [
+        "lib/media/analysis-image.ts",
+        "lib/media/analysis-image-paths.ts",
+        "lib/services/analysis-image.service.ts",
+        "lib/services/test-execution.service.ts",
+        "lib/services/findings.service.ts",
+        "lib/services/judge.service.ts",
+        "lib/media/runtime-check.ts",
+        "next.config.ts",
+        "package.json"
+      ],
+      "remoteLinuxImageSelfTest": true
+    }
+  },
+  "productionVerification": {
+    "base": "https://ai-benchmark-studio-sand.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/projects",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/products",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/admin",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/new",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/api/media/runtime",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/research",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/protocol",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/results",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/d66bbeb5-418d-4755-9e4a-a10c534af26b/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/test",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/quick",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/030347a8-6e7e-494a-bbe0-08e505e10718/publish",
+        "access": "visitor",
+        "status": 200
+      },
+      {
+        "path": "/projects/77ac52ae-cb4c-477b-9783-688dead41c12/test",
+        "method": "POST",
+        "access": "visitor",
+        "status": 401
+      },
+      {
+        "check": "deployed-source-matches-f5f7c0e",
+        "passed": true,
+        "files": 516
+      }
+    ],
+    "count": 31,
+    "productionDataMutated": false,
+    "paidModelCalls": 0,
+    "adminInteractiveTest": "not performed",
+    "sourceProof": {
+      "deploymentId": "dpl_HKEYbrpG28x3dnzWLBBDZAgAXztz",
+      "commit": "f5f7c0e13a1985a1d0cc4145d0b8622ded4bbee1",
+      "allUploadedSourceHashesMatch": true,
+      "count": 516,
+      "featureFiles": [
+        "lib/media/analysis-image.ts",
+        "lib/media/analysis-image-paths.ts",
+        "lib/services/analysis-image.service.ts",
+        "lib/services/test-execution.service.ts",
+        "lib/services/findings.service.ts",
+        "lib/services/judge.service.ts",
+        "lib/media/runtime-check.ts",
+        "next.config.ts",
+        "package.json"
+      ],
+      "remoteLinuxImageSelfTest": true
+    }
+  },
+  "runtimeLogScan": {
+    "since": "10m",
+    "limitPerLevel": 100,
+    "error": 0,
+    "fatal": 0
+  },
+  "buildVerification": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "24.22.1",
+    "isolatedImageDecode": true,
+    "isolatedVideoAndAudio": true,
+    "lightweightCatalogMiB": 3
+  },
+  "implementationVerification": {
+    "testsPassed": 533,
+    "typecheck": true,
+    "build": true,
+    "isolatedDatabaseStorageE2E": "mvolkahb-ea234bb5"
+  },
+  "changesDuringRelease": {
+    "migration": false,
+    "environmentChange": false,
+    "accessProtectionChanged": false,
+    "businessDataWritten": false,
+    "paidModelCallsInitiated": 0
+  },
+  "limitations": [
+    "No online administrator upload or paid model retry performed; functional checks use prior isolated E2E plus the remote Linux build self-test."
+  ]
+}

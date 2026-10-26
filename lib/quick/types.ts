@@ -13,5 +13,5 @@ export type NextQuickJob = { kind: QuickJobKind; scope: string; payload?: Json }
 export const quickStageLabels: Record<string, string> = {
   research: '准备产品资料', protocol: '生成测试方案', evaluate: '匿名分析结果', findings: '提炼测评发现',
   discovery: '选择文章主题', publish: '生成文章', analysis: '整理专业分析', report: '生成专业报告',
-  CommunityPostDraft: '撰写初稿', ReviewedCommunityPost: '核验初稿', HumanizedCommunityPost: '调整语言', EvidenceCheckedCommunityPost: '最终保真检查',
+  VideoFrameObservations: '读取视频关键帧', PublicationVideoObservations: '读取视频细节', CommunityStoryBrief: '确定文章主线', CommunityPostReview: '核验初稿', CommunityPostRevision: '修订已发现的问题', CommunityPostDraft: '撰写初稿', ReviewedCommunityPost: '核验初稿', HumanizedCommunityPost: '调整语言', EvidenceCheckedCommunityPost: '最终保真检查',
 };

@@ -1,0 +1,77 @@
+{
+  "verifiedAt": "2026-10-18T13:44:45.592Z",
+  "allVisibleProjectsK3": true,
+  "oldPacksAndArtifactsUnchanged": true,
+  "reports": [
+    {
+      "projectId": "77ac52ae-cb4c-477b-9783-688dead41c12",
+      "name": "即梦AI｜中文咖啡活动海报生成",
+      "packId": "9ebf71b1-9806-4ac3-a35e-bc213ddb74ed",
+      "version": 12,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "即梦AI免费版出中文咖啡海报：文字全对但带水印"
+    },
+    {
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "name": "腾讯元宝｜联网查证与来源核验",
+      "packId": "78d957cb-547a-4bdc-870b-41e43feb36d3",
+      "version": 8,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "腾讯元宝查证Notion免费版限制：三个参数都带官方来源"
+    },
+    {
+      "projectId": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+      "name": "Kimi深度研究｜选型报告与引用核验",
+      "packId": "86880ac8-97a8-4e2e-aee6-fd2106dca1c1",
+      "version": 3,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "Kimi深度研究实测：3款短视频工具初筛报告"
+    },
+    {
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "name": "万彩AI",
+      "packId": "f4409589-f93c-4c7e-ab3d-d1f530763ef1",
+      "version": 13,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "万彩AI文章转视频：AI自动标题超15字需手改"
+    },
+    {
+      "projectId": "d66bbeb5-418d-4755-9e4a-a10c534af26b",
+      "name": "懂你AI",
+      "packId": "e3017059-6154-447b-9a10-95730dcc2e49",
+      "version": 10,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "懂你AI加薪沟通实测：开场话术、预算回应与行动清单"
+    },
+    {
+      "projectId": "92a77a0c-558e-4242-ac5e-3691e3884c07",
+      "name": "豆包 VS deepseek",
+      "packId": "7c8ab6cd-3594-43d6-9ab3-e35acf6f125f",
+      "version": 3,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "DeepSeek与豆包数据报告对比：解读与图表"
+    },
+    {
+      "projectId": "030347a8-6e7e-494a-bbe0-08e505e10718",
+      "name": "秘塔AI搜索",
+      "packId": "52d66093-95be-40a0-9b10-8b1d2ec3d0da",
+      "version": 6,
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "status": "ready",
+      "title": "秘塔AI搜索医学文献实测：大纲完整但引用对不上"
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 import "server-only";
+import { memoPageRead } from "@/lib/supabase/read-scope";
+import { complianceBaselineRules } from "@/lib/compliance-baseline";
+import { projectsRepository } from "@/lib/repositories/projects.repository";
 
 import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -92,6 +95,23 @@ export class ProtocolExecutionError extends Error {
 }
 
 export async function getProtocolWorkspace(projectId: string): Promise<ProtocolWorkspace | null> {
+  return memoPageRead(`protocol:${projectId}`, () => readProtocolWorkspace(projectId));
+}
+
+// A locked test/review only needs the stored protocol. Reading it must not rebuild
+// current product research, progress or reusable research snapshots.
+export async function getLockedProtocolContext(projectId: string) {
+  return memoPageRead(`locked-protocol:${projectId}`, async () => {
+    const [project, protocols] = await Promise.all([
+      projectsRepository.findActiveById(projectId), protocolsRepository.listByProject(projectId),
+    ]);
+    const row = protocols[0];
+    if (!project || !row || row.status !== "locked") return null;
+    return { project, protocol: await readProtocol(row) };
+  });
+}
+
+async function readProtocolWorkspace(projectId: string): Promise<ProtocolWorkspace | null> {
   const [research, current] = await Promise.all([
     getResearchWorkspace(projectId),
     protocolsRepository.listByProject(projectId).then(async (protocols) => ({
@@ -214,9 +234,9 @@ export async function generateProtocol(projectId: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: projectMode === "single"
+          content: (projectMode === "single"
             ? "根据结构化 Research 设计简体中文单产品体验方案。先在内部完成产品能力建模，再生成真实、可执行、可留证、可评分且不重复的端到端任务。以 Project 名称、官方 URL 和差异化产品形态消解混杂资料；任务领域必须被 positioning、capabilities、keyFeatures 或官方场景直接支持，禁止凭空发明旅行、写作、编程等无关领域。不要把资料中顺带出现的通用对话或写作能力误判为核心能力。按产品类型选择原生工作流：Coding Agent/AI IDE 测 repo 理解、文件与 Shell 工具、编辑、测试和 Agent/Skill；搜索/研究产品测检索、引用与综合；图像/视频产品测生成与编辑；Workflow Agent 测多步骤工具协作；关系沟通或情感产品测情境理解、沟通策略、边界与安全性；写作产品才以写作改写为核心。不得索取私有思维链，只评估可观察过程与结果。必须服从 inputConstraints：不支持文件上传时 inputArtifacts 必须为空，全部任务输入直接放进 Prompt；有字符上限时完整 Prompt 必须低于上限。支持文件且任务需要材料时，必须在 inputArtifacts 提供可下载的完整材料，不得只写文件名或要求用户自行准备。长材料只能选取能独立成立的代表性片段并明确抽样范围；若缩短后无法验证原目标，改选可执行任务，禁止静默截断。Rubric 评价实际体验，不做横向比较；每个全局 Rubric 维度都必须能依据每个 TestCase 的任务要求和预期证据进行实质评分，不能用只适用于单个 Case 的能力作为全局维度。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。"
-            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。必须服从所有产品的共同 inputConstraints：任一产品不支持文件上传时 inputArtifacts 必须为空；字符上限取所有产品中最小值。长材料只能选取对所有产品公平且能独立成立的代表性片段；若无法保持测试目标，改选任务，禁止静默截断。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。",
+            : "根据结构化 Research 与 Comparability 设计简体中文横向测评方案。先逐个完成产品能力建模，再只测试所有产品共同且核心的原生工作流。所有产品必须使用相同 Prompt、输入和条件；排除独占能力，但不得为表面公平退化成无意义的通用写作或问答。任务必须真实、可执行、可留证、可评分且不重复。必须服从所有产品的共同 inputConstraints：任一产品不支持文件上传时 inputArtifacts 必须为空；字符上限取所有产品中最小值。长材料只能选取对所有产品公平且能独立成立的代表性片段；若无法保持测试目标，改选任务，禁止静默截断。输出使用盲测中性称呼，不得出现产品名称或品牌，也不得搜索互联网或引用尚未产生的结果。所有说明和评分标准保持简洁。") + "\n" + complianceBaselineRules,
         },
         {
           role: "user",
@@ -361,6 +381,7 @@ async function readProtocol(row: ProtocolRow): Promise<TestProtocol> {
     id: row.id,
     projectId: row.project_id,
     researchRunId: row.research_run_id,
+    retestOfProtocolId: row.retest_of_protocol_id ?? undefined,
     version: row.version,
     title: row.title,
     goal: row.goal,

@@ -38,6 +38,7 @@ export type RubricDimension = {
 };
 
 export type TestProtocol = {
+  retestOfProtocolId?: string;
   id: string;
   projectId: string;
   researchRunId: string;

@@ -30,12 +30,14 @@ export const projectsRepository = {
     if (error) throwRepositoryError("projects.rename", error);
     return Boolean(data);
   },
-  async listActive(): Promise<ProjectRow[]> {
-    const { data, error } = await getSupabaseServerClient()
+  async listActive(limit?: number): Promise<ProjectRow[]> {
+    let query = getSupabaseServerClient()
       .from("projects")
       .select(projectListColumns)
       .is("deleted_at", null)
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: false });
+    if (limit) query = query.limit(limit);
+    const { data, error } = await query;
     if (error) throwRepositoryError("projects.listActive", error);
     return data;
   },
@@ -106,10 +108,25 @@ export const projectsRepository = {
 
   async listProgressRows(projectIds: string[]): Promise<ProjectProgressRow[]> {
     if (projectIds.length === 0) return [];
-    const { data, error } = await getSupabaseServerClient()
+    const client = getSupabaseServerClient();
+    // Match the workflow's current protocol (highest version), including a new
+    // draft with no runs yet. Historical runs must not count toward this round.
+    const { data: protocols, error: protocolError } = await client
+      .from("protocols")
+      .select("id, project_id, version")
+      .in("project_id", projectIds)
+      .order("version", { ascending: false });
+    if (protocolError) throwRepositoryError("projects.listProgressProtocols", protocolError);
+    const currentByProject = new Map<string, string>();
+    for (const protocol of protocols) {
+      if (!currentByProject.has(protocol.project_id)) currentByProject.set(protocol.project_id, protocol.id);
+    }
+    if (currentByProject.size === 0) return [];
+    const { data, error } = await client
       .from("test_runs")
       .select(progressColumns)
-      .in("project_id", projectIds);
+      .in("project_id", projectIds)
+      .in("protocol_id", [...currentByProject.values()]);
     if (error) throwRepositoryError("projects.listProgressRows", error);
     return data;
   },

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
+
 import {
   projectsRepository,
   type CreateProjectRecord,
@@ -27,8 +29,8 @@ export type ProjectSummary = Pick<ProjectRow, "id" | "name" | "intent" | "status
 
 const completedStatuses = new Set<ProjectProgressRow["status"]>(["uploaded", "ready_for_review"]);
 
-export async function listProjectSummaries(options: { includeInternal?: boolean } = {}): Promise<ProjectSummary[]> {
-  const activeProjects = await projectsRepository.listActive();
+export async function listProjectSummaries(options: { includeInternal?: boolean; limit?: number } = {}): Promise<ProjectSummary[]> {
+  const activeProjects = await projectsRepository.listActive(options.limit);
   const projects = options.includeInternal
     ? activeProjects
     : activeProjects.filter((project) => !isInternalValidationProject(project));
@@ -55,6 +57,10 @@ export async function listProjectSummaries(options: { includeInternal?: boolean 
 }
 
 export async function getProjectSummary(projectId: string): Promise<ProjectSummary | null> {
+  return memoPageRead(`project-summary:${projectId}`, () => readProjectSummary(projectId));
+}
+
+async function readProjectSummary(projectId: string): Promise<ProjectSummary | null> {
   const project = await projectsRepository.findActiveById(projectId);
   if (!project) return null;
   const [runs, productRows] = await Promise.all([

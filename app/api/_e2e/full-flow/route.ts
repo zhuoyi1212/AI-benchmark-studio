@@ -1,15 +1,20 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from 'node:util';
 import { getBlindReviewWorkspace, startProfessionalReview } from "@/lib/services/blind-review.service";
 import { getHumanReviewWorkspace, lockHumanReview, revealHumanReview } from "@/lib/services/human-review.service";
 import { runBlindJudge } from "@/lib/services/judge.service";
 import { confirmExperienceFindings, generateExperienceFindings, getExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { generateProtocol, getProtocolWorkspace, lockProtocol, ProtocolExecutionError } from "@/lib/services/protocols.service";
 import { createProject, softDeleteProject } from "@/lib/services/projects.service";
-import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace } from "@/lib/services/publish.service";
+import { discoverContentIdeas, generateCommunityPost, getPublishWorkspace, saveCommunityPostEdit, enqueueCommunityPostRegeneration, refreshCommunityPostTitle } from "@/lib/services/publish.service";
+import { runQuickWorker } from '@/lib/quick/worker';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { generateReport, getReportWorkspace } from "@/lib/services/report.service";
 import { executeProductResearch, getResearchWorkspace } from "@/lib/services/research.service";
 import { generateFinalResultAnalysis, getResultsWorkspace } from "@/lib/services/result-analysis.service";
-import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact } from "@/lib/services/test-execution.service";
+import { finalizeTestExecution, getTestExecutionWorkspace, uploadTestArtifact, restartTestExecution, removeTestArtifact, prepareTestArtifactUpload, completeTestArtifactUpload } from "@/lib/services/test-execution.service";
+import { analysisImageSchema, maxAnalysisImageBytes } from "@/lib/media/analysis-image";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
 
 export const runtime = "nodejs";
@@ -51,6 +56,9 @@ export async function POST(request: Request) {
       runId,
       stage,
       error: error instanceof Error ? `${error.name}: ${error.message}` : "Unknown E2E failure",
+      databaseCode: error instanceof Error && 'code' in error ? error.code : undefined,
+      databaseDetail: error instanceof Error && error.cause && typeof error.cause === 'object' && 'message' in error.cause
+        ? String(error.cause.message).replace(/https?:\/\/[^\s]+/g, '[URL redacted]').slice(0, 500) : undefined,
     };
   }
 
@@ -71,7 +79,7 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const projectId = await createProject({
     name: `[E2E] Single Product Flow ${runId}`,
     intent: "验证单产品体验从真实研究、证据评分到社区内容的完整数据链。",
-    products: [{ name: `E2E Experience Product ${runId}`, officialUrl: `https://${runId}.single-e2e.example.com` }],
+    products: [{ name: `验证工具${runId.slice(-8)}`, officialUrl: `https://${runId}.single-e2e.example.com` }],
   });
   projectIds.push(projectId);
 
@@ -118,14 +126,31 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
       expectedTextByRun.set(run.id, rawText);
       continue;
     }
+    const imageBytes = index === 0 ? Buffer.concat([onePixelPng, Buffer.alloc(5 * 1024 * 1024)]) : onePixelPng;
     const artifact = textOnlyEvidence
       ? new File([rawText], `e2e-${run.id}.md`, { type: "application/octet-stream" })
-      : new File([onePixelPng], `e2e-${run.id}.png`, { type: "image/png" });
-    await uploadTestArtifact({
+      : new File([imageBytes], `e2e-${run.id}.png`, { type: "image/png" });
+    const metadata = { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E raw Artifact ${runId}` };
+    if (!textOnlyEvidence && index === 0) {
+      const file = { name: artifact.name, size: artifact.size, type: artifact.type, lastModified: null };
+      const prepared = await prepareTestArtifactUpload({ projectId, testRunId: run.id, file });
+      const form = new FormData(); form.append('cacheControl', '3600'); form.append('', artifact);
+      const response = await fetch(prepared.signedUrl, { method: 'PUT', headers: { 'x-upsert': 'false' }, body: form });
+      assert(response.ok, 'Direct Storage image upload failed');
+      await completeTestArtifactUpload({ projectId, testRunId: run.id, ...prepared, file, sha256: createHash('sha256').update(imageBytes).digest('hex'), metadata });
+      const { data: stored } = await getSupabaseServerClient().from('test_artifacts').select('metadata,sha256,size_bytes').eq('id', prepared.artifactId).single();
+      const data = stored?.metadata;
+      assert(data && typeof data === 'object' && !Array.isArray(data), 'Image provenance missing');
+      const manifest = analysisImageSchema.parse(data.analysisImage);
+      assert(stored.size_bytes === imageBytes.length && stored.sha256 === manifest.sourceSha256, 'Raw image identity changed');
+      assert(manifest.sizeBytes <= maxAnalysisImageBytes && manifest.encoding === 'lossless', 'Automatic lossless compression did not run');
+      const compressed = await getSupabaseServerClient().storage.from('benchmark-artifacts').download(manifest.storagePath);
+      assert(compressed.data && createHash('sha256').update(Buffer.from(await compressed.data.arrayBuffer())).digest('hex') === manifest.sha256, 'Stored compressed image integrity failed');
+    } else await uploadTestArtifact({
       projectId,
       testRunId: run.id,
       file: artifact,
-      metadata: { generationTimeSeconds: 7, retryCount: 0, manuallyEdited: false, notes: `Self-contained E2E raw Artifact ${runId}` },
+      metadata,
     });
     if (textOnlyEvidence) expectedTextByRun.set(run.id, rawText);
   }
@@ -167,9 +192,11 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   assert(workflowBeforeConfirmation.stages.results.accessible, "Quick Findings must be accessible after Blind Review");
 
   const generatedFindings = requireValue(findings.latest?.effectiveOutput, "Generated Findings output missing");
-  await confirmExperienceFindings(projectId, findingsId, generatedFindings);
+  const authorPerspective = { goal: '整理这次测试里可以复用的建议', focus: '建议有没有给到具体步骤', tradeoff: '可以接受表达普通，不能接受没有依据的承诺', verdict: '把回答当准备清单，实际效果还要自己验证' };
+  await confirmExperienceFindings(projectId, findingsId, { ...generatedFindings, authorPerspective });
   findings = requireValue(await getExperienceFindingsWorkspace(projectId), "Confirmed Quick Findings workspace missing");
   assert(findings.latest?.id === findingsId && findings.latest.humanConfirmedAt, "Quick Findings confirmation was not persisted");
+  assert(findings.latest.effectiveOutput?.authorPerspective?.focus === authorPerspective.focus && !('authorPerspective' in (findings.latest.aiOutput ?? {})), 'Author perspective must persist only as human input');
   const workflowAfterConfirmation = requireValue(await getProjectWorkflowState(projectId), "Workflow state missing after Findings confirmation");
   assert(workflowAfterConfirmation.stages.results.completed, "Confirmed Findings did not complete the Results stage");
   assert(workflowAfterConfirmation.stages.publish.accessible, "Confirmed Findings did not unlock Publish");
@@ -193,8 +220,13 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   quickPublish = requireValue(await getPublishWorkspace(projectId), "Completed Quick Publish workspace missing");
   const quickPublishPack = requireValue(quickPublish.pack, "Completed Quick Publish pack missing");
   assert(quickPublish.sourceType === "findings" && quickPublishPack.status === "ready", "Quick Findings Publish did not complete");
+  assert(quickPublishPack.config.authorPerspective?.tradeoff === authorPerspective.tradeoff, 'Writing did not inherit confirmed author perspective');
   const quickPublishPost = requireValue(quickPublishPack.post, "Completed Quick Publish post missing");
-  assert(quickPublishPost.body.includes("真实体验"), "Quick Publish copy must use Findings experience semantics");
+  assert(quickPublishPost.storyBrief?.supportingPoints.some(point => point.role === "main"), "Quick Publish must persist the evidence-bound Story Brief");
+  assert(quickPublishPost.draftReview?.issues.length === 1, "Quick Publish must persist the actionable read-only review");
+  assert(quickPublishPost.body === quickPublishPost.styleEdit?.edited.body && quickPublishPost.styleEdit.changed, "Quick Publish must persist the revised copy that was audited");
+  assert(quickPublishPost.generationTrace?.length === 5, "Quick Publish must record all five stages when revision was needed");
+  assert(quickPublishPost.storyBrief?.supportingPoints.every(point => point.findingIds.every(id => generatedFindings.findings.some(finding => finding.id === id))), "Story Brief must only reference confirmed findings");
   assert(quickPublishPost.screenshotRecommendations.every((item) => artifactIds.includes(item.artifactId)), "Quick Publish must only reference current Artifacts");
   assert(!textOnlyEvidence || quickPublishPost.screenshotRecommendations.length === 0, "Text-only Quick Publish must not fabricate screenshot recommendations");
 
@@ -212,6 +244,102 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
   const publish = { ...quickPublish, pack: quickPublishPack };
 
   const routeChecks = await verifySingleRoutes(new URL(request.url).origin, projectId, report.report.content!.title, quickPublishPost.title);
+  // Exercise actual persistence and durable worker checkpoints using only this
+  // isolated fixture. No real project or live provider is involved.
+  const editedBody = quickPublishPost.body + '\n\n这段内容由测试者保存，用于验证重新打开后仍能读到修改。';
+  const editedId = await saveCommunityPostEdit(projectId, quickPublishPack.id, {
+    title: quickPublishPost.title, body: editedBody, tags: quickPublishPost.tags,
+    interactionQuestion: quickPublishPost.interactionQuestion,
+    imageIds: quickPublishPost.screenshotRecommendations.map(s => s.artifactId),
+  });
+  const reopened = requireValue(await getPublishWorkspace(projectId), 'Edited article disappeared');
+  assert(reopened.pack?.id === editedId && reopened.pack.post?.body === editedBody && reopened.pack.post.manualEdit?.aiReviewed === false, 'Manual edit did not persist as an explicitly human-authored version');
+  const { data: originalPack } = await getSupabaseServerClient().from('publish_packs').select('community_post').eq('id', quickPublishPack.id).single();
+  assert(originalPack?.community_post && typeof originalPack.community_post === 'object' && !Array.isArray(originalPack.community_post) && originalPack.community_post.body === quickPublishPost.body, 'Source version overwritten');
+  const reloadedPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/publish`);
+  assert(reloadedPage.ok && (await reloadedPage.text()).includes('这段内容由测试者保存'), 'Saved copy missing on a new page request');
+  for (const invalid of [{ authorPerspective: { focus: 12 } }, { authorPerspective: { verdict: '长'.repeat(601) } }, { authorPerspective: { model: 'override' } }, { body: '不能借作者判断重写正文' }]) {
+    const { error } = await getSupabaseServerClient().rpc('create_publish_revision', { p_project_id: projectId, p_source_pack_id: editedId, p_mode: 'regenerate', p_copy: invalid });
+    assert(error, 'Database accepted invalid author input');
+    const unchanged = requireValue(await getPublishWorkspace(projectId), 'Invalid regeneration damaged source');
+    assert(unchanged.pack?.id === editedId && unchanged.pack.status === 'ready', 'Invalid author input created a partial revision');
+  }
+  const revisedPerspective = { ...authorPerspective, verdict: '我更愿意先把具体步骤整理好，再决定是否复用这份建议' };
+  const regeneratedId = await enqueueCommunityPostRegeneration(projectId, editedId, revisedPerspective);
+  for (let turn = 0; turn < 7; turn++) {
+    await runQuickWorker(projectId, 1);
+    const current = requireValue(await getPublishWorkspace(projectId), 'Regeneration workspace missing');
+    if (current.pack?.id === regeneratedId && current.pack.status === 'ready') break;
+  }
+  const regenerated = requireValue(await getPublishWorkspace(projectId), 'Regenerated article missing');
+  assert(regenerated.pack?.id === regeneratedId && regenerated.pack.status === 'ready' && !regenerated.pack.post?.manualEdit, 'Background regeneration did not finish or inherited stale human-edit audit');
+  assert(regenerated.pack.post?.generationTrace?.length === 5, 'Regeneration bypassed independent checks');
+  assert(regenerated.pack.config.authorPerspective?.verdict === revisedPerspective.verdict, 'Regeneration lost the new author perspective');
+  const { data: priorCopy } = await getSupabaseServerClient().from('publish_packs').select('config,community_post').eq('id', editedId).single();
+  assert(priorCopy?.config && typeof priorCopy.config === 'object' && !Array.isArray(priorCopy.config) && isDeepStrictEqual(priorCopy.config.authorPerspective, reopened.pack?.config.authorPerspective), 'Regeneration rewrote previous author perspective');
+  const refreshed = await refreshCommunityPostTitle(projectId, regeneratedId);
+  const titled = requireValue(await getPublishWorkspace(projectId), 'Refreshed Kimi title disappeared');
+  assert(titled.pack?.id === refreshed.packId && titled.pack.status === 'ready' && titled.pack.post?.title === refreshed.title, 'Kimi title refresh did not persist');
+  assert(titled.pack.post.body === regenerated.pack.post?.body, 'Title refresh rewrote the body');
+  const { data: kimiPack, error: kimiError } = await getSupabaseServerClient().from('publish_packs').select('provider,model').eq('id', refreshed.packId).single();
+  assert(!kimiError && kimiPack?.provider === 'moonshot' && kimiPack.model === 'kimi-k3', 'Kimi provider metadata was not retained');
+  const db = getSupabaseServerClient();
+  const { data: historyBefore, error: historyError } = await db.from('test_artifacts').select('*').in('id', artifactIds);
+  assert(!historyError && historyBefore?.length === artifactIds.length, 'Original artifact snapshot missing');
+  const newProtocolId = await restartTestExecution(projectId, protocolId);
+  assert(await restartTestExecution(projectId, protocolId) === newProtocolId, 'Retry created an extra upload round');
+  const freshTest = requireValue(await getTestExecutionWorkspace(projectId), 'Replacement upload page missing');
+  assert(freshTest.protocol.id === newProtocolId && freshTest.protocol.retestOfProtocolId === protocolId, 'Missing replacement lineage');
+  assert(freshTest.testRuns.every(run => run.status === 'pending' && run.artifacts.length === 0), 'Old files reused in new round');
+  const taskContent = (item: typeof freshTest.protocol.testCases[number]) => ({ ...item, id: undefined, inputArtifacts: item.inputArtifacts?.map(artifact => ({ ...artifact, id: undefined, downloadUrl: undefined })) });
+  assert(isDeepStrictEqual(freshTest.protocol.testCases.map(taskContent), protocolWorkspace.protocol.testCases.map(taskContent)), 'Replacement changed the test tasks');
+  const freshState = requireValue(await getProjectWorkflowState(projectId), 'Replacement navigation missing');
+  assert(!freshState.stages.test.completed && !freshState.stages.results.completed && !freshState.stages.publish.completed, 'Historical analysis leaked into replacement workflow');
+  const freshPage = await fetch(`${new URL(request.url).origin}/projects/${projectId}/test`);
+  const freshHtml = await freshPage.text();
+  assert(freshPage.ok && freshHtml.includes('测试执行') && !freshHtml.includes('poster-output-'), 'Replacement HTTP page did not load');
+  for (const run of freshTest.testRuns) {
+    await uploadTestArtifact({ projectId, testRunId: run.id, file: new File(['Replacement raw evidence for the same locked task.'], 'replacement-output.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: null, retryCount: 0, manuallyEdited: false, notes: null } });
+    await uploadTestArtifact({ projectId, testRunId: run.id, file: new File(['Surviving original evidence.'], 'survivor.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: 7, retryCount: 1, manuallyEdited: false, notes: 'Surviving execution metadata' } });
+  }
+  const reuploaded = requireValue(await getTestExecutionWorkspace(projectId), 'Replacement upload not persisted');
+  assert(reuploaded.testRuns.every(run => run.artifacts.length === 2 && run.artifacts.some(a => a.fileName === 'replacement-output.txt')), 'Replacement evidence was not saved');
+  await finalizeTestExecution(projectId, newProtocolId);
+  await startProfessionalReview(projectId, newProtocolId);
+  await runBlindJudge(projectId);
+  const newReview = requireValue(await getHumanReviewWorkspace(projectId), 'New round has no review');
+  assert(newReview.protocolId === newProtocolId && newReview.scores.length > 0, 'Old Judge reused instead of reanalysis');
+  const selected = requireValue(reuploaded.testRuns[0]?.artifacts.find(a => a.fileName === 'replacement-output.txt'), 'Delete source missing');
+  const { data: selectedRow } = await db.from('test_artifacts').select('storage_path').eq('id', selected.id).single();
+  assert(selectedRow, 'Delete object path missing');
+  await removeTestArtifact(projectId, newProtocolId, selected.id);
+  let afterDelete = requireValue(await getTestExecutionWorkspace(projectId), 'Post-delete workspace missing');
+  assert(afterDelete.protocol.id !== newProtocolId && afterDelete.testRuns.every(run => run.status !== 'ready_for_review'), 'Deletion reused analyzed evidence state');
+  assert(afterDelete.testRuns[0]?.artifacts.length === 1 && afterDelete.testRuns[0].artifacts[0]?.fileName === 'survivor.txt', 'Per-file delete removed surviving files');
+  assert(afterDelete.testRuns[0]?.generationTimeSeconds === 7 && afterDelete.testRuns[0]?.retryCount === 1, 'Surviving execution metadata lost');
+  const survivor = requireValue(afterDelete.testRuns[0]?.artifacts[0], 'Survivor missing');
+  const response = await fetch(requireValue(survivor.fileUrl, 'Survivor URL missing'));
+  assert(response.ok && await response.text() === 'Surviving original evidence.', 'Surviving Storage object changed');
+  const removed = await db.storage.from('benchmark-artifacts').info(selectedRow.storage_path);
+  assert(removed.error, 'Deleted binary is still stored');
+  await removeTestArtifact(projectId, newProtocolId, selected.id);
+  assert((await getTestExecutionWorkspace(projectId))?.protocol.id === afterDelete.protocol.id, 'Delete retry created another round');
+  const deletedState = requireValue(await getProjectWorkflowState(projectId), 'Post-delete navigation missing');
+  assert(!deletedState.stages.test.completed && !deletedState.stages.publish.completed, 'Old analysis still marked current');
+  await removeTestArtifact(projectId, afterDelete.protocol.id, survivor.id);
+  afterDelete = requireValue(await getTestExecutionWorkspace(projectId), 'Empty upload workspace missing');
+  assert(afterDelete.testRuns[0]?.status === 'pending' && afterDelete.testRuns[0].artifacts.length === 0, 'Last-file deletion did not reopen upload');
+  assert(afterDelete.pendingDeletions?.length === 0, 'Storage cleanup left pending receipts');
+  await uploadTestArtifact({ projectId, testRunId: requireValue(afterDelete.testRuns[0], 'Run missing').id, file: new File(['New evidence after individual file removal.'], 'new-upload.txt', { type: 'text/plain' }), metadata: { generationTimeSeconds: null, retryCount: 0, manuallyEdited: false, notes: null } });
+  await finalizeTestExecution(projectId, afterDelete.protocol.id);
+  await startProfessionalReview(projectId, afterDelete.protocol.id);
+  await runBlindJudge(projectId);
+  const deletedReview = requireValue(await getHumanReviewWorkspace(projectId), 'Reanalysis missing');
+  assert(deletedReview.protocolId === afterDelete.protocol.id && deletedReview.scores.length > 0, 'New upload did not get fresh analysis');
+  const { data: historyAfter, error: afterError } = await db.from('test_artifacts').select('*').in('id', artifactIds);
+  assert(!afterError && isDeepStrictEqual(historyAfter, historyBefore), 'Reupload mutated historical artifacts');
+  const { data: oldArticle } = await db.from('publish_packs').select('community_post').eq('id', refreshed.packId).single();
+  assert(oldArticle?.community_post && typeof oldArticle.community_post === 'object' && !Array.isArray(oldArticle.community_post) && oldArticle.community_post.body === titled.pack.post.body, 'Reupload rewrote the previous article');
   return {
     projectId,
     comparabilityStatus: research.completedResult.comparability.status,
@@ -230,6 +358,10 @@ async function runSingleProductFlow(request: Request, runId: string, projectIds:
     quickPublishReady: publish.pack?.status === "ready",
     publishScreenshotCount: publish.pack.post?.screenshotRecommendations.length ?? 0,
     routeChecks,
+    articleRevisionsVerified: true,
+    authorPerspectiveVerified: true,
+    reuploadVerified: true,
+    individualDeletionVerified: true,
   };
 }
 
@@ -286,17 +418,29 @@ async function verifySingleRoutes(origin: string, projectId: string, reportTitle
     ["review", ["产品身份已揭晓"], []],
     ["results", ["测评发现", "专业报告（后台生成）"], ["产品体验结果", "综合体验得分", "证据化 Case 素材"]],
     ["report", ["体验报告已生成", reportTitle], ["综合冠军", "最终排名", "第一名"]],
-    ["publish", ["已准备好", postTitle], ["综合冠军", "最终排名", "第一名"]],
+    ["publish", ["社区文章", postTitle], ["综合冠军", "最终排名", "第一名"]],
   ] as const;
   const verified: string[] = [];
+  const authorization = `Basic ${Buffer.from(`${process.env.APP_ACCESS_USERNAME || "studio"}:${process.env.APP_ACCESS_PASSWORD}`).toString("base64")}`;
   for (const [route, required, forbidden] of checks) {
-    const response = await fetch(`${origin}/projects/${projectId}/${route}`, { cache: "no-store" });
+    const response = await fetch(`${origin}/projects/${projectId}/${route}`, { cache: "no-store", headers: { authorization } });
     assert(response.ok, `${route} route returned ${response.status}`);
     const html = await response.text();
     for (const text of required) assert(html.includes(text), `${route} route did not render ${text}`);
     for (const text of forbidden) assert(!html.includes(text), `${route} route exposed comparison-only copy: ${text}`);
     verified.push(route);
   }
+  const publicResults = await fetch(`${origin}/projects/${projectId}/results`, { cache: "no-store" });
+  const resultsHtml = await publicResults.text();
+  assert(publicResults.ok && resultsHtml.includes("测评发现") && !resultsHtml.includes("专业报告（后台生成）"), "Public Findings must use the portfolio view");
+  const publicReport = await fetch(`${origin}/projects/${projectId}/report`, { cache: "no-store", redirect: "manual" });
+  const redirectHtml = await publicReport.text();
+  const redirectsInHeaders = publicReport.status === 307 && publicReport.headers.get("location")?.endsWith(`/projects/${projectId}/results`);
+  const redirectsInStream = publicReport.status === 200 && redirectHtml.includes('http-equiv="refresh"') && redirectHtml.includes(`url=/projects/${projectId}/results`);
+  assert(redirectsInHeaders || redirectsInStream, "Public report must redirect to Findings");
+  const publicPost = await fetch(`${origin}/projects/${projectId}/publish`, { cache: "no-store" });
+  const publicHtml = await publicPost.text();
+  assert(publicPost.ok && publicHtml.includes(postTitle) && publicHtml.includes("社区文章") && !publicHtml.includes("保存修改") && !publicHtml.includes('"generationTrace"'), "Public article must omit editor/source-audit controls");
   return verified;
 }
 

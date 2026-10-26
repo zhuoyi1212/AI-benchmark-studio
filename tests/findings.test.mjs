@@ -82,9 +82,9 @@ test("human review confirms or edits Findings instead of changing scores", () =>
 test("quick test auto-runs Blind Judge before generating Findings", () => {
   assert.doesNotMatch(testPage, /href=\{`\/projects\/\$\{project\.id\}\/results`\}/);
   assert.match(testPage, /QuickAutoAdvance/);
-  assert.match(page, /已完成的 Blind Judge/);
+  assert.match(page, /!workflowState\.stages\.review\.completed/);
   assert.match(page, /专业报告（后台生成）/);
-  assert.match(page, /生成社区内容/);
+  assert.match(page, /打开社区内容/);
 });
 
 test("Quick Findings requires a revealed Blind Review", () => {
@@ -131,7 +131,7 @@ test("PublishPack can bind either confirmed Findings or a professional Report", 
   assert.match(publishService, /humanConfirmedFindings/);
   assert.match(publishService, /优先使用真实 Case/);
   assert.match(publishService, /buildRawFindingsEvidenceContent/);
-  assert.match(publishService, /完整原始 Artifact/);
+  assert.match(publishService, /artifactIds: source.artifactIds/);
 });
 
 test("new public Findings functions remain service-role only", () => {

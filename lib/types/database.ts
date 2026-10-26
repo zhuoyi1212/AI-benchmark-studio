@@ -145,6 +145,7 @@ export type ProductResearchSnapshotRow = {
 };
 
 export type ProtocolRow = {
+  retest_of_protocol_id?: string | null;
   id: string;
   project_id: string;
   research_run_id: string;
@@ -409,6 +410,7 @@ export type ReportArtifactRow = {
 };
 
 export type PublishPackRow = {
+  findings_revision_id: string | null;
   id: string;
   project_id: string;
   report_id: string | null;
@@ -479,6 +481,7 @@ export type DatabaseTableRows = {
   rubric_dimensions: RubricDimensionRow;
   test_runs: TestRunRow;
   test_artifacts: TestArtifactRow;
+  test_artifact_deletions: GeneratedPublic["Tables"]["test_artifact_deletions"]["Row"];
   blind_samples: BlindSampleRow;
   blind_mappings: BlindMappingRow;
   judge_runs: JudgeRunRow;
@@ -488,11 +491,17 @@ export type DatabaseTableRows = {
   review_sessions: ReviewSessionRow;
   human_review_events: HumanReviewEventRow;
   experience_findings: ExperienceFindingRow;
+  experience_finding_revisions: FindingRevisionRow;
   result_analyses: ResultAnalysisRow;
   reports: ReportRow;
   report_artifacts: ReportArtifactRow;
   publish_packs: PublishPackRow;
   publish_pack_artifacts: PublishPackArtifactRow;
+};
+
+export type FindingRevisionRow = {
+  id: string; findings_id: string; version: number; kind: "recovered" | "editorial";
+  editor_kind: "assistant" | "human"; reason: string; output: Json; provenance: Json; created_at: string;
 };
 
 export type DatabaseTableName = keyof DatabaseTableRows;
@@ -515,7 +524,11 @@ type PublicTables = {
 export type Database = Omit<GeneratedDatabase, "public"> & {
   public: Omit<GeneratedPublic, "Tables" | "Views"> & {
     Tables: PublicTables;
-    Views: Omit<GeneratedPublic["Views"], "review_final_scores"> & {
+    Views: Omit<GeneratedPublic["Views"], "review_final_scores" | "available_test_artifacts"> & {
+      available_test_artifacts: {
+        Row: TestArtifactRow;
+        Relationships: GeneratedPublic["Tables"]["test_artifacts"]["Relationships"];
+      };
       review_final_scores: {
         Row: ReviewFinalScoreRow;
         Relationships: [];

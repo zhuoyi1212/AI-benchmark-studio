@@ -16,7 +16,7 @@ export const contentRules = [
   "每项判断明确对象、条件、观察与依据；数字、引语、操作、使用影响与感受不能补造。来源观察片段不等于产品原话，直接引语须核对原始回答。",
   "严格区分产品问题与测试边界：只测一次、只测一个场景、未留存过程、未测其他功能属于 scopeNotes，不是一般表现或产品缺点。",
   "没有真实发现的类别直接省略，不写‘缺点：无’‘不舒服的地方：没有’，不为凑优缺点补内容。",
-  "标题直接写具体发现；禁止‘好用的：’‘一般：’‘难用的：’等分类前缀及‘好用的功能’等空标题。好用/一般/难用只能用于内部整理材料。",
+  "标题概括产品、测试用途与主要结果；禁止‘好用的：’‘一般：’‘难用的：’等分类前缀及‘好用的功能’等空标题。好用/一般/难用只能用于内部整理材料。",
   "先说结论或场景，不强制第一人称；作者亲历和主观情绪须有测试者记录支持。任务角色的加薪、紧张等经历不属于作者。",
   "不从单次推断稳定性、通用性或机制，不将未验证建议写成实际收益；范围相同的限制集中说明一次，不删除不同限制。",
   "不能把建议中的数字写成足够条件：‘写下3个数字’不等于‘只需3个数字’或‘准备量缩到3个’；未说明的时间含义不能自行解释。未提供过程信息不等于没有留存过程。",
@@ -94,13 +94,17 @@ export function publicationCopyIssues(copy: CommunityStyleEdit): string[] {
   return issues;
 }
 
+// Only known empty phrases are gated; specific reader questions remain valid.
+const vagueTitleSummaryPattern = /(?:给了什么|提供了什么|带来了什么|表现如何|效果如何|体验如何|表现怎么样|效果怎么样|体验怎么样)/;
+
 export function publicationTitleIssues(title: string, body: string, previousTitle?: string): string[] {
   const issues: string[] = [];
   const length = Array.from(title.trim()).length;
-  if (length < 6) issues.push("标题至少用 6 个字符说清具体发现");
+  if (length < 6) issues.push("标题至少用 6 个字符说清测评内容");
   if (length > 28) issues.push("标题不能超过 28 个字符");
   if (previousTitle && normalizeTitle(title) === normalizeTitle(previousTitle)) issues.push("新标题不能与当前标题相同");
   if (/(?:震惊|必看|封神|绝了|天花板|颠覆认知|看完就|后悔没|真相竟然)/i.test(title)) issues.push("标题不能使用夸张或诱导点击的词");
+  if (vagueTitleSummaryPattern.test(title)) issues.push("标题不能用空泛提问，请概括测试用途与具体内容或结果");
   if ((title.match(/[!?！？]/g) ?? []).length > 1) issues.push("标题不能堆叠问号或感叹号");
   const bodyNumbers = new Set(body.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []);
   const unsupportedNumber = (title.match(/\d+(?:[.,]\d+)*(?:%|％)?/g) ?? []).find((value) => !bodyNumbers.has(value));
@@ -135,13 +139,30 @@ export function scopeNotesIssues(plan: WritingPlan, allowed: string[]) {
 // Narrow regressions observed in real model probes. Semantic review still covers other claims.
 export function unsupportedPublicationClaims(copy: CommunityStyleEdit, facts: WritingFact[], scopeNotes: string[]) {
   const source = [...facts.flatMap(f => [f.observation, f.interpretation]), ...scopeNotes].join("\n").replace(/\s+/g, "");
-  const pattern = /(?:省去|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|稳定|容易)[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题/g;
-  return [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
+  // “容易踩的坑” names a topic; “容易出错” asserts observed behavior.
+  // Other semantic claims still go through both evidence reviews.
+  const pattern = /(?:省(?:去|掉|下|了|时间|工夫|力气)|免去|无需|不用|不需要|不必|节省|提高|提升|降低|经常|总是|最常(?:用|见|发生)|稳定|容易(?:出错|失败|误判|丢失|卡住|崩溃))[^。；，！？\n]{0,25}|(?:可以|能够|能)(?:整段使用|整段用|直接成片)[^。；，！？\n]{0,12}|(?:生成|输出|检索|搜索)(?:速度)?(?:是)?(?:确实|真的|真是|很|特别|非常|挺|就是)?(?:快|慢)[^。；，！？\n]{0,12}|(?:没有|未)留存过程(?:记录)?|(?:单看|单独看)都没问题|生成和校验.{0,8}(?:没接上|脱节|各干各的)|生成(?:逻辑|规则).{0,12}(?:校验规则的脱节|互不相干)/g;
+  const issues = [...[copy.title, copy.body].join("\n").matchAll(pattern)].flatMap(match => {
     const text = [copy.title, copy.body].join("\n");
     const prefix = text.slice(Math.max(0, match.index! - 20), match.index);
     if (/(?:不保证|未经验证|尚未验证|不能推到|不能证明|能否|是否|建议|尝试)[^。；！？\n]*$/.test(prefix)) return [];
+    // Naming a priority is not an assertion that the product is stable.
+    if (/^稳定性(?:更重要|最重要|很重要)?$/.test(match[0]) && /(?:我(?:更|最)?(?:看重|在意|关注)|对我来说[，,]?)[^。；，！？\n]{0,4}$/.test(prefix)) return [];
     return source.includes(match[0].replace(/\s+/g, "")) ? [] : [`删除缺少直接依据的收益、频率或过程断言：${match[0]}`];
   });
+  // Percentages in author preferences are never an evidence source. This is a
+  // value-presence gate, not a replacement for semantic attribution in review.
+  const normalize = (value: string) => value.normalize('NFKC').replace(/\s+/g, '').replace(/百分之(\d+(?:\.\d+)?)/g, '$1%');
+  const percentage = /\d+(?:\.\d+)?%/g;
+  const supported = new Set(normalize(source).match(percentage) ?? []);
+  const text = normalize([copy.title, copy.body, copy.interactionQuestion].join('。'));
+  for (const match of text.matchAll(percentage)) {
+    const prefix = text.slice(Math.max(0, match.index - 18), match.index);
+    // Denying a guarantee does not assert a measured percentage.
+    if (/(?:不能|无法|不)(?:保证|承诺|证明)[^。；;，,！？!?]{0,10}$/.test(prefix)) continue;
+    if (!supported.has(match[0])) issues.push(`百分比 ${match[0]} 缺少实测材料依据，作者判断不能补充实验数据`);
+  }
+  return [...new Set(issues)];
 }
 
 export function publicationReviewPassed(review: NonNullable<CommunityPostOutput["articleReview"]>) {

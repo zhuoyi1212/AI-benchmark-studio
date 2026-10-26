@@ -28,7 +28,7 @@ export async function postProviderJson(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(options.timeoutMs),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs)]) : AbortSignal.timeout(options.timeoutMs),
       cache: "no-store",
     });
   } catch (error) {
@@ -182,6 +182,7 @@ function countProviderContent(body: Record<string, unknown>) {
   let requestTextCount = 0;
   let requestImageCount = 0;
   let requestFileCount = 0;
+  let requestVideoCount = 0;
   const messages = Array.isArray(body.messages) ? body.messages : [];
   for (const message of messages) {
     if (!message || typeof message !== "object" || !("content" in message)) continue;
@@ -196,9 +197,10 @@ function countProviderContent(body: Record<string, unknown>) {
       if (part.type === "text") requestTextCount += 1;
       if (part.type === "image_url") requestImageCount += 1;
       if (part.type === "file_url") requestFileCount += 1;
+      if (part.type === "video_url") requestVideoCount += 1;
     }
   }
-  return { requestTextCount, requestImageCount, requestFileCount };
+  return { requestTextCount, requestImageCount, requestFileCount, requestVideoCount };
 }
 
 function firstString(...values: unknown[]): string | null {

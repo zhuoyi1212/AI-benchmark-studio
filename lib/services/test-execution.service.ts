@@ -1,4 +1,9 @@
 import "server-only";
+import { storeAnalysisImage, analysisImageMetadata } from "@/lib/services/analysis-image.service";
+import { AnalysisImageError } from "@/lib/media/analysis-image";
+import { memoPageRead } from "@/lib/supabase/read-scope";
+import { getProjectSummary } from "@/lib/services/projects.service";
+import { getLockedProtocolContext } from "@/lib/services/protocols.service";
 
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -9,7 +14,6 @@ import {
   testExecutionRepository,
   type RunExecutionMetadata,
 } from "@/lib/repositories/test-execution.repository";
-import { getProtocolWorkspace } from "@/lib/services/protocols.service";
 import type { Json, TestArtifactRow, TestRunRow } from "@/lib/types/database";
 import type { PreparedArtifactUpload, TestArtifact, TestExecutionWorkspace, TestRun } from "@/lib/types/test-run";
 
@@ -84,6 +88,44 @@ export class TestExecutionError extends Error {
   }
 }
 
+export async function removeTestArtifact(projectId: string, protocolId: string, artifactId: string): Promise<void> {
+  if (![projectId, protocolId, artifactId].every(id => artifactIdSchema.safeParse(id).success)) {
+    throw new TestExecutionError("文件标识无效，请刷新后重试。");
+  }
+  let removal: { protocolId: string; storagePaths: string[]; cacheArtifactIds: string[] };
+  try { removal = await testExecutionRepository.removeArtifact(projectId, protocolId, artifactId); }
+  catch (error) {
+    if (error instanceof RepositoryError) {
+      if (error.code === 'P2101') throw new TestExecutionError("测试版本已变化，请刷新后重试。");
+      if (error.code === 'P2102') throw new TestExecutionError("后台仍在分析或生成内容，请结束后再删除。");
+      if (error.code === 'P2103') throw new TestExecutionError("文件已不存在，请刷新页面。");
+    }
+    throw new TestExecutionError("删除失败，请重试。");
+  }
+  try {
+    for (const id of removal.cacheArtifactIds) await testExecutionRepository.removeMediaCache(id);
+    for (const path of new Set(removal.storagePaths)) await testExecutionRepository.removeStorageObject(path);
+    await testExecutionRepository.finishDeletion(projectId, artifactId);
+  } catch {
+    throw new TestExecutionError("文件已移出分析，存储清理未完成，请重试删除。");
+  }
+}
+
+export async function restartTestExecution(projectId: string, protocolId: string): Promise<string> {
+  if (!artifactIdSchema.safeParse(projectId).success || !artifactIdSchema.safeParse(protocolId).success) {
+    throw new TestExecutionError("项目或测试版本无效，请刷新后重试。");
+  }
+  try { return await testExecutionRepository.restart(projectId, protocolId); }
+  catch (error) {
+    if (error instanceof RepositoryError) {
+      if (error.code === 'P2101') throw new TestExecutionError("测试版本已变化，请刷新后重试。");
+      if (error.code === 'P2102') throw new TestExecutionError("后台仍在分析或生成内容，请结束后再重新上传。");
+      if (error.code === 'P2103') throw new TestExecutionError("当前没有需要移除的已上传文件。");
+    }
+    throw new TestExecutionError("未能开始重新上传，原文件和分析已保留，请重试。");
+  }
+}
+
 // Submission only needs the current protocol and persisted evidence. Avoid rebuilding
 // the research workspace and signing every download URL just to enqueue evaluation.
 export async function getTestExecutionReadiness(projectId: string) {
@@ -104,25 +146,33 @@ export async function getTestExecutionReadiness(projectId: string) {
 }
 
 export async function getTestExecutionWorkspace(projectId: string): Promise<TestExecutionWorkspace | null> {
-  const protocolWorkspace = await getProtocolWorkspace(projectId);
-  const protocol = protocolWorkspace?.protocol;
-  if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
+  return memoPageRead(`test:${projectId}`, () => readTestExecutionWorkspace(projectId));
+}
+
+async function readTestExecutionWorkspace(projectId: string): Promise<TestExecutionWorkspace | null> {
+  const [context, project] = await Promise.all([getLockedProtocolContext(projectId), getProjectSummary(projectId)]);
+  const protocol = context?.protocol;
+  if (!context || !project || !protocol) return null;
 
   try {
     const rows = await testExecutionRepository.listRuns(protocol.id);
     if (rows.length === 0) return null;
     const artifacts = await testExecutionRepository.listArtifacts(rows.map((row) => row.id));
     const artifactsByRun = Map.groupBy(artifacts, (artifact) => artifact.test_run_id);
-    const mappedRuns = await Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? [])));
+    const [mappedRuns, pendingDeletions] = await Promise.all([
+      Promise.all(rows.map((row) => mapTestRun(row, artifactsByRun.get(row.id) ?? []))),
+      testExecutionRepository.pendingDeletions(projectId),
+    ]);
     return {
       project: {
-        id: protocolWorkspace.research.project.id,
-        name: protocolWorkspace.research.project.name,
-        evaluationMode: protocolWorkspace.research.project.evaluationMode,
-        products: protocolWorkspace.research.project.products.map(({ id, name, initials }) => ({ id, name, initials })),
+        id: project.id,
+        name: project.name,
+        evaluationMode: project.evaluationMode,
+        products: project.products.map(({ id, name, initials }) => ({ id, name, initials })),
       },
       protocol,
       testRuns: mappedRuns,
+      pendingDeletions,
     };
   } catch (error) {
     throw new TestExecutionError(toUserFacingError(error));
@@ -136,9 +186,7 @@ export async function uploadTestArtifact(input: {
   metadata: RunExecutionMetadata;
 }): Promise<string> {
   const metadata = executionMetadataSchema.parse(input.metadata);
-  const run = await testExecutionRepository.findRun(input.testRunId);
-  if (!run || run.project_id !== input.projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
-  if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+  const run = await findOpenRun(input.projectId, input.testRunId);
 
   const file = normalizeAndValidateFile(input.file);
   const bytes = new Uint8Array(await file.file.arrayBuffer());
@@ -151,6 +199,8 @@ export async function uploadTestArtifact(input: {
   try {
     await testExecutionRepository.uploadStorageObject(storagePath, bytes, artifactType.mimeType);
     try {
+      const analysisImage = artifactType.kind === "image"
+        ? analysisImageMetadata(await storeAnalysisImage(storagePath, bytes, artifactType.mimeType)) : undefined;
       return await testExecutionRepository.recordArtifact(run.id, {
         id: artifactId,
         kind: artifactType.kind,
@@ -162,6 +212,7 @@ export async function uploadTestArtifact(input: {
         metadata: {
           originalLastModified: file.file.lastModified || null,
           capturedAs: "raw_test_output",
+          ...(analysisImage ? { analysisImage } : {}),
         } satisfies Json,
       }, metadata);
     } catch (error) {
@@ -170,6 +221,7 @@ export async function uploadTestArtifact(input: {
     }
   } catch (error) {
     if (error instanceof TestExecutionError) throw error;
+    if (error instanceof AnalysisImageError) throw new TestExecutionError(error.message);
     throw new TestExecutionError(toUserFacingError(error));
   }
 }
@@ -217,7 +269,7 @@ export async function completeTestArtifactUpload(input: {
   if (input.storagePath !== expectedPath) throw new TestExecutionError("上传文件路径与当前测试项不一致。");
 
   try {
-    const existing = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
+    const existing = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id);
     if (existing) {
       if (existing.test_run_id !== run.id || existing.id !== artifactId || existing.size_bytes !== file.size || existing.sha256 !== sha256) {
         throw new TestExecutionError("已保存文件与本次上传不一致，请移除后重新上传。");
@@ -232,17 +284,20 @@ export async function completeTestArtifactUpload(input: {
     }
 
     let verifiedSha256 = sha256;
-    if (artifactType.kind === "text") {
-      const bytes = await testExecutionRepository.readStorageObject(expectedPath, maxTextArtifactBytes);
+    let imageBytes: Uint8Array | undefined;
+    if (artifactType.kind === "text" || artifactType.kind === "image") {
+      const bytes = await testExecutionRepository.readStorageObject(expectedPath, artifactType.kind === "text" ? maxTextArtifactBytes : maxArtifactBytes);
       validateFileSignature(bytes, file.mimeType);
       verifiedSha256 = createHash("sha256").update(bytes).digest("hex");
       if (verifiedSha256 !== sha256) throw new TestExecutionError("上传文件完整性校验失败，请重试。");
+      if (artifactType.kind === "image") imageBytes = bytes;
     } else {
       validateFileSignature(await testExecutionRepository.readStorageObjectPrefix(expectedPath, 32), file.mimeType);
     }
 
-    try {
-      return await testExecutionRepository.recordArtifact(run.id, {
+    const analysisImage = imageBytes
+      ? analysisImageMetadata(await storeAnalysisImage(expectedPath, imageBytes, file.mimeType)) : undefined;
+    return await testExecutionRepository.recordArtifact(run.id, {
         id: artifactId,
         kind: artifactType.kind,
         storagePath: expectedPath,
@@ -255,22 +310,23 @@ export async function completeTestArtifactUpload(input: {
           capturedAs: "raw_test_output",
           uploadMethod: "supabase_signed_url",
           storageEtag: stored.etag,
+          ...(analysisImage ? { analysisImage } : {}),
         } satisfies Json,
       }, metadata);
-    } catch (error) {
-      const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath);
-      if (recorded) return recorded.id;
-      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the persistence error. */ }
-      throw error;
-    }
   } catch (error) {
-    if (error instanceof TestExecutionError) {
-      try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve validation error. */ }
-      throw error;
+    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath, run.id).catch(() => {
+      throw new TestExecutionError("上传结果暂未确认，请重试确认；原文件已保留。");
+    });
+    if (recorded) {
+      if (recorded.test_run_id !== run.id || recorded.id !== artifactId || recorded.size_bytes !== file.size || recorded.sha256 !== sha256) {
+        throw new TestExecutionError("已保存文件与本次上传不一致，请刷新核对；原文件已保留。");
+      }
+      return recorded.id;
     }
-    const recorded = await testExecutionRepository.findArtifactByStoragePath(expectedPath).catch(() => null);
-    if (recorded) return recorded.id;
-    try { await testExecutionRepository.removeStorageObject(expectedPath); } catch { /* Preserve the original storage or database error. */ }
+    try { await testExecutionRepository.removeStorageObject(expectedPath); }
+    catch { throw new TestExecutionError("文件未保存，临时文件清理未完成，请重试上传。"); }
+    if (error instanceof TestExecutionError) throw error;
+    if (error instanceof AnalysisImageError) throw new TestExecutionError(error.message);
     throw new TestExecutionError(toUserFacingError(error));
   }
 }
@@ -311,7 +367,7 @@ async function mapTestRun(row: TestRunRow, artifactRows: TestArtifactRow[]): Pro
 }
 
 async function mapArtifact(row: TestArtifactRow): Promise<TestArtifact> {
-  const signedUrl = await testExecutionRepository.createSignedUrl(row.storage_path);
+  const signedUrl = await memoPageRead(`artifact-url:${row.storage_path}`, () => testExecutionRepository.createSignedUrl(row.storage_path));
   return {
     id: row.id,
     kind: row.kind,
@@ -367,6 +423,8 @@ async function findOpenRun(projectId: string, testRunId: string) {
   const run = await testExecutionRepository.findRun(testRunId);
   if (!run || run.project_id !== projectId) throw new TestExecutionError("测试项不存在或不属于当前项目。");
   if (run.status === "ready_for_review" || run.status === "invalid") throw new TestExecutionError("当前测试项已关闭上传。");
+  const latest = (await protocolsRepository.listByProject(projectId))[0];
+  if (latest?.id !== run.protocol_id || latest.status !== 'locked') throw new TestExecutionError("测试版本已变化，请刷新后重新选择文件。");
   return run;
 }
 

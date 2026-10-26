@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ExperienceFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
+import type { ConfirmedFindingsOutput } from "@/lib/ai/schemas/findings.schemas";
+import { AuthorPerspectiveFields } from '@/components/publish/author-perspective-fields';
+import { type AuthorPerspective } from '@/lib/author-perspective';
 
 const initialState: ResultAnalysisActionState = { message: null };
 const labels = { good: "好用", neutral: "一般", problem: "问题" } as const;
@@ -21,11 +23,12 @@ export function FindingsEditor({
 }: {
   projectId: string;
   findingsId: string;
-  initial: ExperienceFindingsOutput;
+  initial: ConfirmedFindingsOutput;
   quick?: boolean;
 }) {
   const [state, action, pending] = useActionState(confirmFindingsAction, initialState);
   const [summary, setSummary] = useState(initial.summary);
+  const [authorPerspective, setAuthorPerspective] = useState<AuthorPerspective | undefined>(initial.authorPerspective);
   const [limitations, setLimitations] = useState(initial.limitations.join("\n"));
   const [items, setItems] = useState(() => initial.findings.map((item) => ({ ...item, included: true })));
   const selectedCount = items.filter((item) => item.included).length;
@@ -33,7 +36,8 @@ export function FindingsEditor({
     summary,
     findings: items.filter((item) => item.included).map(({ included: _included, ...item }) => item),
     limitations: limitations.split("\n").map((item) => item.trim()).filter(Boolean),
-  }), [summary, items, limitations]);
+    ...(authorPerspective ? { authorPerspective } : {}),
+  }), [summary, items, limitations, authorPerspective]);
 
   const patch = (id: string, values: Partial<(typeof items)[number]>) => {
     setItems((current) => current.map((item) => item.id === id ? { ...item, ...values } : item));
@@ -83,6 +87,7 @@ export function FindingsEditor({
       </Card>)}
     </div>
 
+    <div className="mt-4"><AuthorPerspectiveFields value={authorPerspective} onChange={setAuthorPerspective} disabled={pending} /></div>
     <Card className="mt-4 p-5 shadow-none">
       <label htmlFor="findings-limitations" className="block text-xs font-medium">测试限制（每行一条）</label>
       <Textarea id="findings-limitations" className="mt-2 min-h-24" value={limitations} onChange={(event) => setLimitations(event.target.value)} />

@@ -44,7 +44,7 @@ export class ZhipuProvider implements AIProvider {
       max_tokens: request.maxTokens ?? 16_384,
       thinking: { type: request.reasoning === "high" ? "enabled" : "disabled" },
       stream: true,
-    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs });
+    }, { task: request.task, model: request.model, attempt: request.attempt, timeoutMs: request.timeoutMs, signal: request.signal });
 
     // Provider thinking fields are intentionally discarded by normalization.
     return normalizeCompletionResponse(this.name, data, latencyMs, status, request);
@@ -58,7 +58,7 @@ export class ZhipuProvider implements AIProvider {
       count: request.count ?? 10,
       search_domain_filter: request.domain,
       search_recency_filter: "noLimit",
-    }, { task: request.task, model: request.engine, attempt: request.attempt, timeoutMs: request.timeoutMs });
+    }, { task: request.task, model: request.engine, attempt: request.attempt, timeoutMs: request.timeoutMs, signal: request.signal });
     const parsed = searchEnvelopeSchema.safeParse(data);
     if (!parsed.success) throw new AIProviderError("zhipu returned an invalid web search response", { provider: this.name, model: request.engine, task: request.task, status, attempt: request.attempt, latencyMs, timeoutMs: request.timeoutMs, category: "invalid_envelope" });
     return parsed.data.search_result.map((source) => ({

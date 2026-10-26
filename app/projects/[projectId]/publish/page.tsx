@@ -1,4 +1,6 @@
 import { withPageReads } from "@/lib/supabase/read-scope";
+import { headers } from "next/headers";
+import { publishPresentation } from "@/lib/publish-presentation";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { PublishEditor } from "@/app/projects/[projectId]/publish/publish-editor";
@@ -16,7 +18,7 @@ async function PublishPage({ params }: { params: Promise<{ projectId: string }> 
   ]);
   if (!workspace) redirect(`/projects/${projectId}/results`);
   if (!workflowState) redirect("/projects");
-  return <PublishEditor key={workspace.pack ? `${workspace.pack.id}-${workspace.pack.status}` : projectId} workspace={workspace} workflowState={workflowState} />;
+  return <PublishEditor key={workspace.pack ? `${workspace.pack.id}-${workspace.pack.status}` : projectId} workspace={publishPresentation(workspace, (await headers()).get("x-ai-benchmark-access") === "admin")} workflowState={workflowState} />;
 }
 
 export default withPageReads(PublishPage);

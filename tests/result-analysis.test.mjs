@@ -63,7 +63,7 @@ test("professional Result Analysis runs in the background without blocking Findi
   assert.match(page, /getResultsWorkspace/);
   assert.match(page, /专业报告（后台生成）/);
   assert.match(page, /ResultAnalysisAction/);
-  assert.match(page, /专业报告在后台生成/);
+  assert.match(page, /完整结果分析和深度报告独立生成/);
   assert.match(service, /buildCaseEvidence/);
   assert.match(service, /sanitizePublicEvidence/);
   assert.doesNotMatch(service + repository + page + actions, /@\/lib\/mock|mockFinalResultAnalysis|\/projects\/demo/);

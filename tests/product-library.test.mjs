@@ -26,9 +26,9 @@ function service(overrides={}) {
     ...overrides,
   };
   const deps={ 'server-only':{}, zod:{z}, '@/lib/product-library-visibility':{isVisibleProductLibraryEntry}, '@/lib/project-visibility':{isInternalValidationProject}, '@/lib/repositories/product-library.repository':{productLibraryRepository:repository} };
-  const module={exports:{}};
-  new Function('require','module','exports',code)(name=>{assert.ok(name in deps,name);return deps[name];},module,module.exports);
-  return {...module.exports,calls};
+  const fixtureModule={exports:{}};
+  new Function('require','module','exports',code)(name=>{assert.ok(name in deps,name);return deps[name];},fixtureModule,fixtureModule.exports);
+  return {...fixtureModule.exports,calls};
 }
 test('tested products are visible without research, with archived/internal projects excluded',async()=>{
   const api=service();

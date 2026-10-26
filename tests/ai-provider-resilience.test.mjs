@@ -79,7 +79,7 @@ test("performs one bounded JSON or schema repair retry with safe validation issu
   assert.match(router, /category: "invalid_json"/);
   assert.match(router, /Previous response was not valid JSON/);
   assert.match(router, /Correct the previous output to satisfy these validation issues/);
-  assert.match(router, /Keep the protocol content unchanged where possible/);
+  assert.match(router, /Keep content unchanged except where the validation issues require a correction/);
   assert.match(router, /role: "assistant", content: previousContent/);
   assert.match(router, /attempt < maxAttempts/);
   assert.match(router, /attemptReasoning = route\.repairReasoning/);
@@ -136,7 +136,7 @@ test("Protocol input omits raw Research snippets and JSON mode stays explicit", 
   assert.match(router, /Return exactly one valid JSON object/);
   assert.match(router, /Do not use Markdown or code fences/);
   assert.match(router, /Do not stop before closing the root JSON object/);
-  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v12-quick-input-constraints"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
+  assert.match(config, /protocol:[\s\S]*promptVersion: "protocol\.v14-quick-context-baseline"[\s\S]*reasoning: "standard"[\s\S]*repairReasoning: "standard"/);
   assert.match(protocolService, /\[ProtocolPerformance\]/);
   assert.match(protocolService, /attempts: generated\.attemptPerformance/);
 });

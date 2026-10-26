@@ -1,5 +1,6 @@
 import { withPageReads } from "@/lib/supabase/read-scope";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft, ArrowRight, Check, ExternalLink, FileText, FlaskConical, ShieldCheck, Sparkles } from "lucide-react";
@@ -16,6 +17,7 @@ import type { ExperienceFindingItem } from "@/lib/ai/schemas/findings.schemas";
 import { getExperienceFindingsWorkspace, type ExperienceFindingsWorkspace } from "@/lib/services/findings.service";
 import { getResultsWorkspace } from "@/lib/services/result-analysis.service";
 import { getProjectWorkflowState } from "@/lib/services/workflow-navigation.service";
+import { isReportHiddenFromVisitors } from "@/lib/portfolio-visibility";
 
 export const maxDuration = 300;
 
@@ -28,14 +30,15 @@ const categoryMeta = {
 async function ResultsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
+  const reportHidden = isReportHiddenFromVisitors((await headers()).get("x-ai-benchmark-access"));
   const [workspace, workflowState] = await Promise.all([
     getExperienceFindingsWorkspace(projectId),
     getProjectWorkflowState(projectId),
   ]);
   if (!workspace) redirect(`/projects/${projectId}/test`);
   if (!workflowState) redirect("/projects");
-  if (!workflowState.stages.review.completed) redirect(`/projects/${projectId}/review`);
-  const professionalResult = workflowState.stages.review.completed
+  if (!workflowState.stages.review.completed && !(workflowState.stages.results.completed && workspace.latest?.humanConfirmedAt && workspace.latest.effectiveOutput)) redirect(`/projects/${projectId}/review`);
+  const professionalResult = !reportHidden && workflowState.stages.review.completed
     ? await readOptionalProfessionalResults(projectId)
     : null;
   const professional = professionalResult?.workspace ?? null;
@@ -52,11 +55,11 @@ async function ResultsPage({ params }: { params: Promise<{ projectId: string }> 
       <ArrowLeft className="h-3.5 w-3.5" />返回真实测试
     </Link>
     <PageHeader
-      eyebrow={`Findings / Test Plan v${workspace.protocolVersion}`}
+      eyebrow={`项目 / ${workspace.projectName}`}
       title="测评发现"
-      description="基于已完成的 Blind Judge、锁定评分与原始 Artifact 提炼候选发现；专业报告在后台生成，不阻塞社区内容。"
+      description="从原始测试中，看看哪些好用、哪些还需要改进。"
       action={confirmed
-        ? <Badge variant="success"><Check className="h-3 w-3" />已人工确认 · 可直接生成内容</Badge>
+        ? <Badge variant="success"><Check className="h-3 w-3" />已确认</Badge>
         : <Badge variant="neutral"><Sparkles className="h-3 w-3" />快速测评模式</Badge>}
     />
 
@@ -64,7 +67,7 @@ async function ResultsPage({ params }: { params: Promise<{ projectId: string }> 
       ? <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} />
       : run.effectiveOutput ? <ConfirmedFindings workspace={workspace} /> : null}
 
-    <ProfessionalMode projectId={projectId} professional={professional} unavailable={professionalUnavailable} />
+    {!reportHidden && workflowState.stages.review.completed && <ProfessionalMode projectId={projectId} professional={professional} unavailable={professionalUnavailable} />}
   </div>;
 }
 
@@ -134,10 +137,10 @@ function ConfirmedFindings({ workspace }: { workspace: ExperienceFindingsWorkspa
 
     <section className="mt-8 flex flex-col items-center rounded-xl border bg-slate-950 px-6 py-8 text-center text-white">
       <Sparkles className="h-5 w-5 text-blue-300" />
-      <h2 className="mt-3 text-xl font-semibold">直接把这些 Findings 变成社区内容</h2>
-      <p className="mt-2 max-w-xl text-xs leading-6 text-slate-400">下一步只做内容策划、语言风格生成和事实核对，不要求先生成评分或深度报告。</p>
+      <h2 className="mt-3 text-xl font-semibold">查看这次测评的社区内容</h2>
+      <p className="mt-2 max-w-xl text-xs leading-6 text-slate-400">把测试中的具体发现，整理成一篇值得分享的文章。</p>
       <Button className="mt-5 bg-white text-slate-950 hover:bg-slate-100" asChild>
-        <Link href={`/projects/${workspace.projectId}/publish`}>生成社区内容<ArrowRight className="h-4 w-4" /></Link>
+        <Link href={`/projects/${workspace.projectId}/publish`}>打开社区内容<ArrowRight className="h-4 w-4" /></Link>
       </Button>
     </section>
   </>;
@@ -181,6 +184,7 @@ function ProfessionalMode({ projectId, professional, unavailable }: { projectId:
         <p className="mt-1.5 max-w-2xl text-xs leading-5 text-muted-foreground">完整结果分析和深度报告独立生成，不会阻塞 Findings 和社区内容。</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" asChild><Link href={`/projects/${projectId}/review`}>查看评分明细</Link></Button>
         {unavailable ? <div className="text-xs text-red-600"><p role="alert">专业评分暂时无法读取，测评发现仍可继续。</p><Link className="mt-1 inline-block underline" href={`/projects/${projectId}/review`}>查看专业评分</Link></div>
           : !professional && <ResultAnalysisAction projectId={projectId} retry={false} />}
         {professional && !complete && <ResultAnalysisAction projectId={projectId} retry={Boolean(analysis?.stale || analysis?.status === "failed")} />}

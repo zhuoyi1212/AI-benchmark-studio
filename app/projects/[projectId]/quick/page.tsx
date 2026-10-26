@@ -1,4 +1,6 @@
 import { withPageReads } from "@/lib/supabase/read-scope";
+import { headers } from "next/headers";
+import { publishPresentation } from "@/lib/publish-presentation";
 import { NavigationLink as Link } from "@/components/navigation-link";
 import { connection } from 'next/server';
 import { notFound, redirect } from 'next/navigation';
@@ -12,6 +14,7 @@ import { getPublishWorkspace } from '@/lib/services/publish.service';
 import { getProjectWorkflowState } from '@/lib/services/workflow-navigation.service';
 import { getQuickWorkflowJobs } from '@/lib/services/quick-workflow.service';
 import { quickStageLabels } from '@/lib/quick/types';
+import { selectQuickWorkspaceJobs } from '@/lib/quick/workspace-jobs';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { Card } from '@/components/ui/card';
 import { QuickActionButton } from './action-button';
@@ -24,19 +27,31 @@ export const maxDuration = 300;
 async function QuickPage({ params }: { params: Promise<{ projectId: string }> }) {
   await connection();
   const { projectId } = await params;
+  const admin = (await headers()).get("x-ai-benchmark-access") === "admin";
   const [project, jobs] = await Promise.all([getProjectSummary(projectId), getQuickWorkflowJobs(projectId)]);
   if (!project) notFound();
   if (project.evaluationMode !== 'quick') redirect(`/projects/${projectId}/research`);
   const [protocolWorkspace, workflowState] = await Promise.all([getProtocolWorkspace(projectId), getProjectWorkflowState(projectId)]);
   const protocol = protocolWorkspace?.protocol;
   if (!workflowState) notFound();
-  const currentJobs = jobs.filter(job => {
-    if (['research','protocol'].includes(job.kind)) return !protocol;
-    if (['evaluate','findings'].includes(job.kind)) return job.scope === protocol?.id;
-    return true;
+  // Read current results before interpreting old queue failures. The publish service
+  // binds its source to the current locked protocol and confirmed Findings.
+  const preparedPublish = workflowState.stages.publish.completed ? await getPublishWorkspace(projectId) : null;
+  const publishReady = preparedPublish?.pack?.status === 'ready';
+  const needsReviewCheck = !publishReady && jobs.some(job => job.kind === 'evaluate' && job.scope === protocol?.id && job.status === 'failed');
+  const needsFindingsCheck = !publishReady && jobs.some(job => ((job.kind === 'findings' && job.scope === protocol?.id) || ['discovery', 'publish'].includes(job.kind)) && job.status === 'failed');
+  const [preparedReview, preparedFindings] = await Promise.all([
+    needsReviewCheck ? getHumanReviewWorkspace(projectId) : null,
+    needsFindingsCheck ? getExperienceFindingsWorkspace(projectId) : null,
+  ]);
+  const { active, failed } = selectQuickWorkspaceJobs(jobs, {
+    protocolId: protocol?.id,
+    protocolLocked: protocol?.status === 'locked',
+    findingsId: preparedFindings?.latest?.id ?? preparedPublish?.findingsId ?? null,
+    publishReady,
+    reviewCompleted: preparedReview?.protocolId === protocol?.id && preparedReview?.status === 'revealed',
+    findingsCompleted: preparedFindings?.protocolId === protocol?.id && preparedFindings?.latest?.status === 'completed',
   });
-  const active = currentJobs.find(job => ['queued','running'].includes(job.status) && !['analysis','report'].includes(job.kind));
-  const failed = [...currentJobs].reverse().find(job => job.status === 'failed' && !['analysis','report'].includes(job.kind));
   let content: React.ReactNode;
   let step = 0;
   if (active || failed) {
@@ -55,7 +70,10 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
       <p className="mb-3 text-xs text-muted-foreground">采用后锁定本次方案；调整需创建新版本。</p>
       <QuickActionButton projectId={projectId} operation="adopt" id={protocol.id}>采用方案，开始测试</QuickActionButton>
     </Card>;
-  } else if (!workflowState.stages.review.completed) {
+  } else if (publishReady && preparedPublish) {
+    content = <PublishEditor quick key={`${preparedPublish.pack?.id}-${preparedPublish.pack?.status}`} workspace={publishPresentation(preparedPublish, admin)} workflowState={workflowState} />;
+    step = 4;
+  } else if (!workflowState.stages.review.completed && !workflowState.stages.results.completed) {
     const evaluation = jobs.find(job => job.kind === 'evaluate' && job.scope === protocol.id && job.status === 'completed');
     if (evaluation) {
       const review = await getHumanReviewWorkspace(projectId);
@@ -66,13 +84,13 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
       step = 1;
     }
   } else {
-    const findings = await getExperienceFindingsWorkspace(projectId);
+    const findings = preparedFindings ?? await getExperienceFindingsWorkspace(projectId);
     const run = findings?.latest;
     if (run?.humanConfirmedAt) {
-      const publish = await getPublishWorkspace(projectId);
+      const publish = preparedPublish ?? await getPublishWorkspace(projectId);
       content = !jobs.some(job => job.kind === 'discovery') && publish?.pack?.status !== 'ready'
         ? <QuickActionButton projectId={projectId} operation="write" id={run.id}>生成文章</QuickActionButton>
-        : publish ? <PublishEditor quick key={`${publish.pack?.id}-${publish.pack?.status}`} workspace={publish} workflowState={workflowState} /> : <p>正在准备文章。</p>;
+        : publish ? <PublishEditor quick key={`${publish.pack?.id}-${publish.pack?.status}`} workspace={publishPresentation(publish, admin)} workflowState={workflowState} /> : <p>正在准备文章。</p>;
       step = 4;
     } else if (run?.effectiveOutput) {
       content = <FindingsEditor projectId={projectId} findingsId={run.id} initial={run.effectiveOutput} quick />;
@@ -87,7 +105,7 @@ async function QuickPage({ params }: { params: Promise<{ projectId: string }> })
     <div className="mb-7 flex items-center justify-between"><div><p className="text-xs text-blue-600">快速模式</p><h1 className="mt-2 text-2xl font-semibold">{step === 2 ? '测评工作台' : project.name}</h1></div><Link href="/projects" className="text-xs text-muted-foreground">全部项目</Link></div>
     <WorkflowSteps projectId={projectId} workflowState={workflowState} activeStage={(['protocol', 'test', 'test', 'results', 'publish'] as const)[step]} />
     <div className="quick-workspace">{content}</div>
-    {step === 4 && !active && jobs.filter(job => ['analysis','report'].includes(job.kind) && job.status === 'failed').map(job => <div key={job.id} className="mt-5 rounded-lg border p-4 text-sm"><p className="mb-3">专业报告暂未完成，文章可正常使用。</p><QuickActionButton projectId={projectId} operation="retry" id={job.id}>重试专业报告</QuickActionButton></div>)}
+    {admin && step === 4 && !active && jobs.filter(job => ['analysis','report'].includes(job.kind) && job.status === 'failed').map(job => <div key={job.id} className="mt-5 rounded-lg border p-4 text-sm"><p className="mb-3">专业报告暂未完成，文章可正常使用。</p><QuickActionButton projectId={projectId} operation="retry" id={job.id}>重试专业报告</QuickActionButton></div>)}
     <style>{'.quick-workspace .page-shell{padding:0;max-width:none}.quick-workspace nav[aria-label="测评工作流"]{display:none}'}</style>
   </div>;
 }

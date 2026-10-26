@@ -16,6 +16,7 @@ export type AIModelEnvironment = {
   zhipuOcrModel: string;
   deepSeekReasoningModel: string;
   deepSeekWritingModel: string;
+  moonshotWritingModel: string;
 };
 
 let cachedAIModels: AIModelEnvironment | undefined;
@@ -62,12 +63,13 @@ export function getAIModelEnvironment(): AIModelEnvironment {
     zhipuOcrModel: process.env.ZAI_OCR_MODEL?.trim() || "glm-ocr",
     deepSeekReasoningModel,
     deepSeekWritingModel,
+    moonshotWritingModel: process.env.MOONSHOT_WRITING_MODEL?.trim() || "kimi-k3",
   };
   return cachedAIModels;
 }
 
 export function getAIProviderKey(provider: AIProviderName): string {
-  const variableName = provider === "zhipu" ? "ZAI_API_KEY" : "DEEPSEEK_API_KEY";
+  const variableName = { zhipu: "ZAI_API_KEY", deepseek: "DEEPSEEK_API_KEY", moonshot: "MOONSHOT_API_KEY" }[provider];
   const value = process.env[variableName]?.trim();
   if (!value) throw new AIConfigurationError(`Missing required server environment variable: ${variableName}`);
   return value;

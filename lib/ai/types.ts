@@ -8,6 +8,7 @@ export const aiTaskTypes = [
   "protocol_professional",
   "judge_text",
   "judge_multimodal",
+  "judge_video_evidence",
   "result_analysis",
   "findings",
   "report",
@@ -18,18 +19,20 @@ export const aiTaskTypes = [
   "community_post_evidence_check_text",
   "community_post_evidence_check",
   "screenshot_understanding",
+  "video_frame_analysis",
   "ocr",
 ] as const;
 
 export type AITaskType = (typeof aiTaskTypes)[number];
-export type AIProviderName = "zhipu" | "deepseek";
+export type AIProviderName = "zhipu" | "deepseek" | "moonshot";
 export type AICapability = "structured_text" | "multimodal" | "web_search" | "ocr";
 export type AIReasoningMode = "standard" | "high";
 
 export type AITextContent = { type: "text"; text: string };
 export type AIImageContent = { type: "image_url"; image_url: { url: string } };
 export type AIFileContent = { type: "file_url"; file_url: { url: string } };
-export type AIMessageContent = string | Array<AITextContent | AIImageContent | AIFileContent>;
+export type AIVideoContent = { type: "video_url"; video_url: { url: string } };
+export type AIMessageContent = string | Array<AITextContent | AIImageContent | AIFileContent | AIVideoContent>;
 
 export type AIMessage = {
   role: "system" | "user" | "assistant";
@@ -66,6 +69,7 @@ export type AIUsage = {
 };
 
 export type AIProviderRequestContext = {
+  signal?: AbortSignal;
   task: AITaskType;
   attempt: number;
   timeoutMs: number;
@@ -114,6 +118,7 @@ export type OCRResult = {
 };
 
 export type StructuredTaskRequest<Schema extends ZodType> = {
+  signal?: AbortSignal;
   schema: Schema;
   schemaName: string;
   messages: AIMessage[];

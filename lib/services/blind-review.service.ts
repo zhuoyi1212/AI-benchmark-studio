@@ -1,8 +1,9 @@
 import "server-only";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { RepositoryError } from "@/lib/repositories/repository-error";
 import { blindReviewRepository } from "@/lib/repositories/blind-review.repository";
-import { getProtocolWorkspace } from "@/lib/services/protocols.service";
+import { getProtocolWorkspace, getLockedProtocolContext } from "@/lib/services/protocols.service";
 import { SupabaseRequestTimeoutError, withSupabaseRequestTimeout } from "@/lib/supabase/server";
 import type { BlindSample } from "@/lib/types/review";
 import type { EvaluationMode } from "@/lib/project-mode";
@@ -76,9 +77,13 @@ async function runSupabaseStep<T>(name: string, timeoutMs: number, run: () => Pr
 }
 
 export async function getBlindReviewWorkspace(projectId: string): Promise<BlindReviewWorkspace | null> {
-  const protocolWorkspace = await getProtocolWorkspace(projectId);
-  const protocol = protocolWorkspace?.protocol;
-  if (!protocolWorkspace || !protocol || protocol.status !== "locked") return null;
+  return memoPageRead(`blind-review:${projectId}`, () => readBlindReviewWorkspace(projectId));
+}
+
+async function readBlindReviewWorkspace(projectId: string): Promise<BlindReviewWorkspace | null> {
+  const context = await getLockedProtocolContext(projectId);
+  const protocol = context?.protocol;
+  if (!context || !protocol) return null;
   try {
     await blindReviewRepository.assertProtocolSafe(projectId, protocol.id);
     const samples = await blindReviewRepository.listSamples(protocol.id);
@@ -87,7 +92,7 @@ export async function getBlindReviewWorkspace(projectId: string): Promise<BlindR
       projectId,
       protocolId: protocol.id,
       protocolVersion: protocol.version,
-      evaluationMode: protocolWorkspace.research.project.evaluationMode,
+      evaluationMode: context.project.evaluation_mode,
       samples: samples.map((sample) => ({ sampleId: sample.id, label: sample.label })),
       testCases: protocol.testCases.map((testCase, index) => ({ id: testCase.id, position: index + 1, title: testCase.title })),
     };

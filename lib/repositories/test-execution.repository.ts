@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+import { analysisImagePaths } from "@/lib/media/analysis-image-paths";
 
 import { throwRepositoryError } from "@/lib/repositories/repository-error";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -33,6 +35,51 @@ export type StoredArtifactInfo = {
 };
 
 export const testExecutionRepository = {
+  async removeArtifact(projectId: string, protocolId: string, artifactId: string) {
+    const { data, error } = await getSupabaseServerClient().rpc("remove_test_artifact", {
+      p_project_id: projectId, p_protocol_id: protocolId, p_artifact_id: artifactId,
+    });
+    if (error) throwRepositoryError("testExecution.removeArtifact", error);
+    return z.object({ protocolId: z.string().uuid(), storagePaths: z.array(z.string()), cacheArtifactIds: z.array(z.string().uuid()) }).parse(data);
+  },
+  async removeMediaCache(artifactId: string): Promise<void> {
+    const storage = getSupabaseServerClient().storage.from(artifactBucket);
+    async function removePrefix(prefix: string): Promise<void> {
+      // Remove a page before listing again so pagination cannot skip deleted keys.
+      for (;;) {
+        const { data, error } = await storage.list(prefix, { limit: 100 });
+        if (error) throwRepositoryError("testExecution.listMediaCache", error);
+        if (!data.length) return;
+        const files: string[] = [];
+        for (const item of data) {
+          const path = `${prefix}/${item.name}`;
+          if (item.id) files.push(path);
+          else await removePrefix(path);
+        }
+        if (files.length) {
+          const { error: removeError } = await storage.remove(files);
+          if (removeError) throwRepositoryError("testExecution.removeMediaCache", removeError);
+        }
+      }
+    }
+    await removePrefix(`media-cache/${artifactId}`);
+  },
+  async finishDeletion(projectId: string, artifactId: string): Promise<void> {
+    const { error } = await getSupabaseServerClient().rpc("finish_test_artifact_deletion", { p_project_id: projectId, p_artifact_id: artifactId });
+    if (error) throwRepositoryError("testExecution.finishDeletion", error);
+  },
+  async pendingDeletions(projectId: string) {
+    const { data, error } = await getSupabaseServerClient().rpc("pending_test_artifact_deletions", { p_project_id: projectId });
+    if (error) throwRepositoryError("testExecution.pendingDeletions", error);
+    return z.array(z.object({ artifactId: z.string().uuid(), protocolId: z.string().uuid(), fileName: z.string() })).parse(data);
+  },
+  async restart(projectId: string, protocolId: string): Promise<string> {
+    const { data, error } = await getSupabaseServerClient().rpc("restart_test_execution", {
+      p_project_id: projectId, p_protocol_id: protocolId,
+    });
+    if (error) throwRepositoryError("testExecution.restart", error);
+    return data;
+  },
   async ensureMatrix(projectId: string, protocolId: string): Promise<void> {
     const { error } = await getSupabaseServerClient().rpc("ensure_test_run_matrix", {
       p_project_id: projectId,
@@ -64,7 +111,7 @@ export const testExecutionRepository = {
   async listArtifacts(testRunIds: string[]): Promise<TestArtifactRow[]> {
     if (testRunIds.length === 0) return [];
     const { data, error } = await getSupabaseServerClient()
-      .from("test_artifacts")
+      .from("available_test_artifacts")
       .select(artifactColumns)
       .in("test_run_id", testRunIds)
       .order("created_at", { ascending: true });
@@ -138,7 +185,9 @@ export const testExecutionRepository = {
   },
 
   async removeStorageObject(path: string): Promise<void> {
-    const { error } = await getSupabaseServerClient().storage.from(artifactBucket).remove([path]);
+    // Include both possible technical copies in the same request. They never outlive a deleted original.
+    const derivatives = analysisImagePaths(path);
+    const { error } = await getSupabaseServerClient().storage.from(artifactBucket).remove([path, ...derivatives]);
     if (error) throwRepositoryError("testExecution.removeStorageObject", error);
   },
 
@@ -163,13 +212,21 @@ export const testExecutionRepository = {
     return data;
   },
 
-  async findArtifactByStoragePath(path: string): Promise<TestArtifactRow | null> {
+  async findArtifactByStoragePath(path: string, testRunId: string): Promise<TestArtifactRow | null> {
     const { data, error } = await getSupabaseServerClient()
-      .from("test_artifacts")
+      .from("available_test_artifacts")
       .select(artifactColumns)
       .eq("storage_path", path)
+      .eq("test_run_id", testRunId)
       .maybeSingle();
     if (error) throwRepositoryError("testExecution.findArtifactByStoragePath", error);
+    return data;
+  },
+
+  async findArtifactById(id: string): Promise<TestArtifactRow | null> {
+    const { data, error } = await getSupabaseServerClient().from("available_test_artifacts")
+      .select(artifactColumns).eq("id", id).maybeSingle();
+    if (error) throwRepositoryError("testExecution.findArtifactById", error);
     return data;
   },
 

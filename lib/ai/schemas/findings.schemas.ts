@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { authorPerspectiveSchema } from '@/lib/ai/schemas/publish.schemas';
 
 const text = z.string().trim().min(1);
 export const findingCategorySchema = z.enum(["good", "neutral", "problem"]);
@@ -23,3 +24,9 @@ export const experienceFindingsOutputSchema = z.object({
 
 export type ExperienceFindingItem = z.infer<typeof experienceFindingItemSchema>;
 export type ExperienceFindingsOutput = z.infer<typeof experienceFindingsOutputSchema>;
+
+// Keep author input outside the provider schema so AI cannot invent a human voice.
+export const confirmedFindingsOutputSchema = experienceFindingsOutputSchema.extend({
+  authorPerspective: authorPerspectiveSchema.optional(),
+});
+export type ConfirmedFindingsOutput = z.infer<typeof confirmedFindingsOutputSchema>;

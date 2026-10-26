@@ -5,12 +5,14 @@ import { z } from "zod";
 import { AIConfigurationError, AIProviderError, AIValidationError } from "@/lib/ai/errors";
 import { resolveAITaskRoute } from "@/lib/ai/config";
 import { DeepSeekProvider } from "@/lib/ai/providers/deepseek.provider";
+import { MoonshotProvider } from "@/lib/ai/providers/moonshot.provider";
 import type { AIProvider } from "@/lib/ai/providers/provider";
 import { ZhipuProvider } from "@/lib/ai/providers/zhipu.provider";
 import { getAIProviderKey } from "@/lib/env/server";
 import { parseStructuredJson } from "@/lib/ai/structured-json";
 import type {
   AIAttemptPerformance,
+  AIProviderName,
   AIMessage,
   AITaskType,
   JudgeArtifactDescriptor,
@@ -25,9 +27,21 @@ export async function runStructuredAITask<Schema extends z.ZodType>(
   request: StructuredTaskRequest<Schema>,
 ): Promise<StructuredTaskResult<z.infer<Schema>>> {
   const route = resolveAITaskRoute(task);
-  await request.beforeExecute?.(route);
+  for (const message of request.messages) {
+    if (!Array.isArray(message.content)) continue;
+    if (message.content.some(part => part.type === "video_url" || part.type === "file_url" && /\.(mp4|mov|webm)(?:\?|$)/i.test(part.file_url.url))) throw new AIValidationError(task, "videoRequiresMediaEvidence");
+    if (task === "judge_video_evidence" && message.content.some(part => part.type !== "text")) throw new AIValidationError(task, "videoEvaluatorRequiresStructuredEvidence");
+  }
+  let prepared = false;
   const result = await checkpoint(request.schemaName, { route, schema: z.toJSONSchema(request.schema, { target: "draft-7" }), messages: request.messages, maxTokens: request.maxTokens },
-    () => executeStructuredAITask(task, { ...request, beforeExecute: undefined }));
+    async () => {
+      await request.beforeExecute?.(route);
+      prepared = true;
+      return executeStructuredAITask(task, { ...request, beforeExecute: undefined });
+    });
+  // Cached results still need the current run's persistence metadata. A budget
+  // yield, however, must not mark a not-yet-executed stage as running.
+  if (!prepared) await request.beforeExecute?.(route);
   return { ...result, data: request.schema.parse(result.data) };
 }
 
@@ -64,7 +78,9 @@ async function executeStructuredAITask<Schema extends z.ZodType>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs });
+      // Audit the actual provider message shape, including fresh repair inputs.
+      attemptMessages = provider.prepareMessages?.(attemptMessages) ?? attemptMessages;
+      const response = await provider.generateStructured({ task: route.task, model: route.model, messages: attemptMessages, maxTokens: request.maxTokens, reasoning: attemptReasoning, attempt, timeoutMs: route.timeoutMs, signal: request.signal });
       await request.onResponse?.({ route, attempt, reasoning: attemptReasoning, messages: attemptMessages, content: response.content, requestId: response.requestId, usage: response.usage });
       let json: unknown;
       try {
@@ -195,6 +211,7 @@ function logAIProviderError(error: AIProviderError, reasoning: AIAttemptPerforma
     requestTextCount: error.requestTextCount,
     requestImageCount: error.requestImageCount,
     requestFileCount: error.requestFileCount,
+    requestVideoCount: error.requestVideoCount,
     retryable: error.retryable,
     willRetry: retryDelayMs !== null,
     retryDelayMs,
@@ -288,17 +305,23 @@ function buildProviderRetryMessages(messages: AIMessage[], error: AIProviderErro
 
 function buildRepairMessages(messages: AIMessage[], previousContent: string, error: AIValidationError, validationRepairInstruction?: string): AIMessage[] {
   const repairInstruction = error.category === "invalid_json"
-    ? "Previous response was not valid JSON. Return one complete valid JSON object only. No Markdown fences or explanatory prose."
+    ? ["Previous response was not valid JSON. Return one complete valid JSON object only. No Markdown fences or explanatory prose.", validationRepairInstruction].filter(Boolean).join("\n")
     : [
-        "Correct the previous output to satisfy these validation issues. Keep the protocol content unchanged where possible.",
+        "Correct the previous output to satisfy these validation issues. Keep content unchanged except where the validation issues require a correction.",
         ...error.issues.map((issue) => `- ${issue.path}: ${issue.code}: ${issue.message}`),
         validationRepairInstruction,
         "Return exactly one complete JSON object only.",
       ].filter(Boolean).join("\n");
+  const mediaMessages = messages.filter(message => message.role === "user" && Array.isArray(message.content) && message.content.some(part => part.type !== "text"));
+  // Keep the original evidence and labels in the active repair turn, in order.
+  // Move them instead of reattaching a second copy of the images/documents.
+  const repairContent = mediaMessages.length
+    ? [...mediaMessages.flatMap(message => Array.isArray(message.content) ? message.content : []), { type: "text" as const, text: repairInstruction }]
+    : repairInstruction;
   return [
-    ...messages,
+    ...messages.filter(message => !mediaMessages.includes(message)),
     { role: "assistant", content: previousContent },
-    { role: "user", content: repairInstruction },
+    { role: "user", content: repairContent },
   ];
 }
 
@@ -311,6 +334,10 @@ export function selectJudgeTaskForCase(testCaseId: string, artifacts: JudgeArtif
   if (artifacts.some((artifact) => artifact.testCaseId !== testCaseId)) {
     throw new AIValidationError("judge", "singleTestCaseArtifactSet");
   }
+  // Only the video-evidence service may build this case's request. Screenshots
+  // become separately traced observations first; no MP4 or image reaches this evaluator.
+  if (artifacts.some(artifact => artifact.mimeType.startsWith("video/"))
+    && artifacts.every(artifact => isTextArtifactMimeType(artifact.mimeType) || artifact.mimeType.startsWith("video/") || artifact.mimeType.startsWith("image/"))) return "judge_video_evidence";
   return artifacts.every((artifact) => isTextArtifactMimeType(artifact.mimeType)) ? "judge_text" : "judge_multimodal";
 }
 
@@ -318,9 +345,10 @@ function isTextArtifactMimeType(mimeType: string) {
   return ["text/plain", "text/markdown", "application/json", "text/csv"].includes(mimeType.toLowerCase());
 }
 
-function createProvider(providerName: "zhipu" | "deepseek"): AIProvider {
+function createProvider(providerName: AIProviderName): AIProvider {
   const apiKey = getAIProviderKey(providerName);
   if (providerName === "zhipu") return new ZhipuProvider(apiKey);
+  if (providerName === "moonshot") return new MoonshotProvider(apiKey);
   return new DeepSeekProvider(apiKey);
 }
 

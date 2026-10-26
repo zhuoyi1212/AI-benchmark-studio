@@ -1,5 +1,7 @@
 # AI Benchmark Studio 数据库 Schema v1
 
+2026-10-26 图片适配（无 DDL）：新上传的 test_artifacts.metadata.analysisImage 在初次记录时保存策略版本、原图/分析副本 SHA-256、宽高、MIME、字节数、编码质量与私有路径。原件不改，副本为原路径追加 .analysis-image.v1.png/jpg，不创建新 Artifact 或进入配图。available_test_artifacts 继续作为可用性来源；历史行不回写，旧图显式分析时在内存处理。Storage remove 批量清理原件与两个候选副本，既有删除回执在全部成功后完成。无新表、列、RPC、权限或公开 bucket，详见 docs/analysis-image.md。
+
 ## 设计目标
 
 本 Schema 将一次测评保存为可追溯的数据链：
@@ -294,3 +296,50 @@ Migration `20261002170736_product_library_identity.sql` 只替换 `create_benchm
 ### 2026-10-05 Artifact 签名直传（无 DDL 变更）
 
 上传继续使用私有 `benchmark-artifacts` bucket 与既有 `projects/{projectId}/runs/{testRunId}/{artifactId}.{ext}` 路径。服务端签发单次上传 URL，浏览器直传完成后才调用既有 `record_test_artifact`；确认阶段以 Storage 实际对象核验大小、MIME、文件头和文本 SHA-256。校验或记录失败会删除孤立对象，重复确认按 storage path 返回已有 Artifact。没有新增表、字段、RPC、客户端数据库权限或公开 bucket。
+
+
+### 视频证据脱敏（2026-10-11）
+
+Migration `20261011143643_redact_video_judge_evidence.sql` 仅新增 RPC，不增加表或改历史记录。`redact_video_judge_evidence(judge_run_id,test_case_id,content)` 为 security invoker、空 search_path，仅 service_role 可执行；验证 running JudgeRun、Locked Protocol 和所属 Case，限 2MB 文本，数据库内对本项目产品名、官网/域名脱敏，不返回真实身份或 Mapping。VideoEvidence derivative JSON 与预处理 JPEG/WAV base64 保存在既有私有 `benchmark-artifacts/media-cache/`，关联原 Artifact ID/hash/policy/context/router 签名；binary 不进入 PostgreSQL。快速媒体失败只写独立 quick_job_steps degraded 记录，不写 judge_scores。
+
+`20261011153000_isolate_quick_e2e_workers.sql` 保留 claim_quick_job 的签名、角色和 lease/锁语义，只让保留的 `[E2E]` 测试项目必须由指定 project_id 的工作端领取，避免生产 Cron 使用真实 Provider 执行测试夹具。没有改表、删除用户数据或覆盖历史。E2E poller 通过专用测试环境变量限定自己的项目；普通项目队列不受此过滤影响。
+
+
+### 2026-10-12 文章保存与后台重生成
+
+非破坏性migration `20261012082020_publish_editor_revisions.sql` 新增service-role-only、security invoker函数 `create_publish_revision(projectId, sourcePackId, mode, copy, recommendations)`，无新表。锁定Project及源Report/Findings并校验最新版本；manual从draft→generating→ready保存新文案/可选真实截图关联，旧ready保持immutable。JSON manualEdit包含sourcePackId/savedAt/aiReviewed=false，源AI追溯字段保留但不是本次模型调用。regenerate原子创建draft及quick_jobs，JSON regeneration含sourcePackId/jobId/requestedAt；job payload绑定新packId，成功后生成审计替换旧稿。失败/死worker retry创建下一版本，只有failed job可重试。claim_quick_job仅对显式publish/regenerate扩展专业项目，保留quick任务边界、项目串行、lease、SKIP LOCKED和E2E排除。Artifact来源/图片种类/FK/unique仍由现有trigger约束，保存后失效正文锚点置null。
+
+### 作者判断（2026-10-16）
+
+无新表。`experience_findings.human_output.authorPerspective` 是人工确认时的可选输入，与不可变AI `output` 分开；`publish_packs.config.authorPerspective` 保存该文章使用的输入快照，字段为`goal/focus/tradeoff/verdict`，字符串，每项最多600字，可全空以显式禁用。应用Schema负责裁剪空白、填充省略项和拒绝未知键。它不是Artifact或事实依据。
+
+非破坏性migration `20261016094802_author_perspective_revisions.sql` 替换同签名`create_publish_revision`：regenerate只允许可选`copy.authorPerspective`，数据库校验对象、字段白名单、字符串与长度后，合并进**新**版本配置并原子创建任务；空copy兼容旧调用。manual路径、源版本不可变约束与service-only/security-invoker权限保持。无回填、无历史更新、无新增索引或外键需求。`quick_jobs.payload`仍绑定新packId，worker读取新pack.config并以输入签名区分检查点。
+
+## Kimi 写作 Provider（2026-10-17）
+
+迁移 `20261017060048_kimi_community_writing.sql` 仅扩展 `publish_packs.provider` 的 CHECK 为 zhipu/deepseek/moonshot，以及 `start_community_post`、`refresh_publish_pack_title` 的 Provider 白名单；两个 RPC 的既有 service_role-only 权限和状态/版本规则保留。discovery_provider、Research、Judge、Findings 等表和白名单不变。community_post 内 generationTrace/titleRefreshes 接受 moonshot；新调用记录实际模型与 Prompt，旧稿不回填、不改写，无新表或 Storage 变化。
+
+## 2026-10-23 · 作品集展示修订
+
+`experience_finding_revisions` 是已确认发现的追加式编辑层，原 `experience_findings.output/human_output/human_confirmed_at` 保持原样。字段包括 `findings_id`（restrict FK）、递增 `version`（来源内唯一）、`kind`（recovered/editorial）、`editor_kind`（assistant/human）、`reason`、`output`、`provenance` 和实际写入时间 `created_at`。恢复旧备份的原确认时间仅进入 provenance，不冒充本次写入时间；recovered 不作为当前展示，读取最新 editorial 后运行同一 ConfirmedFindings Schema。
+
+新表启用 RLS，anon/authenticated/PUBLIC 无权限，service_role 仅 SELECT/INSERT；UPDATE/DELETE 触发器拒绝任何角色覆盖历史。已确认 Findings 的原输出、确认输出、确认时间增加不可变保护。`append_finding_revision` 为 service-only / security invoker / 空 search_path，锁定来源行，检查期望版本、确认状态及每条图片/文本证据的项目、方案、产品、任务归属。
+
+`publish_packs.findings_revision_id` 绑定展示修订（restrict FK，索引）。既有 33 条文章不回写，仅新增列 NULL。`create_publish_revision` 继续原子追加新文章；编辑分支可携带经过服务端 Schema 校验的选题/配置/修订 ID，拒绝过期来源。编辑稿不继承旧稿的 Story Brief、事实审核、语言编辑和 generationTrace；完整旧审稿信息留在 `manualEdit.sourcePackId` 指向的不可变来源稿中，`aiReviewed=false`。管理员版本页可查看原文、恢复的确认文本和当前展示修订。
+
+真实数据库回滚测试覆盖：成功追加、旧版本冲突、跨项目 Artifact 拒绝、修订 UPDATE/DELETE 拒绝、原确认记录覆盖拒绝、编辑稿审核字段清理、文章来源绑定、匿名权限。生产数据修订单独执行，不把项目 ID 或业务文本塞入 schema migration。
+
+
+## 测试文件重传（2026-10-25）
+
+`protocols.retest_of_protocol_id uuid null`引用原Protocol，FK `ON DELETE RESTRICT`，非空来源有部分索引。没有新表，不修改Artifact不可变触发器。`restart_test_execution(projectId, protocolId)`为security invoker、空search_path、service-role-only事务，锁项目与worker mutex，拒绝活跃业务，复制完整任务/输入/Rubric并锁定，再创建空TestRuns。旧文件及全部下游行保留；generation usage=0，原模型字段用于来源追溯。重复请求只复用同一空新轮，其他过期请求拒绝。
+
+导航RPC的Protocol对象新增可选`retestOfProtocolId`，服务器在重传后按最新Protocol计算当前状态。迁移20261025131254已应用，回滚合约及安全权限检查通过；具体使用和验证边界见[test-reupload.md](test-reupload.md)。
+
+## 逐文件删除（2026-10-25，用户修正）
+
+`test_artifact_deletions`：artifact_id PK/FK、project_id、protocol_id、replacement_protocol_id均restrict，storage_path唯一、preview_path、requested_at、cleaned_at；项目未完成清理部分索引。RLS开启，public/anon/authenticated无权限，service_role仅select/insert/update。只保存必要的删除回执，不保存文件副本。`available_test_artifacts`为security_invoker视图，按storage_path排除被删对象，只有service_role可读；当前上传、报告证据、产品库和导航使用此视图。
+
+Artifact不可变触发器不变，storage_path全局唯一改为(test_run_id,storage_path)唯一并增加路径索引。幸存附件在新轮共享Storage对象，路径追溯最初上传，新增上传仍校验自身run/id路径；直传幂等查询现在同时限定run。`remove_test_artifact(project,protocol,artifact)`复用锁定任务的新轮事务，只关联幸存附件并保留执行元数据；`pending_test_artifact_deletions(project)`返回最少的重试UI字段，`finish_test_artifact_deletion(project,artifact)`只在Storage API成功后写cleaned_at。三个RPC均service-only/security invoker/空search_path。原AI分、复核及文章不覆盖；此前“原Storage全部保留”的说明被本节替代。
+
+补充迁移`20261025145245_serialize_upload_and_removal.sql`让record_test_artifact在锁定/验证TestRun之前取得相同项目advisory mutex，避免并发删除复制完附件后旧上传才入库。原文件校验、权限及失败补偿不变。

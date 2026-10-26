@@ -47,12 +47,13 @@ export const reportRepository = {
     if (error) throwRepositoryError("report.fail", error);
   },
 
-  async listByAnalysis(resultAnalysisId: string): Promise<ReportRow[]> {
-    const { data, error } = await getSupabaseServerClient()
+  async listByAnalysis(resultAnalysisId: string, limit?: number): Promise<ReportRow[]> {
+    const query = getSupabaseServerClient()
       .from("reports")
       .select(reportColumns)
       .eq("result_analysis_id", resultAnalysisId)
       .order("version", { ascending: false });
+    const { data, error } = await (limit === undefined ? query : query.limit(limit));
     if (error) throwRepositoryError("report.listByAnalysis", error);
     return data;
   },
@@ -87,7 +88,7 @@ export const reportRepository = {
   async listArtifacts(artifactIds: string[]): Promise<TestArtifactRow[]> {
     if (artifactIds.length === 0) return [];
     const { data, error } = await getSupabaseServerClient()
-      .from("test_artifacts")
+      .from("available_test_artifacts")
       .select(testArtifactColumns)
       .in("id", artifactIds)
       .order("created_at", { ascending: true });

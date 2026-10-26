@@ -40,14 +40,16 @@ export function selectJudgeEvidenceInputs<Input extends JudgeEvidenceInput>(
 
   const selected = inputs.filter(input => {
     const family = evidenceFamily(input.mime_type);
-    return family === selectedFamily || (selectedFamily !== "text" && family === "text");
+    // Videos are normalized to text MediaEvidence before evaluation, so original
+    // screenshots can now safely share the image+text request with that evidence.
+    return family === selectedFamily || (selectedFamily !== "text" && family === "text") || (selectedFamily === "video" && family === "image");
   });
   const selectedIds = new Set(selected.map(input => input.artifact_id));
   return {
     selected,
     selectedFamily,
     omittedArtifactIds: inputs.filter(input => !selectedIds.has(input.artifact_id)).map(input => input.artifact_id),
-    policyVersion: "single-media-family.v1",
+    policyVersion: "media-evidence-family.v2",
   };
 }
 

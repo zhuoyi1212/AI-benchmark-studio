@@ -12,124 +12,8 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
-      quick_job_steps: {
-        Row: {
-          created_at: string
-          job_id: string
-          output: Json
-          step_key: string
-        }
-        Insert: {
-          created_at?: string
-          job_id: string
-          output: Json
-          step_key: string
-        }
-        Update: {
-          created_at?: string
-          job_id?: string
-          output?: Json
-          step_key?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quick_job_steps_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "quick_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quick_jobs: {
-        Row: {
-          attempts: number
-          available_at: string
-          created_at: string
-          error_message: string | null
-          id: string
-          kind: string
-          lease_token: string | null
-          lease_until: string | null
-          payload: Json
-          project_id: string
-          result: Json | null
-          scope: string
-          stage: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          attempts?: number
-          available_at?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          kind: string
-          lease_token?: string | null
-          lease_until?: string | null
-          payload?: Json
-          project_id: string
-          result?: Json | null
-          scope: string
-          stage?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          attempts?: number
-          available_at?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          kind?: string
-          lease_token?: string | null
-          lease_until?: string | null
-          payload?: Json
-          project_id?: string
-          result?: Json | null
-          scope?: string
-          stage?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quick_jobs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       blind_mappings: {
         Row: {
           blind_sample_id: string
@@ -201,6 +85,50 @@ export type Database = {
             columns: ["protocol_id"]
             isOneToOne: false
             referencedRelation: "protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experience_finding_revisions: {
+        Row: {
+          created_at: string
+          editor_kind: string
+          findings_id: string
+          id: string
+          kind: string
+          output: Json
+          provenance: Json
+          reason: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          editor_kind: string
+          findings_id: string
+          id?: string
+          kind: string
+          output: Json
+          provenance?: Json
+          reason: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          editor_kind?: string
+          findings_id?: string
+          id?: string
+          kind?: string
+          output?: Json
+          provenance?: Json
+          reason?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_finding_revisions_findings_id_fkey"
+            columns: ["findings_id"]
+            isOneToOne: false
+            referencedRelation: "experience_findings"
             referencedColumns: ["id"]
           },
         ]
@@ -683,13 +611,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "product_research_snapshot_id_fkey"
-            columns: ["snapshot_id"]
-            isOneToOne: false
-            referencedRelation: "product_research_snapshots"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "product_research_project_id_product_id_fkey"
             columns: ["project_id", "product_id"]
             isOneToOne: false
@@ -702,6 +623,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "research_runs"
             referencedColumns: ["id", "project_id"]
+          },
+          {
+            foreignKeyName: "product_research_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "product_research_snapshots"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -904,12 +832,12 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           evaluation_mode: string
-          quick_preparation_error: string | null
-          quick_preparation_status: string
           id: string
           intent: string
           name: string
           owner_id: string | null
+          quick_preparation_error: string | null
+          quick_preparation_status: string
           status: string
           updated_at: string
         }
@@ -917,12 +845,12 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           evaluation_mode?: string
-          quick_preparation_error?: string | null
-          quick_preparation_status?: string
           id?: string
           intent: string
           name: string
           owner_id?: string | null
+          quick_preparation_error?: string | null
+          quick_preparation_status?: string
           status?: string
           updated_at?: string
         }
@@ -930,12 +858,12 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           evaluation_mode?: string
-          quick_preparation_error?: string | null
-          quick_preparation_status?: string
           id?: string
           intent?: string
           name?: string
           owner_id?: string | null
+          quick_preparation_error?: string | null
+          quick_preparation_status?: string
           status?: string
           updated_at?: string
         }
@@ -957,6 +885,7 @@ export type Database = {
           project_id: string
           prompt_version: string | null
           research_run_id: string
+          retest_of_protocol_id: string | null
           rules: Json
           status: string
           test_mode: string
@@ -979,6 +908,7 @@ export type Database = {
           project_id: string
           prompt_version?: string | null
           research_run_id: string
+          retest_of_protocol_id?: string | null
           rules?: Json
           status?: string
           test_mode?: string
@@ -1001,6 +931,7 @@ export type Database = {
           project_id?: string
           prompt_version?: string | null
           research_run_id?: string
+          retest_of_protocol_id?: string | null
           rules?: Json
           status?: string
           test_mode?: string
@@ -1009,6 +940,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "protocols_retest_of_protocol_id_fkey"
+            columns: ["retest_of_protocol_id"]
+            isOneToOne: false
+            referencedRelation: "protocols"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "protocols_project_id_fkey"
             columns: ["project_id"]
@@ -1089,6 +1027,8 @@ export type Database = {
           discovery_started_at: string | null
           error_message: string | null
           estimated_cost: number | null
+          findings_id: string | null
+          findings_revision_id: string | null
           generation_started_at: string | null
           id: string
           input_signature: string | null
@@ -1100,7 +1040,6 @@ export type Database = {
           prompt_version: string | null
           provider: string | null
           report_id: string | null
-          findings_id: string | null
           selected_idea: Json | null
           status: string
           updated_at: string
@@ -1124,6 +1063,8 @@ export type Database = {
           discovery_started_at?: string | null
           error_message?: string | null
           estimated_cost?: number | null
+          findings_id?: string | null
+          findings_revision_id?: string | null
           generation_started_at?: string | null
           id?: string
           input_signature?: string | null
@@ -1135,7 +1076,6 @@ export type Database = {
           prompt_version?: string | null
           provider?: string | null
           report_id?: string | null
-          findings_id?: string | null
           selected_idea?: Json | null
           status?: string
           updated_at?: string
@@ -1159,6 +1099,8 @@ export type Database = {
           discovery_started_at?: string | null
           error_message?: string | null
           estimated_cost?: number | null
+          findings_id?: string | null
+          findings_revision_id?: string | null
           generation_started_at?: string | null
           id?: string
           input_signature?: string | null
@@ -1170,7 +1112,6 @@ export type Database = {
           prompt_version?: string | null
           provider?: string | null
           report_id?: string | null
-          findings_id?: string | null
           selected_idea?: Json | null
           status?: string
           updated_at?: string
@@ -1185,11 +1126,109 @@ export type Database = {
             referencedColumns: ["id", "project_id"]
           },
           {
+            foreignKeyName: "publish_packs_findings_revision_id_fkey"
+            columns: ["findings_revision_id"]
+            isOneToOne: false
+            referencedRelation: "experience_finding_revisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "publish_packs_report_id_project_id_fkey"
             columns: ["report_id", "project_id"]
             isOneToOne: false
             referencedRelation: "reports"
             referencedColumns: ["id", "project_id"]
+          },
+        ]
+      }
+      quick_job_steps: {
+        Row: {
+          created_at: string
+          job_id: string
+          output: Json
+          step_key: string
+        }
+        Insert: {
+          created_at?: string
+          job_id: string
+          output: Json
+          step_key: string
+        }
+        Update: {
+          created_at?: string
+          job_id?: string
+          output?: Json
+          step_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_job_steps_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "quick_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_jobs: {
+        Row: {
+          attempts: number
+          available_at: string
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: string
+          lease_token: string | null
+          lease_until: string | null
+          payload: Json
+          project_id: string
+          result: Json | null
+          scope: string
+          stage: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind: string
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: Json
+          project_id: string
+          result?: Json | null
+          scope: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: Json
+          project_id?: string
+          result?: Json | null
+          scope?: string
+          stage?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1608,6 +1647,44 @@ export type Database = {
           },
         ]
       }
+      test_artifact_deletions: {
+        Row: {
+          artifact_id: string
+          project_id: string
+          protocol_id: string
+          replacement_protocol_id: string
+          storage_path: string
+          preview_path: string | null
+          requested_at: string
+          cleaned_at: string | null
+        }
+        Insert: {
+          artifact_id: string
+          project_id: string
+          protocol_id: string
+          replacement_protocol_id: string
+          storage_path: string
+          preview_path?: string | null
+          requested_at?: string
+          cleaned_at?: string | null
+        }
+        Update: {
+          artifact_id?: string
+          project_id?: string
+          protocol_id?: string
+          replacement_protocol_id?: string
+          storage_path?: string
+          preview_path?: string | null
+          requested_at?: string
+          cleaned_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "test_artifact_deletions_artifact_id_fkey"; columns: ["artifact_id"]; isOneToOne: true; referencedRelation: "test_artifacts"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_protocol_id_fkey"; columns: ["protocol_id"]; isOneToOne: false; referencedRelation: "protocols"; referencedColumns: ["id"] },
+          { foreignKeyName: "test_artifact_deletions_replacement_protocol_id_fkey"; columns: ["replacement_protocol_id"]; isOneToOne: false; referencedRelation: "protocols"; referencedColumns: ["id"] },
+        ]
+      }
       test_artifacts: {
         Row: {
           bucket_id: string
@@ -1789,6 +1866,10 @@ export type Database = {
       }
     }
     Views: {
+      available_test_artifacts: {
+        Row: Database["public"]["Tables"]["test_artifacts"]["Row"]
+        Relationships: Database["public"]["Tables"]["test_artifacts"]["Relationships"]
+      }
       review_final_scores: {
         Row: {
           active_override_event_id: string | null
@@ -1804,32 +1885,98 @@ export type Database = {
       }
     }
     Functions: {
-      get_workflow_navigation_snapshot: {
+      remove_test_artifact: {
+        Args: { p_project_id: string; p_protocol_id: string; p_artifact_id: string }
+        Returns: Json
+      }
+      finish_test_artifact_deletion: {
+        Args: { p_project_id: string; p_artifact_id: string }
+        Returns: undefined
+      }
+      pending_test_artifact_deletions: {
         Args: { p_project_id: string }
         Returns: Json
       }
-      save_quick_step: {
-        Args: { p_id: string; p_key: string; p_output: Json; p_token: string }
-        Returns: undefined
-      }
-      finish_quick_job: {
+      append_finding_revision: {
         Args: {
-          p_error?: string
-          p_id: string
-          p_next?: Json
-          p_result?: Json
-          p_status: string
-          p_token: string
-        }
-        Returns: undefined
-      }
-      enqueue_quick_job: {
-        Args: {
+          p_editor_kind: string
+          p_expected_version: number
+          p_findings_id: string
           p_kind: string
-          p_payload?: Json
-          p_project_id: string
-          p_scope: string
+          p_output: Json
+          p_provenance?: Json
+          p_reason: string
         }
+        Returns: string
+      }
+      append_human_override: {
+        Args: {
+          p_judge_score_id: string
+          p_override_score: number
+          p_project_id: string
+          p_reason: string
+          p_review_session_id: string
+        }
+        Returns: string
+      }
+      append_human_revert: {
+        Args: {
+          p_judge_score_id: string
+          p_project_id: string
+          p_review_session_id: string
+        }
+        Returns: string
+      }
+      assert_blind_protocol_safe: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
+      begin_experience_findings: {
+        Args: {
+          p_input_signature: string
+          p_input_snapshot: Json
+          p_project_id: string
+          p_protocol_id: string
+        }
+        Returns: string
+      }
+      begin_findings_publish_pack: {
+        Args: { p_findings_id: string; p_project_id: string }
+        Returns: string
+      }
+      begin_judge_case_run: {
+        Args: {
+          p_input_signature: string
+          p_judge_run_id: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+          p_test_case_id: string
+        }
+        Returns: string
+      }
+      begin_judge_run: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: string
+      }
+      begin_product_research: {
+        Args: {
+          p_input_signature: string
+          p_input_snapshot: Json
+          p_project_id: string
+        }
+        Returns: string
+      }
+      begin_publish_pack: {
+        Args: { p_project_id: string; p_report_id: string }
+        Returns: string
+      }
+      begin_report: {
+        Args: { p_project_id: string; p_result_analysis_id: string }
+        Returns: string
+      }
+      begin_result_analysis: {
+        Args: { p_project_id: string; p_review_session_id: string }
         Returns: string
       }
       claim_quick_job: {
@@ -1858,90 +2005,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      append_human_override: {
-        Args: {
-          p_judge_score_id: string
-          p_override_score: number
-          p_project_id: string
-          p_reason: string
-          p_review_session_id: string
-        }
-        Returns: string
-      }
-      append_human_revert: {
-        Args: {
-          p_judge_score_id: string
-          p_project_id: string
-          p_review_session_id: string
-        }
-        Returns: string
-      }
-      assert_blind_protocol_safe: {
-        Args: { p_project_id: string; p_protocol_id: string }
-        Returns: undefined
-      }
-      begin_judge_case_run: {
-        Args: {
-          p_input_signature: string
-          p_judge_run_id: string
-          p_model: string
-          p_prompt_version: string
-          p_provider: string
-          p_test_case_id: string
-        }
-        Returns: string
-      }
-      begin_judge_run: {
-        Args: { p_project_id: string; p_protocol_id: string }
-        Returns: string
-      }
-      begin_product_research: {
-        Args: {
-          p_input_signature: string
-          p_input_snapshot: Json
-          p_project_id: string
-        }
-        Returns: string
-      }
-      begin_experience_findings: {
-        Args: {
-          p_input_signature: string
-          p_input_snapshot: Json
-          p_project_id: string
-          p_protocol_id: string
-        }
-        Returns: string
-      }
-      begin_findings_publish_pack: {
-        Args: { p_findings_id: string; p_project_id: string }
-        Returns: string
-      }
-      begin_publish_pack: {
-        Args: { p_project_id: string; p_report_id: string }
-        Returns: string
-      }
-      begin_report: {
-        Args: { p_project_id: string; p_result_analysis_id: string }
-        Returns: string
-      }
-      begin_result_analysis: {
-        Args: { p_project_id: string; p_review_session_id: string }
-        Returns: string
-      }
-      complete_experience_findings: {
-        Args: { p_findings_id: string; p_output: Json; p_usage: Json }
-        Returns: undefined
-      }
-      confirm_experience_findings: {
-        Args: { p_findings_id: string; p_human_output: Json }
-        Returns: undefined
-      }
       complete_content_discovery: {
         Args: {
           p_content_ideas: Json
           p_publish_pack_id: string
           p_usage: Json
         }
+        Returns: undefined
+      }
+      complete_experience_findings: {
+        Args: { p_findings_id: string; p_output: Json; p_usage: Json }
         Returns: undefined
       }
       complete_judge_case_run: {
@@ -1992,20 +2065,30 @@ export type Database = {
         }
         Returns: undefined
       }
-      create_benchmark_project: {
-        Args: {
-          p_evaluation_mode?: string
-          p_intent: string
-          p_name: string
-          p_owner_id?: string
-          p_products: Json
-        }
-        Returns: string
-      }
-      set_project_evaluation_mode: {
-        Args: { p_evaluation_mode: string; p_project_id: string }
+      confirm_experience_findings: {
+        Args: { p_findings_id: string; p_human_output: Json }
         Returns: undefined
       }
+      create_benchmark_project:
+        | {
+            Args: {
+              p_evaluation_mode: string
+              p_intent: string
+              p_name: string
+              p_owner_id?: string
+              p_products: Json
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_intent: string
+              p_name: string
+              p_owner_id?: string
+              p_products: Json
+            }
+            Returns: string
+          }
       create_protocol_draft: {
         Args: {
           p_generation_model: string
@@ -2019,7 +2102,30 @@ export type Database = {
         }
         Returns: string
       }
+      create_publish_revision: {
+        Args: {
+          p_copy?: Json
+          p_mode: string
+          p_project_id: string
+          p_recommendations?: Json
+          p_source_pack_id: string
+        }
+        Returns: string
+      }
+      enqueue_quick_job: {
+        Args: {
+          p_kind: string
+          p_payload?: Json
+          p_project_id: string
+          p_scope: string
+        }
+        Returns: string
+      }
       ensure_review_session: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: string
+      }
+      restart_test_execution: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: string
       }
@@ -2055,6 +2161,17 @@ export type Database = {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
+      finish_quick_job: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_next?: Json
+          p_result?: Json
+          p_status: string
+          p_token: string
+        }
+        Returns: undefined
+      }
       get_judge_case_inputs: {
         Args: { p_judge_run_id: string; p_test_case_id: string }
         Returns: {
@@ -2079,6 +2196,10 @@ export type Database = {
           sample_label: string
         }[]
       }
+      get_workflow_navigation_snapshot: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       initialize_blind_layer: {
         Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
@@ -2092,13 +2213,13 @@ export type Database = {
         Args: { p_artifact: Json; p_run_metadata: Json; p_test_run_id: string }
         Returns: string
       }
-      remove_draft_test_case: {
+      redact_video_judge_evidence: {
         Args: {
-          p_project_id: string
-          p_protocol_id: string
+          p_content: string
+          p_judge_run_id: string
           p_test_case_id: string
         }
-        Returns: undefined
+        Returns: string
       }
       refresh_publish_pack_title: {
         Args: {
@@ -2113,17 +2234,24 @@ export type Database = {
         }
         Returns: string
       }
+      remove_draft_test_case: {
+        Args: {
+          p_project_id: string
+          p_protocol_id: string
+          p_test_case_id: string
+        }
+        Returns: undefined
+      }
       reveal_review_session: {
         Args: { p_project_id: string; p_review_session_id: string }
         Returns: undefined
       }
-      start_experience_findings: {
-        Args: {
-          p_findings_id: string
-          p_model: string
-          p_prompt_version: string
-          p_provider: string
-        }
+      save_quick_step: {
+        Args: { p_id: string; p_key: string; p_output: Json; p_token: string }
+        Returns: undefined
+      }
+      set_project_evaluation_mode: {
+        Args: { p_evaluation_mode: string; p_project_id: string }
         Returns: undefined
       }
       start_community_post: {
@@ -2148,6 +2276,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_experience_findings: {
+        Args: {
+          p_findings_id: string
+          p_model: string
+          p_prompt_version: string
+          p_provider: string
+        }
+        Returns: undefined
+      }
+      start_professional_review: {
+        Args: { p_project_id: string; p_protocol_id: string }
+        Returns: undefined
+      }
       start_report: {
         Args: {
           p_model: string
@@ -2155,10 +2296,6 @@ export type Database = {
           p_provider: string
           p_report_id: string
         }
-        Returns: undefined
-      }
-      start_professional_review: {
-        Args: { p_project_id: string; p_protocol_id: string }
         Returns: undefined
       }
       start_result_analysis: {
@@ -2188,12 +2325,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2217,11 +2354,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2242,11 +2379,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2267,11 +2404,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2284,11 +2421,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2298,9 +2435,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

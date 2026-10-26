@@ -6,15 +6,15 @@ function input(sample, id, mime) {
   return { blind_sample_id: sample, artifact_id: id, mime_type: mime };
 }
 
-test("a video task sends video and text without mixing in screenshots", () => {
+test("a video task selects video, notes and screenshots for normalized evidence", () => {
   const selection = selectJudgeEvidenceInputs([
     input("sample-a", "screenshot", "image/png"),
     input("sample-a", "video", "video/mp4"),
     input("sample-a", "notes", "text/plain"),
   ], ["text", "video"]);
   assert.equal(selection.selectedFamily, "video");
-  assert.deepEqual(selection.selected.map(item => item.artifact_id), ["video", "notes"]);
-  assert.deepEqual(selection.omittedArtifactIds, ["screenshot"]);
+  assert.deepEqual(selection.selected.map(item => item.artifact_id), ["screenshot", "video", "notes"]);
+  assert.deepEqual(selection.omittedArtifactIds, []);
 });
 
 test("comparison judging chooses one common media family for every sample", () => {

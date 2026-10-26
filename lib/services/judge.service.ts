@@ -1,5 +1,9 @@
 import "server-only";
+import { imageForAI } from "@/lib/services/analysis-image.service";
+import { analysisImagePolicyVersion, AnalysisImageError } from "@/lib/media/analysis-image";
+import { complianceBaselineRules } from "@/lib/compliance-baseline";
 
+import { memoPageRead } from "@/lib/supabase/read-scope";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { AIProviderError, AIValidationError } from "@/lib/ai/errors";
@@ -12,6 +16,10 @@ import { RepositoryError } from "@/lib/repositories/repository-error";
 import { protocolsRepository, type ProtocolTestCaseRow } from "@/lib/repositories/protocols.repository";
 import { JudgeEvidenceSelectionError, selectJudgeEvidenceInputs } from "@/lib/judge-evidence-selection";
 import { createInputSignature } from "@/lib/signatures";
+import { buildVideoEvidence, mediaEvidenceText } from "@/lib/media/video-evidence";
+import { readVideoScreenshotEvidence } from "@/lib/media/screenshot-evidence";
+import { MediaProcessingError, mediaPolicyVersion, videoEvaluationRules } from "@/lib/media/media-evidence";
+import { quickExecution, QuickYield } from "@/lib/quick/checkpoints";
 import { BlindReviewError, getBlindReviewWorkspace } from "@/lib/services/blind-review.service";
 import type { JudgeCaseRunRow, JudgeRunRow, JudgeScoreRow, RubricDimensionRow } from "@/lib/types/database";
 import type { ExpectedOutputType } from "@/lib/types/protocol";
@@ -99,6 +107,10 @@ export class JudgeExecutionError extends Error {
 }
 
 export async function getJudgeReviewWorkspace(projectId: string): Promise<JudgeReviewWorkspace | null> {
+  return memoPageRead(`judge-review:${projectId}`, () => readJudgeReviewWorkspace(projectId));
+}
+
+async function readJudgeReviewWorkspace(projectId: string): Promise<JudgeReviewWorkspace | null> {
   const context = await loadJudgeContext(projectId);
   if (!context) return null;
   const runs = await judgeRepository.listRuns(context.protocolId);
@@ -124,7 +136,9 @@ export async function runBlindJudge(projectId: string): Promise<string> {
   if (!context) throw new JudgeExecutionError("Blind Review 尚未就绪。");
   let judgeRunId: string | null = null;
   try {
-    judgeRunId = await judgeRepository.begin(projectId, context.protocolId);
+    const scope = quickExecution.getStore();
+    const active = scope?.job.kind === "evaluate" ? (await judgeRepository.listRuns(context.protocolId)).find(run => run.status === "running" && run.created_at >= scope.job.created_at) : null;
+    judgeRunId = active?.id ?? await judgeRepository.begin(projectId, context.protocolId);
     const persistedRun = (await judgeRepository.listRuns(context.protocolId)).find((run) => run.id === judgeRunId);
     if (persistedRun?.status === "completed") {
       await humanReviewRepository.ensure(projectId, context.protocolId);
@@ -136,6 +150,7 @@ export async function runBlindJudge(projectId: string): Promise<string> {
     // JudgeRun does not create its own rate-limit spike; all Samples inside a
     // Case still use the same immutable JudgeCaseRun route.
     for (const testCase of context.testCases) {
+      if (active && (await judgeRepository.listCaseRuns(judgeRunId)).some(run => run.test_case_id === testCase.id && run.status === "completed")) continue;
       await executeJudgeCase(judgeRunId, context, testCase);
     }
     await judgeRepository.complete(judgeRunId);
@@ -144,6 +159,12 @@ export async function runBlindJudge(projectId: string): Promise<string> {
     await humanReviewRepository.ensure(projectId, context.protocolId);
     return judgeRunId;
   } catch (error) {
+    if (error instanceof QuickYield) throw error;
+    if (error instanceof RepositoryError) {
+      const cause = z.object({ message: z.string() }).safeParse(error.cause);
+      console.error("[JudgeRepositoryError]", { operation: error.operation, code: error.code,
+        message: cause.success ? cause.data.message.replace(/https?:\S+/g, "[URL redacted]").slice(0, 240) : "unknown" });
+    }
     if (judgeRunId) {
       try {
         await judgeRepository.fail(judgeRunId, safeFailureMessage(error));
@@ -170,7 +191,7 @@ async function executeJudgeCase(
     testCaseId: testCase.id,
     mimeType: input.mime_type,
   }));
-  const inputSignature = createInputSignature({
+  const sourceSignature = createInputSignature({
     protocolId: context.protocolId,
     testCase,
     rubric: context.rubric,
@@ -178,6 +199,8 @@ async function executeJudgeCase(
     evidenceTransport: {
       policyVersion: selection.policyVersion,
       selectedFamily: selection.selectedFamily,
+      mediaPolicyVersion,
+      analysisImagePolicyVersion,
     },
     artifacts: selectedInputs.map((input) => ({
       blindSampleId: input.blind_sample_id,
@@ -187,11 +210,18 @@ async function executeJudgeCase(
       sha256: input.sha256,
     })),
   });
-  const content = await buildJudgeContent(context, testCase, selectedInputs, {
+  const preparedContent = await buildJudgeContent(context, testCase, selectedInputs, {
     policyVersion: selection.policyVersion,
     selectedFamily: selection.selectedFamily,
     omittedArtifactCount: selection.omittedArtifactIds.length,
   });
+  const videoCase = selectedInputs.some(input => input.mime_type.startsWith("video/"));
+  const content = videoCase ? z.union([z.string(), z.array(z.object({ type: z.literal("text"), text: z.string() }).strict())])
+    .parse(JSON.parse(await judgeRepository.redactVideoEvidence(judgeRunId, testCase.id, JSON.stringify(preparedContent)))) : preparedContent;
+  if (videoCase && selectedInputs.some(input => !JSON.stringify(content).includes(input.artifact_id))) throw new JudgeExecutionError("视频匿名处理破坏了证据关联，请检查产品名称后重试。");
+  // Only after anonymization. No known identity or original media URL reaches
+  // the evaluator or its checkpoint input signature.
+  const inputSignature = videoCase ? createInputSignature({ sourceSignature, content }) : sourceSignature;
   const expectedScoreKeys = new Set(context.samples.flatMap((sample) => context.rubric.map((dimension) => `${sample.sampleId}:${dimension.id}`)));
   const expectedScorePairs = context.samples.flatMap((sample) => context.rubric.map((dimension) => ({
     blindSampleId: sample.sampleId,
@@ -207,6 +237,15 @@ async function executeJudgeCase(
         message: `Judge output must contain exactly ${expectedScoreKeys.size} unique Sample × Rubric scores`,
       });
     }
+    if (videoCase) {
+      for (const [index, score] of value.scores.entries()) {
+        const allowed = new Set(selectedInputs.filter(input => input.blind_sample_id === score.blindSampleId).map(input => input.artifact_id));
+        if (score.evidence.some(text => {
+          const ids = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) ?? [];
+          return !ids.length || ids.some(id => !allowed.has(id.toLowerCase()));
+        })) refinement.addIssue({ code: "custom", path: ["scores", index, "evidence"], message: "Video evidence must cite only original artifacts belonging to this Sample" });
+      }
+    }
   });
   let judgeCaseRunId: string | null = null;
   const result = await aiTaskService.judgeSamples(testCase.id, descriptors, {
@@ -215,7 +254,7 @@ async function executeJudgeCase(
     messages: [
       {
         role: "system",
-        content: "你是严格的 Blind AI Judge。你只能使用匿名 Sample、Locked Protocol、TestCase、Rubric 与原始 Artifact 评分。不得猜测产品身份，不得使用品牌先验，不得改变 Rubric。每条 Evidence 必须引用给定 Artifact ID，并指出可核查的页面、段落、图表或原文。输出简体中文。",
+        content: `你是严格的 Blind AI Judge。你只能使用匿名 Sample、Locked Protocol、TestCase、Rubric 与原始 Artifact 评分。不得猜测产品身份，不得使用品牌先验，不得改变 Rubric。每条 Evidence 必须引用给定 Artifact ID，并指出可核查的页面、段落、图表或原文。输出简体中文。\n${videoEvaluationRules}\n${complianceBaselineRules}`,
       },
       { role: "user", content },
     ],
@@ -266,7 +305,9 @@ async function buildJudgeContent(
   inputs: JudgeCaseInputRow[],
   evidenceTransport: { policyVersion: string; selectedFamily: string; omittedArtifactCount: number },
 ): Promise<AIMessageContent> {
-  const prepared = await Promise.all(inputs.map(prepareArtifact));
+  const prepared = [];
+  // Video decoders and provider calls are bounded sequentially, rather than three concurrent videos.
+  for (const input of inputs) prepared.push(await prepareArtifact(input, testCase, inputs.some(a => a.blind_sample_id === input.blind_sample_id && (a.mime_type.startsWith("image/") || isTextArtifactMimeType(a.mime_type)))));
   const instruction = {
     lockedProtocol: {
       id: context.protocolId,
@@ -305,6 +346,13 @@ async function buildJudgeContent(
     type: "text",
     text: `${JSON.stringify(instruction)}\n下面按 Sample 顺序提供完整原始 Artifact。`,
   }];
+  const videoCase = prepared.some(artifact => artifact.mediaEvidence);
+  const screenshotEvidence = videoCase ? await readVideoScreenshotEvidence(prepared.filter(a => a.mimeType.startsWith("image/")).map(a => ({ artifactId: a.artifactId, url: a.url! }))) : null;
+  if (videoCase) {
+    const hasContent = prepared.some(a => a.text?.trim() || a.mediaEvidence && (a.mediaEvidence.frames.length || a.mediaEvidence.transcript.fullText.trim() || a.mediaEvidence.subtitles.length)) || Boolean(screenshotEvidence?.evidence.length);
+    if (!hasContent) throw new MediaProcessingError("no_evidence", "未取得有效视频或截图证据，请重试媒体提取或补充原始文本。");
+    content.push({ type: "text", text: `ScreenshotEvidence (derived from original artifact IDs): ${JSON.stringify(screenshotEvidence)}` });
+  }
   for (const artifact of prepared) {
     content.push({
       type: "text",
@@ -312,8 +360,13 @@ async function buildJudgeContent(
     });
     if (isTextArtifactMimeType(artifact.mimeType)) {
       content.push({ type: "text", text: artifact.text! });
-    } else if (artifact.mimeType.startsWith("image/")) {
+    } else if (artifact.mimeType.startsWith("image/") && !videoCase) {
+      content.push({ type: "text", text: artifact.imageDescription! });
       content.push({ type: "image_url", image_url: { url: artifact.url! } });
+    } else if (artifact.mimeType.startsWith("image/") && videoCase) {
+      // This image was read by the dedicated vision step above.
+    } else if (artifact.mediaEvidence) {
+      content.push({ type: "text", text: mediaEvidenceText(artifact.mediaEvidence) });
     } else {
       content.push({ type: "file_url", file_url: { url: artifact.url! } });
     }
@@ -321,10 +374,15 @@ async function buildJudgeContent(
   return content;
 }
 
-async function prepareArtifact(input: JudgeCaseInputRow) {
+async function prepareArtifact(input: JudgeCaseInputRow, testCase: JudgeTestCase, auxiliaryEvidenceAvailable: boolean) {
   const url = await judgeRepository.createSignedArtifactUrl(input.storage_path);
+  if (input.mime_type.startsWith("video/")) {
+    const mediaEvidence = await buildVideoEvidence({ artifactId: input.artifact_id, url, sizeBytes: input.size_bytes, sha256: input.sha256 }, { prompt: testCase.prompt, objective: testCase.objective, auxiliaryEvidenceAvailable });
+    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: mediaEvidence.sourceSha256, url: null, text: null, mediaEvidence };
+  }
   if (!isTextArtifactMimeType(input.mime_type)) {
-    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url, text: null };
+    const image = input.mime_type.startsWith("image/") ? await imageForAI({ id: input.artifact_id, fileUrl: url, fileType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256 ?? undefined }) : null;
+    return { blindSampleId: input.blind_sample_id, sampleLabel: input.sample_label, artifactId: input.artifact_id, mimeType: input.mime_type, sizeBytes: input.size_bytes, sha256: input.sha256, url: image?.url ?? url, imageDescription: image?.description, text: null };
   }
   const response = await fetch(url);
   if (!response.ok) throw new JudgeExecutionError("无法读取原始文本 Artifact。");
@@ -425,6 +483,8 @@ function mapRun(run: JudgeRunRow, caseRuns: JudgeCaseRunRow[], scores: JudgeScor
 }
 
 function safeFailureMessage(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return "AI Judge structured output validation failed";
   if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"
     ? "AI Provider 不支持当前证据的媒体组合"
@@ -436,6 +496,8 @@ function safeFailureMessage(error: unknown) {
 }
 
 function toUserFacingError(error: unknown) {
+  if (error instanceof AnalysisImageError) return error.message;
+  if (error instanceof MediaProcessingError) return error.message;
   if (error instanceof AIValidationError) return "AI Judge 返回结果未通过评分矩阵校验，请重新运行。";
   if (error instanceof AIProviderError) return error.inputIssue === "mixed_media"
     ? "当前原始文件包含模型无法同时读取的媒体组合，请补充同类型证据后重试。"

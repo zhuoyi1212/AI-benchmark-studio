@@ -1,0 +1,589 @@
+{
+  "date": "2026-10-18",
+  "scope": "latest non-internal project articles; preserve historical versions",
+  "policy": "community-story.v9-natural-voice",
+  "articles": [
+    {
+      "key": "yuanbao",
+      "projectId": "85cc4ea9-9902-4e10-aacc-e2320cbac926",
+      "projectName": "腾讯元宝｜联网查证与来源核验",
+      "sourcePackId": "b1fdd8ff-8881-4a65-8e73-d315e3937229",
+      "sourceVersion": 7,
+      "oldModel": "deepseek-v4-flash",
+      "packId": "78d957cb-547a-4bdc-870b-41e43feb36d3",
+      "version": 8,
+      "status": "ready",
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "policy": "community-story.v9-natural-voice",
+      "title": "腾讯元宝查证Notion免费版限制：三个参数都带官方来源",
+      "bodyHash": "a1e018b256ff8cda21b75634692c338e65d00c02e11d8b9dfc2ea199b67b5eca",
+      "screenshotCount": 0,
+      "oldPacksPreserved": 2,
+      "originalArtifactsUnchanged": true,
+      "generatedAt": "2026-10-18T13:28:08.191Z",
+      "importedAt": "2026-10-18T13:36:56.782Z",
+      "usage": {
+        "inputTokens": 24660,
+        "outputTokens": 1480,
+        "latencyMs": 28008,
+        "estimatedCost": null
+      },
+      "url": "https://ai-benchmark-studio-sand.vercel.app/projects/85cc4ea9-9902-4e10-aacc-e2320cbac926/publish",
+      "articleFile": "腾讯元宝.md",
+      "articleFileHash": "5db8d7dc9bd3d688192c8a55d7867f350d71c54b8b3e3717b6fe7d417913ada6",
+      "body": "准备写Notion免费版介绍时，最怕参数写错。我把三个容易混的问题一次性丢给腾讯元宝：单文件上传上限、页面历史能回溯多久、个人用和多人用的内容数量限制。用的是默认「快速回答」，只问一轮，没有追问。\n\n回复开头标了查询日期2026-10-14，三项各有结论、官方链接和英文原文引用。单文件写的是5MB，依据定价页原话「On the Free plan, you can upload images, videos and file attachments up to 5MB each.」；页面历史是7天，对应定价页Free列的「Page history — 7 days」。\n\n最有价值的是第三项。它没有简单说「免费版块数无限」，而是区分了场景：「单人工作区块数无限；2 人及以上免费工作区限 1,000 块」，还注明官方用的是「workspace owner」表述，免费版添加人员只能作为owner。我手动打开它给的定价页和Understanding block usage帮助文档核对，表格和脚注都能对上。整条回复532字符，没超出我要求的600字。\n\n对写稿的人来说，这种带链接、带引用、带日期的回复可以直接当第一版参数用，读者也能顺着链接自己核验。要说明的是，我只测了这一次查证，没在Notion里实际上传大文件或邀请人验证，也没测它在其他事实问题上的表现，所以这不能证明它查证普遍靠谱。另外回复没展开guest协作方式，如果文章涉及多人场景，正式邀请别人前最好再点开官方文档看一眼，多人部分尤其要写明1000块的限制。",
+      "tags": [
+        "腾讯元宝",
+        "Notion",
+        "免费版",
+        "联网查证",
+        "AI搜索"
+      ],
+      "interactionQuestion": "",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v7-reader-angle",
+          "inputSignature": "3ccd17abee2c4d4a1f701f9b4d8fddf956f13eb0db67bac7ecab25cfdfaabb37",
+          "usage": {
+            "inputTokens": 5582,
+            "outputTokens": 946,
+            "latencyMs": 10896,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "004a4a1a3af4973c9dc0a1ee702fd6f4be4a3f02a146c1a2113d77ec014788d1",
+          "usage": {
+            "inputTokens": 4995,
+            "outputTokens": 413,
+            "latencyMs": 14578,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "e3d307cd8ba276e6516563b83b13e462d2a6ccbb3bf2ffb6bf93c962cc435c14",
+          "usage": {
+            "inputTokens": 6591,
+            "outputTokens": 40,
+            "latencyMs": 1412,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "306d3b56437f30472c0020f437384935cb8d2353be6580515e2ae7d015a2fe08",
+          "usage": {
+            "inputTokens": 7492,
+            "outputTokens": 81,
+            "latencyMs": 1122,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "naturalVoiceAudit": {
+        "initialIssues": [],
+        "remainingIssues": [],
+        "originalTags": [
+          "腾讯元宝",
+          "Notion",
+          "免费版",
+          "联网查证",
+          "AI搜索"
+        ],
+        "tagsTrimmed": false
+      },
+      "reusedStages": [],
+      "pageVerification": {
+        "key": "yuanbao",
+        "version": 8,
+        "status": 200,
+        "titlePresent": true,
+        "fullBodyPresent": true,
+        "verifiedAt": "2026-10-18T13:40:22.842Z"
+      },
+      "bodyHashEncoding": "UTF-8 JSON.stringify(body)"
+    },
+    {
+      "key": "kimi",
+      "projectId": "fbccb297-5681-4bbc-be0b-7faa1a1ef637",
+      "projectName": "Kimi深度研究｜选型报告与引用核验",
+      "sourcePackId": "7443ff68-6287-486f-86f5-d8e36443443e",
+      "sourceVersion": 2,
+      "oldModel": "deepseek-v4-flash",
+      "packId": "86880ac8-97a8-4e2e-aee6-fd2106dca1c1",
+      "version": 3,
+      "status": "ready",
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "policy": "community-story.v9-natural-voice",
+      "title": "Kimi深度研究实测：3款短视频工具初筛报告",
+      "bodyHash": "b8ffc27ccdb04e54001009300c187dcd54244482592c172f80f5aa72d2aa4f95",
+      "screenshotCount": 0,
+      "oldPacksPreserved": 2,
+      "originalArtifactsUnchanged": true,
+      "generatedAt": "2026-10-18T13:29:39.752Z",
+      "importedAt": "2026-10-18T13:37:04.162Z",
+      "usage": {
+        "inputTokens": 39144,
+        "outputTokens": 3344,
+        "latencyMs": 54383,
+        "estimatedCost": null
+      },
+      "url": "https://ai-benchmark-studio-sand.vercel.app/projects/fbccb297-5681-4bbc-be0b-7faa1a1ef637/publish",
+      "articleFile": "Kimi深度研究.md",
+      "articleFileHash": "07f0bb387424e98521be30dd71a619f4a8bac139a4c1dc081d5bd753dad6ddf8",
+      "body": "我让一个研究类AI给3人营销团队筛中文文案转短视频工具，要求是每款覆盖操作、字幕配音、动画、导出水印、价格五个维度，结论都带官方链接。Kimi深度研究一次回复给出了剪映、度加、来画三款的对比，全文1211字，末尾有选型建议。\n\n最有价值的是它对查不到的硬限制没有硬编答案。剪映的导出分辨率、水印策略和会员价，度加的导出、水印和价格，原文都明确写了「未找到官方来源可核验」；剪映部分能力和来画的批量成片效率标了「官网宣传，未实测」。读报告时能一眼分清哪些是官方可查、哪些还得自己确认。\n\n价格上只有来画落到了具体数字：普通会员¥398/年、无水印3次/月，Pro¥4998/年、50次/月、1080P。但报告自己提示Pro账号数为1，三人并发要确认多账号或企业版，这个单账号价不能直接当团队成本。\n\n报告自身的未实测标记口径不完全一致：剪映和来画的部分能力标了，度加的「输入文案成片」、台词音色编辑和来画字幕配音同样取自官方页面，却没有逐项加同样的提示。这些描述有官网出处，但仍不代表实际成片效果。\n\n这份报告适合当选型起点，能先拿到候选工具名单和待查事项。但导出、水印、价格这些决定预算的硬项，尤其剪映和度加，采购前必须按当前官方页和实际试用再核一遍。",
+      "tags": [
+        "Kimi深度研究",
+        "AI研究工具",
+        "短视频工具",
+        "选型",
+        "AI办公"
+      ],
+      "interactionQuestion": "",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "promptVersion": "content-discovery.v7-reader-angle",
+          "inputSignature": "1ac31c144315208d73fb6d86415e6bd4bfa7f609ce908ce01842ed895b51538f",
+          "usage": {
+            "inputTokens": 6953,
+            "outputTokens": 1512,
+            "latencyMs": 16900,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "fb5fff42d33b56c150f497c61b32a270c4eb33446a81a47831e5130d12fd65cc",
+          "usage": {
+            "inputTokens": 6416,
+            "outputTokens": 413,
+            "latencyMs": 13166,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "c17f8bb129977c2f0bfe2a50b1558cfc9306e1b206959eadcd569b58e2a78e67",
+          "usage": {
+            "inputTokens": 8407,
+            "outputTokens": 546,
+            "latencyMs": 3260,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "inputSignature": "22166cf459d9de8f22231371376a833995e62abbaffb488095e371d252299702",
+          "usage": {
+            "inputTokens": 7513,
+            "outputTokens": 792,
+            "latencyMs": 20285,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "deepseek",
+          "model": "deepseek-v4-flash",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-text",
+          "inputSignature": "b23f47e64aab9753ea3b31f8b5f7d9bcea8e012a1cba4ec682e6efface5bfddc",
+          "usage": {
+            "inputTokens": 9855,
+            "outputTokens": 81,
+            "latencyMs": 772,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "naturalVoiceAudit": {
+        "initialIssues": [
+          "固定连接词：结论：；按内容自然衔接"
+        ],
+        "remainingIssues": [],
+        "originalTags": [
+          "Kimi深度研究",
+          "AI研究工具",
+          "短视频工具",
+          "选型",
+          "AI办公"
+        ],
+        "tagsTrimmed": false
+      },
+      "reusedStages": [],
+      "pageVerification": {
+        "key": "kimi",
+        "version": 3,
+        "status": 200,
+        "titlePresent": true,
+        "fullBodyPresent": true,
+        "verifiedAt": "2026-10-18T13:40:21.723Z"
+      },
+      "bodyHashEncoding": "UTF-8 JSON.stringify(body)"
+    },
+    {
+      "key": "wancai",
+      "projectId": "e22e2aff-e11e-4109-af6a-5f4234a9e8b3",
+      "projectName": "万彩AI",
+      "sourcePackId": "cd4e6b4d-4ded-433e-8650-1d069390c78b",
+      "sourceVersion": 12,
+      "oldModel": "deepseek-v4-flash",
+      "packId": "f4409589-f93c-4c7e-ab3d-d1f530763ef1",
+      "version": 13,
+      "status": "ready",
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "policy": "community-story.v9-natural-voice",
+      "title": "万彩AI文章转视频：AI自动标题超15字需手改",
+      "bodyHash": "192db2af98bb23303cce073c67da6913c6e80d93ae0071a3de28aad55ea71de5",
+      "screenshotCount": 0,
+      "oldPacksPreserved": 8,
+      "originalArtifactsUnchanged": true,
+      "generatedAt": "2026-10-18T13:42:26.819Z",
+      "importedAt": "2026-10-18T13:43:11.047Z",
+      "usage": {
+        "inputTokens": 52552,
+        "outputTokens": 2342,
+        "latencyMs": 77137,
+        "estimatedCost": null
+      },
+      "url": "https://ai-benchmark-studio-sand.vercel.app/projects/e22e2aff-e11e-4109-af6a-5f4234a9e8b3/publish",
+      "articleFile": "万彩AI.md",
+      "articleFileHash": "1b648e1a7f3a506d06632fad71cabf465c6a4021facaa3a4d8e6920c6a5fc511",
+      "body": "我把一篇《智能手环 Pro 产品介绍》营销文章丢给万彩AI，让它生成一段不超过60秒、带动画的短视频，选了科技产品主题。流程走到标题环节时卡了一下：视频标题是系统AI自动起的，起完又弹提示说标题不能超过15字，需要手动修改。也就是说，AI生成的内容，人还得替它收一遍尾。界面上没有给出自动截断或合规的备选标题，我只能自己动手缩短。对想靠这类工具省步骤的人来说，这一步挺别扭的。需要说明的是，这可能和我这次的输入有关，是否普遍存在还不好说。\n\n视频内容本身是达标的。生成的视频提取了文章的核心卖点，产品名、功能亮点和宣传口号都有出现，内容与原文高度一致，没有明显遗漏或错误；画面素材与科技产品主题相关，没有看到和产品无关的空镜。\n\n一点边界：这次测试没有字幕轨和语音转写，所以配音质量和全片连贯性我没法下结论。\n\n总结：内容提取和素材匹配靠谱，但标题那15字的限制让自动化打了个折，生成前最好预留手动改标题这一步。",
+      "tags": [
+        "万彩AI",
+        "AI视频生成",
+        "文章转视频",
+        "短视频工具",
+        "内容创作"
+      ],
+      "interactionQuestion": "你用AI生成视频时，遇到过AI自己产出的内容不合规、还得人工收尾的情况吗？",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "93966052637f83481b033eb88805b74620f622c8f9f6aeb52cf5941ead6f6b25",
+          "usage": {
+            "inputTokens": 11679,
+            "outputTokens": 746,
+            "latencyMs": 16348,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "ef6cc977b7ce7b91fe9e41dc650eaaffad9e47baf13fa6660f020f5519e4319d",
+          "usage": {
+            "inputTokens": 6821,
+            "outputTokens": 417,
+            "latencyMs": 18767,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "86dd734df5e49689e8d9142875355d8d0da22b3f076b30aa192e284bf601cc28",
+          "usage": {
+            "inputTokens": 12425,
+            "outputTokens": 699,
+            "latencyMs": 17388,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "inputSignature": "129325eb38758fced5a0a8cbc6f12287f5b8243570273fc59791a74270274a83",
+          "usage": {
+            "inputTokens": 7857,
+            "outputTokens": 306,
+            "latencyMs": 9267,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "c15039e672d4c89a0bc1a334490b014a5336483716fed2780d7eee1fbc5dcd29",
+          "usage": {
+            "inputTokens": 13770,
+            "outputTokens": 174,
+            "latencyMs": 15367,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "naturalVoiceAudit": {
+        "initialIssues": [],
+        "remainingIssues": [],
+        "originalTags": [
+          "万彩AI",
+          "AI视频生成",
+          "文章转视频",
+          "短视频工具",
+          "内容创作"
+        ],
+        "tagsTrimmed": false
+      },
+      "reusedStages": [
+        {
+          "schemaName": "CommunityStoryBrief",
+          "provider": "zhipu",
+          "model": "glm-4.6v"
+        }
+      ],
+      "pageVerification": {
+        "key": "wancai",
+        "version": 13,
+        "status": 200,
+        "titlePresent": true,
+        "fullBodyPresent": true,
+        "verifiedAt": "2026-10-18T13:44:09.189Z"
+      },
+      "bodyHashEncoding": "UTF-8 JSON.stringify(body)"
+    },
+    {
+      "key": "comparison",
+      "projectId": "92a77a0c-558e-4242-ac5e-3691e3884c07",
+      "projectName": "豆包 VS deepseek",
+      "sourcePackId": "8b4ef80f-33c9-47bc-a065-a04614355ae4",
+      "sourceVersion": 2,
+      "oldModel": "deepseek-v4-flash",
+      "packId": "7c8ab6cd-3594-43d6-9ab3-e35acf6f125f",
+      "version": 3,
+      "status": "ready",
+      "provider": "moonshot",
+      "model": "kimi-k3",
+      "policy": "community-story.v9-natural-voice",
+      "title": "DeepSeek与豆包数据报告对比：解读与图表",
+      "bodyHash": "8dc1d404723b36806a64e63356a337682534c9a6ea38858744d8d04c9436baef",
+      "screenshotCount": 0,
+      "oldPacksPreserved": 1,
+      "originalArtifactsUnchanged": true,
+      "generatedAt": "2026-10-18T13:43:40.092Z",
+      "importedAt": "2026-10-18T13:44:06.701Z",
+      "usage": {
+        "inputTokens": 66856,
+        "outputTokens": 2748,
+        "latencyMs": 77726,
+        "estimatedCost": null
+      },
+      "url": "https://ai-benchmark-studio-sand.vercel.app/projects/92a77a0c-558e-4242-ac5e-3691e3884c07/publish",
+      "articleFile": "豆包与DeepSeek.md",
+      "articleFileHash": "c1a31bc4b9cd52c9daa7bb4eceaf1588956989671bbb6459b809f6226347d344",
+      "body": "我把同一份电商近30天销售CSV和同一段提示词分别交给DeepSeek和豆包，要求生成包含总体概况、关键指标、趋势与异常、结论建议四部分的中文分析报告。两份报告放在一起看，侧重点差异比较明显。\n\n先看DeepSeek。它的报告完整覆盖了要求的四个部分，每部分下面还有细分子标题。除列数字外，报告还会解释数字可能反映的经营情况。比如，它指出电子产品销售波动可能与促销活动有关，服装品类客单价低可能反映用户价格敏感度高，并提到“平台当前对电子产品的依赖度较高，品类结构存在一定集中风险”。格式上，报告用标题、列表和加粗组织内容，关键数字比较容易找到。\n\n再看豆包。它的报告更简洁，开头直接给出总销售额、订单量和加权平均客单价，关键指标部分用表格集中展示三个品类的销售额、占比、订单量和客单价。报告里还有饼图展示品类销售额占比，并用折线图展示近30天各品类日销售额趋势。相比DeepSeek，它的文字解读主要停留在描述性统计，例如电子产品占比最高、服装客单价最低，没有继续分析这些现象的可能原因和影响。\n\n两份报告的总销售额数字也不一致：豆包报告写的是266,100元，DeepSeek报告写的是约25.47万元。因为我没有独立核对原始CSV，无法确认差异来自哪里，所以这两份报告中的总量数字和由此推导出的业务判断，我都只会先当作待核对的分析线索，不会直接作为运营决策依据。\n\n从这份样本的输出看，如果想先参考一份结构完整、文字分析较多的报告，DeepSeek的输出更接近这个方向；如果更看重点指标的表格汇总和占比、趋势图，豆包的呈现更直观。这里说的只是报告里可见的文字分析和图表形式，不代表生成的数据已经准确无误，也不等于报告建议可以直接落地。\n\n需要说明，这次只测了一个CSV样本，数据量和类型都比较单一，其他数据、其他任务下的表现不能由这次结果直接推出。",
+      "tags": [
+        "DeepSeek",
+        "豆包",
+        "数据分析",
+        "AI工具对比",
+        "销售报告"
+      ],
+      "interactionQuestion": "你用这两个工具分析过自己的数据吗？你更看重文字解读，还是表格和趋势图？",
+      "generationTrace": [
+        {
+          "stage": "planning",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "e5a81eeef98b61b59dd264ff3be22729b3826814562652c95edc59a25993fc82",
+          "usage": {
+            "inputTokens": 13999,
+            "outputTokens": 1268,
+            "latencyMs": 28006,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "writing",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post.v11-reader-editing",
+          "inputSignature": "0ebe89162f35624a78ec146e472f6345ef06c7c083f6498112b4cb5e2784a33f",
+          "usage": {
+            "inputTokens": 9798,
+            "outputTokens": 575,
+            "latencyMs": 20266,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "content_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "3951b514e14e8af61a0e11b26d12ceaa26346077046b302917fd20e017102053",
+          "usage": {
+            "inputTokens": 15461,
+            "outputTokens": 309,
+            "latencyMs": 8186,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "style_edit",
+          "provider": "moonshot",
+          "model": "kimi-k3",
+          "promptVersion": "community-post-humanize.v9-reader-editing",
+          "inputSignature": "c0f3637e1cf385e2d2eb7d18d9e40aa038c2915f7b1d1bb47ab6a3f0a575257e",
+          "usage": {
+            "inputTokens": 10886,
+            "outputTokens": 512,
+            "latencyMs": 17266,
+            "estimatedCost": null
+          }
+        },
+        {
+          "stage": "fact_check",
+          "provider": "zhipu",
+          "model": "glm-4.6v",
+          "promptVersion": "community-post-evidence-check.v10-reader-editing-vision",
+          "inputSignature": "2217ed9cb46b9d2b1e5591803fc7847ceced1dd28fb8db00d3210444ba53016d",
+          "usage": {
+            "inputTokens": 16712,
+            "outputTokens": 84,
+            "latencyMs": 4002,
+            "estimatedCost": null
+          }
+        }
+      ],
+      "articleReview": {
+        "concreteScenes": true,
+        "boundedInterpretation": true,
+        "nonRepetitive": true,
+        "usefulConclusion": true,
+        "issues": []
+      },
+      "stylePreservation": {
+        "facts": true,
+        "scope": true,
+        "stance": true,
+        "experience": true,
+        "advice": true,
+        "evidence": true,
+        "issues": []
+      },
+      "naturalVoiceAudit": {
+        "initialIssues": [],
+        "remainingIssues": [],
+        "originalTags": [
+          "DeepSeek",
+          "豆包",
+          "数据分析",
+          "AI工具对比",
+          "销售报告"
+        ],
+        "tagsTrimmed": false
+      },
+      "reusedStages": [
+        {
+          "schemaName": "CommunityStoryBrief",
+          "provider": "zhipu",
+          "model": "glm-4.6v"
+        },
+        {
+          "schemaName": "CommunityPostDraft",
+          "provider": "moonshot",
+          "model": "kimi-k3"
+        }
+      ],
+      "pageVerification": {
+        "key": "comparison",
+        "version": 3,
+        "status": 200,
+        "titlePresent": true,
+        "fullBodyPresent": true,
+        "verifiedAt": "2026-10-18T13:45:20.456Z"
+      },
+      "bodyHashEncoding": "UTF-8 JSON.stringify(body)"
+    }
+  ]
+}

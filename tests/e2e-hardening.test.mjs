@@ -76,7 +76,7 @@ test("professional analysis and quick Findings both preserve Review reveal", () 
   assert.match(reviewService, /只有锁定最终评分后才能揭晓产品身份/);
   assert.match(resultService, /review\.status !== "revealed"/);
   assert.match(resultsPage, /getExperienceFindingsWorkspace/);
-  assert.match(resultsPage, /已完成的 Blind Judge/);
+  assert.match(resultsPage, /!workflowState\.stages\.review\.completed/);
   assert.match(resultsPage, /redirect\(\`\/projects\/\$\{projectId\}\/review\`\)/);
 });
 
@@ -138,17 +138,19 @@ test("full route E2E verifies Blind Review before Quick Findings and Findings Pu
   assert.match(e2eRoute, /quickPublishReady: publish\.pack\?\.status === "ready"/);
   assert.match(e2eRunner, /ExperienceFindings/);
   assert.match(e2eRunner, /CommunityPostDraft/);
-  assert.match(e2eRunner, /HumanizedCommunityPost/);
+  assert.match(e2eRunner, /CommunityPostRevision/);
   assert.match(e2eRunner, /EvidenceCheckedCommunityPost/);
   assert.doesNotMatch(e2eRunner, /taskCounts\.MicroFindingDiscovery/);
   assert.match(providerMock, /schemaName === "ExperienceFindings"/);
   assert.match(providerMock, /schemaName === "ContentIdeas"/);
   assert.match(providerMock, /schemaName === "CommunityPostDraft"/);
-  assert.match(providerMock, /schemaName === "HumanizedCommunityPost"/);
+  assert.match(providerMock, /schemaName === "CommunityPostRevision"/);
   assert.match(providerMock, /schemaName === "EvidenceCheckedCommunityPost"/);
 });
 
 test("full E2E client allows the route to finish its bounded cleanup and response", () => {
-  assert.match(e2eRunner, /AbortSignal\.timeout\(360_000\)/);
+  assert.match(e2eRunner, /AbortSignal\.timeout\(600_000\)/);
+  assert.match(e2eRunner, /const response = await postFullFlow/);
+  assert.match(e2eRunner, /httpRequest\(url, \{ method: options\.method, headers: options\.headers, signal: options\.signal \}/);
   assert.match(e2eRunner, /allowing server-side cleanup 30 seconds to finish/);
 });

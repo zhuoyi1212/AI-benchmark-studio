@@ -2,12 +2,55 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from 'next/headers';
+import { wakeQuickWorker } from '@/lib/quick/dispatch';
 import { z } from "zod";
-import { discoverContentIdeas, generateCommunityPost, refreshCommunityPostTitle, PublishExecutionError } from "@/lib/services/publish.service";
+import { discoverContentIdeas, generateCommunityPost, refreshCommunityPostTitle, saveCommunityPostEdit, enqueueCommunityPostRegeneration, PublishExecutionError } from "@/lib/services/publish.service";
 
 const projectIdSchema = z.string().uuid();
 export type PublishActionState = { message: string | null };
 export type TitleRefreshActionState = { message: string | null; title: string | null; packId: string | null };
+export type PostEditActionState = { message: string | null; success: boolean };
+
+export async function savePostEditAction(_state: PostEditActionState, formData: FormData): Promise<PostEditActionState> {
+  if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { message: '请以管理员身份保存修改。', success: false };
+  const ids = z.object({ projectId: projectIdSchema, sourcePackId: projectIdSchema }).safeParse({ projectId: formData.get('projectId'), sourcePackId: formData.get('sourcePackId') });
+  if (!ids.success) return { message: '文章版本无效，请刷新后重试。', success: false };
+  try {
+    await saveCommunityPostEdit(ids.data.projectId, ids.data.sourcePackId, {
+      title: formData.get('title'), body: formData.get('body'),
+      tags: String(formData.get('tags') ?? '').trim().split(/\s+/).filter(Boolean),
+      interactionQuestion: formData.get('interactionQuestion'), imageIds: formData.getAll('imageId'),
+    });
+    revalidatePath(`/projects/${ids.data.projectId}/publish`);
+    revalidatePath(`/projects/${ids.data.projectId}/quick`);
+    return { message: null, success: true };
+  } catch (error) {
+    if (error instanceof PublishExecutionError) return { message: error.message, success: false };
+    throw error;
+  }
+}
+
+export async function regeneratePostAction(_state: PostEditActionState, formData: FormData): Promise<PostEditActionState> {
+  if ((await headers()).get('x-ai-benchmark-access') !== 'admin') return { message: '请以管理员身份重新生成。', success: false };
+  const ids = z.object({ projectId: projectIdSchema, sourcePackId: projectIdSchema }).safeParse({ projectId: formData.get('projectId'), sourcePackId: formData.get('sourcePackId') });
+  if (!ids.success) return { message: '文章版本无效，请刷新后重试。', success: false };
+  let perspective: unknown;
+  try {
+    const value = formData.get('authorPerspective');
+    perspective = value === null ? undefined : JSON.parse(String(value));
+  } catch { return { message: '作者判断格式无效，请重试。', success: false }; }
+  try {
+    await enqueueCommunityPostRegeneration(ids.data.projectId, ids.data.sourcePackId, perspective);
+    wakeQuickWorker(ids.data.projectId);
+    revalidatePath(`/projects/${ids.data.projectId}/publish`);
+    revalidatePath(`/projects/${ids.data.projectId}/quick`);
+    return { message: null, success: true };
+  } catch (error) {
+    if (error instanceof PublishExecutionError) return { message: error.message, success: false };
+    throw error;
+  }
+}
 
 export async function discoverIdeasAction(_state: PublishActionState, formData: FormData): Promise<PublishActionState> {
   const projectId = projectIdSchema.safeParse(formData.get("projectId"));
@@ -32,11 +75,17 @@ export async function generatePostAction(_state: PublishActionState, formData: F
     length: formData.get("length"),
     imageCount: formData.get("imageCount"),
     interactionGoal: formData.get("interactionGoal"),
+    ...(formData.get('authorPerspective') !== null ? { authorPerspective: parsePerspective(formData.get('authorPerspective')) } : {}),
   };
   const path = `/projects/${projectId.data}/publish`;
   try { await generateCommunityPost(projectId.data, { ideaId: String(formData.get("ideaId") ?? ""), customAngle: String(formData.get("customAngle") ?? ""), config }); }
   catch (error) { if (error instanceof PublishExecutionError) { revalidatePath(path); return { message: error.message }; } throw error; }
   revalidatePath(path); redirect(path);
+}
+
+function parsePerspective(value: FormDataEntryValue | null): unknown {
+  try { return JSON.parse(String(value)); }
+  catch { return null; } // The service schema returns the normal generation error.
 }
 
 export async function refreshPostTitleAction(
